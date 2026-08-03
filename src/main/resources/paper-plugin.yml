@@ -1,0 +1,12 @@
+name: InvasionCore
+version: '${project.version}'
+main: work.maiotanet.invasioncore.InvasionCore
+api-version: '26.2'
+description: 侵略MOD（ネクサス防衛）と 7 Days to Die（7日周期・拠点強化）を統合した防衛プラグイン
+authors:
+  - MAIOTA
+
+permissions:
+  invasioncore.admin:
+    description: 管理コマンド（give / admin）の使用
+    default: op

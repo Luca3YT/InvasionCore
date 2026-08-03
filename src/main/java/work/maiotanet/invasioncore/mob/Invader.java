@@ -1,0 +1,109 @@
+package work.maiotanet.invasioncore.mob;
+
+import org.bukkit.Location;
+import org.bukkit.block.Block;
+import org.bukkit.entity.Mob;
+
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.UUID;
+
+/**
+ * 生成済み侵略Mob 1体分の実行時状態。
+ * エンティティ本体に加えて、独自AIが必要とする進捗情報を保持する。
+ */
+public final class Invader {
+
+    private final Mob entity;
+    private final InvaderType type;
+    private final MutationTier tier;
+    private final UUID nexusId;
+    private final int wave;
+
+    /** 現在攻撃中の突破対象ブロック。null なら通常移動中。 */
+    private Block breachTarget;
+
+    /** ネクサスへの最短距離の記録。これが縮まらないと閉塞と判断する。 */
+    private double bestDistance = Double.MAX_VALUE;
+
+    /** 距離が縮まらないまま経過したAI更新回数。 */
+    private int stuckTicks;
+
+    /** 工兵が設置した足場。侵攻終了時に撤去するため記録する。 */
+    private final Deque<Location> placedBlocks = new ArrayDeque<>();
+
+    /** 次に特殊行動（射撃・自爆・叫喚など）を行える時刻(tick)。 */
+    private long abilityReadyTick;
+
+    public Invader(Mob entity, InvaderType type, MutationTier tier, UUID nexusId, int wave) {
+        this.entity = entity;
+        this.type = type;
+        this.tier = tier;
+        this.nexusId = nexusId;
+        this.wave = wave;
+    }
+
+    public Mob entity() {
+        return entity;
+    }
+
+    public InvaderType type() {
+        return type;
+    }
+
+    public MutationTier tier() {
+        return tier;
+    }
+
+    public UUID nexusId() {
+        return nexusId;
+    }
+
+    public int wave() {
+        return wave;
+    }
+
+    public boolean isValid() {
+        return entity.isValid() && !entity.isDead();
+    }
+
+    public Block breachTarget() {
+        return breachTarget;
+    }
+
+    public void breachTarget(Block breachTarget) {
+        this.breachTarget = breachTarget;
+    }
+
+    public double bestDistance() {
+        return bestDistance;
+    }
+
+    public void bestDistance(double bestDistance) {
+        this.bestDistance = bestDistance;
+    }
+
+    public int stuckTicks() {
+        return stuckTicks;
+    }
+
+    public void stuckTicks(int stuckTicks) {
+        this.stuckTicks = stuckTicks;
+    }
+
+    public void incrementStuck() {
+        this.stuckTicks++;
+    }
+
+    public Deque<Location> placedBlocks() {
+        return placedBlocks;
+    }
+
+    public long abilityReadyTick() {
+        return abilityReadyTick;
+    }
+
+    public void abilityReadyTick(long abilityReadyTick) {
+        this.abilityReadyTick = abilityReadyTick;
+    }
+}
