@@ -104,8 +104,8 @@ public final class InvasionCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(
                 new DefenseListener(config, nexuses, fortify, turrets, shards, perks, contributions), this);
         getServer().getPluginManager().registerEvents(
-                new InvaderListener(config, nexuses, registry, spawner, ai, shards, perks,
-                        contributions, stages, heat, waves), this);
+                new InvaderListener(config, nexuses, registry, spawner, ai, fortify, breachLog,
+                        shards, perks, contributions, stages, heat, waves), this);
         getServer().getPluginManager().registerEvents(
                 new PlayerListener(config, nexuses, heat, perks, hud, worldEvents), this);
 

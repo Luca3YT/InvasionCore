@@ -75,6 +75,12 @@ public final class InvaderSpawner {
         applyStats(mob, type, tier, gameStage);
         applyAppearance(mob, type, tier);
         applyBehaviourTweaks(mob, type);
+        // Phantom の setSize など、後段の設定が最大HPを変えることがある。
+        // 現在HPが最大を超えたまま残ると setHealth 系で例外になるので最後に揃える。
+        AttributeInstance maxHealth = mob.getAttribute(Attribute.MAX_HEALTH);
+        if (maxHealth != null) {
+            mob.setHealth(Math.min(mob.getHealth(), maxHealth.getValue()));
+        }
 
         int shard = (int) Math.round(type.shardValue() * tier.shardMultiplier());
         shard = nexuses.shardBonus(nexus, shard);

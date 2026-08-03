@@ -1,6 +1,7 @@
 package work.maiotanet.invasioncore.listener;
 
 import org.bukkit.Location;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Monster;
 import org.bukkit.entity.Player;
@@ -12,8 +13,10 @@ import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.EntityTargetLivingEntityEvent;
 import work.maiotanet.invasioncore.config.InvasionConfig;
+import work.maiotanet.invasioncore.defense.FortifyService;
 import work.maiotanet.invasioncore.economy.ContributionTracker;
 import work.maiotanet.invasioncore.economy.ShardService;
 import work.maiotanet.invasioncore.heat.HeatService;
@@ -31,8 +34,12 @@ import work.maiotanet.invasioncore.stage.GameStageService;
 import work.maiotanet.invasioncore.util.Keys;
 import work.maiotanet.invasioncore.wave.WaveEngine;
 import work.maiotanet.invasioncore.wave.WaveModifier;
+import work.maiotanet.invasioncore.world.BreachLog;
 
 import org.bukkit.persistence.PersistentDataType;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 侵略Mobの被弾・撃破処理。
@@ -45,6 +52,8 @@ public final class InvaderListener implements Listener {
     private final InvaderRegistry registry;
     private final InvaderSpawner spawner;
     private final InvaderAiService ai;
+    private final FortifyService fortify;
+    private final BreachLog breachLog;
     private final ShardService shards;
     private final PerkService perks;
     private final ContributionTracker contributions;
@@ -53,7 +62,8 @@ public final class InvaderListener implements Listener {
     private final WaveEngine waves;
 
     public InvaderListener(InvasionConfig config, NexusManager nexuses, InvaderRegistry registry,
-                           InvaderSpawner spawner, InvaderAiService ai, ShardService shards,
+                           InvaderSpawner spawner, InvaderAiService ai, FortifyService fortify,
+                           BreachLog breachLog, ShardService shards,
                            PerkService perks, ContributionTracker contributions,
                            GameStageService stages, HeatService heat, WaveEngine waves) {
         this.config = config;
@@ -61,6 +71,8 @@ public final class InvaderListener implements Listener {
         this.registry = registry;
         this.spawner = spawner;
         this.ai = ai;
+        this.fortify = fortify;
+        this.breachLog = breachLog;
         this.shards = shards;
         this.perks = perks;
         this.contributions = contributions;
@@ -110,6 +122,45 @@ public final class InvaderListener implements Listener {
         // 動物やビレジャーを追いかけ回すのは侵攻として不自然なので切る
         if (event.getTarget() != null && !(event.getTarget() instanceof Player)) {
             event.setCancelled(true);
+        }
+    }
+
+    /**
+     * 爆導体の爆発でブロックを直接消さず、強化ティアのHPを通したダメージに変換する。
+     *
+     * <p>素の爆発に任せると鋼鉄の壁も一撃で消え、ブロック強化という仕組み自体が無意味になる。
+     * ここを通すことで「爆導体は低ティアの壁を崩すが、上位ティアには通らない」が成立し、
+     * 壁を上げる動機が保たれる。破壊は BreachLog にも記録され、復元コマンドの対象になる。</p>
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onInvaderExplode(EntityExplodeEvent event) {
+        Invader invader = registry.get(event.getEntity());
+        if (invader == null) {
+            return;
+        }
+        List<Block> affected = new ArrayList<>(event.blockList());
+        // 直接破壊は全て取り消す。エンティティへのダメージはそのまま残す。
+        event.blockList().clear();
+
+        Nexus nexus = nexuses.byId(invader.nexusId());
+        if (nexus == null) {
+            return;
+        }
+        double power = 400.0 * invader.tier().damageMultiplier();
+        Location center = nexus.center();
+        double breachRadiusSq = config.nexusBreachRadius() * (double) config.nexusBreachRadius();
+
+        for (Block block : affected) {
+            if (nexus.isAt(block.getLocation())) {
+                continue;
+            }
+            if (center == null || !center.getWorld().equals(block.getWorld())
+                    || center.distanceSquared(block.getLocation()) > breachRadiusSq) {
+                continue;
+            }
+            if (fortify.damage(block, power)) {
+                breachLog.record(nexus.id(), block);
+            }
         }
     }
 
