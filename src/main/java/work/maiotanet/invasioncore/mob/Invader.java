@@ -20,6 +20,12 @@ public final class Invader {
     private final UUID nexusId;
     private final int wave;
 
+    /** ボスの場合のみ設定される。通常個体は null。 */
+    private BossType bossType;
+
+    /** 潜伏体が既に姿を現したか。 */
+    private boolean revealed;
+
     /** 現在攻撃中の突破対象ブロック。null なら通常移動中。 */
     private Block breachTarget;
 
@@ -61,6 +67,22 @@ public final class Invader {
 
     public int wave() {
         return wave;
+    }
+
+    public BossType bossType() {
+        return bossType;
+    }
+
+    public void bossType(BossType bossType) {
+        this.bossType = bossType;
+    }
+
+    public boolean isRevealed() {
+        return revealed;
+    }
+
+    public void revealed(boolean revealed) {
+        this.revealed = revealed;
     }
 
     public boolean isValid() {

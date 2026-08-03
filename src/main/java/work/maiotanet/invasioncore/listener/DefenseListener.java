@@ -16,6 +16,7 @@ import org.bukkit.inventory.ItemStack;
 import work.maiotanet.invasioncore.config.InvasionConfig;
 import work.maiotanet.invasioncore.defense.BlockTier;
 import work.maiotanet.invasioncore.defense.FortifyService;
+import work.maiotanet.invasioncore.defense.TrapService;
 import work.maiotanet.invasioncore.defense.TurretService;
 import work.maiotanet.invasioncore.defense.TurretType;
 import work.maiotanet.invasioncore.economy.ContributionTracker;
@@ -35,17 +36,19 @@ public final class DefenseListener implements Listener {
     private final NexusManager nexuses;
     private final FortifyService fortify;
     private final TurretService turrets;
+    private final TrapService traps;
     private final ShardService shards;
     private final PerkService perks;
     private final ContributionTracker contributions;
 
     public DefenseListener(InvasionConfig config, NexusManager nexuses, FortifyService fortify,
-                           TurretService turrets, ShardService shards, PerkService perks,
-                           ContributionTracker contributions) {
+                           TurretService turrets, TrapService traps, ShardService shards,
+                           PerkService perks, ContributionTracker contributions) {
         this.config = config;
         this.nexuses = nexuses;
         this.fortify = fortify;
         this.turrets = turrets;
+        this.traps = traps;
         this.shards = shards;
         this.perks = perks;
         this.contributions = contributions;
@@ -114,7 +117,7 @@ public final class DefenseListener implements Listener {
                 sendInsufficient(player, cost);
                 return;
             }
-            fortify.fortify(block);
+            fortify.fortify(block, perks.fortifyHealthMultiplier(player.getUniqueId()));
             contributions.record(nexus.id(), player.getUniqueId(), ContributionTracker.Kind.FORTIFY, 1);
             player.sendMessage(Text.good("木枠に強化した。（-" + cost + " Shard）"));
             return;
@@ -149,7 +152,7 @@ public final class DefenseListener implements Listener {
             sendInsufficient(player, cost);
             return;
         }
-        fortify.upgrade(block);
+        fortify.upgrade(block, perks.fortifyHealthMultiplier(player.getUniqueId()));
         contributions.record(nexus.id(), player.getUniqueId(), ContributionTracker.Kind.FORTIFY, 1);
         player.sendMessage(Text.good(next.displayName() + " に強化した。（-" + cost + " Shard）"));
     }
@@ -217,26 +220,42 @@ public final class DefenseListener implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onPlace(BlockPlaceEvent event) {
         ItemStack item = event.getItemInHand();
-        if (!InvasionItems.isTurret(item)) {
-            return;
-        }
-        TurretType type = TurretType.byItemId(InvasionItems.idOf(item));
-        if (type == null) {
-            return;
-        }
         Player player = event.getPlayer();
         Block block = event.getBlockPlaced();
 
-        Nexus nexus = nexuses.nearest(block.getLocation());
-        if (nexus == null) {
-            event.setCancelled(true);
-            player.sendMessage(Text.error("タレットはネクサスの防衛範囲内にのみ設置できる。"));
+        if (InvasionItems.isTurret(item)) {
+            TurretType type = TurretType.byItemId(InvasionItems.idOf(item));
+            if (type == null) {
+                return;
+            }
+            Nexus nexus = nexuses.nearest(block.getLocation());
+            if (nexus == null) {
+                event.setCancelled(true);
+                player.sendMessage(Text.error("タレットはネクサスの防衛範囲内にのみ設置できる。"));
+                return;
+            }
+            turrets.place(block, type, player);
+            contributions.record(nexus.id(), player.getUniqueId(), ContributionTracker.Kind.TURRET, 1);
+            player.sendMessage(Text.good(type.displayName() + " を設置した。"
+                    + type.ammo().name() + " を右クリックで装填すること。"));
             return;
         }
-        turrets.place(block, type, player);
-        contributions.record(nexus.id(), player.getUniqueId(), ContributionTracker.Kind.TURRET, 1);
-        player.sendMessage(Text.good(type.displayName() + " を設置した。"
-                + type.ammo().name() + " を右クリックで装填すること。"));
+
+        if (InvasionItems.isTrap(item)) {
+            TrapService.TrapType type = TrapService.TrapType.byItemId(InvasionItems.idOf(item));
+            if (type == null) {
+                return;
+            }
+            Nexus nexus = nexuses.nearest(block.getLocation());
+            if (nexus == null) {
+                event.setCancelled(true);
+                player.sendMessage(Text.error("トラップはネクサスの防衛範囲内にのみ設置できる。"));
+                return;
+            }
+            traps.place(block, type, player);
+            contributions.record(nexus.id(), player.getUniqueId(), ContributionTracker.Kind.TURRET, 1);
+            player.sendMessage(Text.good(type.displayName() + " を設置した。"));
+        }
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -255,6 +274,15 @@ public final class DefenseListener implements Listener {
                 }
             }
             event.getPlayer().playSound(block.getLocation(), Sound.BLOCK_ANVIL_DESTROY, 0.6f, 1.2f);
+        }
+
+        TrapService.TrapType trapType = traps.removeTrap(block);
+        if (trapType != null) {
+            event.setDropItems(false);
+            if (event.getPlayer().getGameMode() != GameMode.CREATIVE) {
+                block.getWorld().dropItemNaturally(block.getLocation().add(0.5, 0.5, 0.5),
+                        InvasionItems.trap(trapType.itemId(), 1));
+            }
         }
         // 強化情報は必ず消す。残すと同じ座標の別ブロックが誤って強化扱いになる。
         fortify.forget(block);

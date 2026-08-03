@@ -1,6 +1,8 @@
 package work.maiotanet.invasioncore.listener;
 
 import org.bukkit.Location;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Monster;
@@ -15,6 +17,8 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.EntityTargetLivingEntityEvent;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import work.maiotanet.invasioncore.config.InvasionConfig;
 import work.maiotanet.invasioncore.defense.FortifyService;
 import work.maiotanet.invasioncore.economy.ContributionTracker;
@@ -90,7 +94,10 @@ public final class InvaderListener implements Listener {
 
         // プレイヤー → 侵略者
         if (attacker != null && victim != null) {
-            double multiplier = perks.outgoingDamageMultiplier(attacker.getUniqueId());
+            AttributeInstance max = attacker.getAttribute(Attribute.MAX_HEALTH);
+            double ratio = max == null || max.getValue() <= 0
+                    ? 1.0 : attacker.getHealth() / max.getValue();
+            double multiplier = perks.outgoingDamageMultiplier(attacker.getUniqueId(), ratio);
             event.setDamage(event.getDamage() * multiplier);
             contributions.record(victim.nexusId(), attacker.getUniqueId(),
                     ContributionTracker.Kind.DAMAGE, event.getFinalDamage());
@@ -109,6 +116,13 @@ public final class InvaderListener implements Listener {
             event.setDamage(event.getDamage() * multiplier);
             contributions.record(source.nexusId(), defender.getUniqueId(),
                     ContributionTracker.Kind.TANKED, event.getFinalDamage());
+
+            // 「遊撃」は被弾直後に離脱できる加速を得る
+            int skirmisher = perks.skirmisherLevel(defender.getUniqueId());
+            if (skirmisher > 0) {
+                defender.addPotionEffect(new PotionEffect(PotionEffectType.SPEED,
+                        40, Math.min(2, skirmisher / 2 + 1), true, false, false));
+            }
         }
     }
 
@@ -126,27 +140,46 @@ public final class InvaderListener implements Listener {
     }
 
     /**
-     * 爆導体の爆発でブロックを直接消さず、強化ティアのHPを通したダメージに変換する。
+     * 爆導体の自爆と、投擲手が撃ち込んだ質量爆弾の爆発を処理する。
      *
      * <p>素の爆発に任せると鋼鉄の壁も一撃で消え、ブロック強化という仕組み自体が無意味になる。
-     * ここを通すことで「爆導体は低ティアの壁を崩すが、上位ティアには通らない」が成立し、
-     * 壁を上げる動機が保たれる。破壊は BreachLog にも記録され、復元コマンドの対象になる。</p>
+     * ブロック破壊を全て取り消し、強化ティアのHPを通したダメージに変換することで
+     * 「低ティアの壁は崩れるが、上位ティアなら耐える」が成立し、壁を上げる動機が保たれる。
+     * 破壊は BreachLog にも記録され、復元コマンドの対象になる。
+     * エンティティへの爆発ダメージは取り消さないので、直撃すればプレイヤーは普通に吹き飛ぶ。</p>
      */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onInvaderExplode(EntityExplodeEvent event) {
+        Nexus nexus;
+        double power;
+
         Invader invader = registry.get(event.getEntity());
-        if (invader == null) {
-            return;
+        if (invader != null) {
+            // 爆導体の自爆
+            nexus = nexuses.byId(invader.nexusId());
+            power = 400.0 * invader.tier().damageMultiplier();
+        } else {
+            // 投擲手が撃ち込んだ質量爆弾
+            var pdc = event.getEntity().getPersistentDataContainer();
+            String nexusId = pdc.get(Keys.PROJECTILE_NEXUS, PersistentDataType.STRING);
+            if (nexusId == null) {
+                return;
+            }
+            try {
+                nexus = nexuses.byId(java.util.UUID.fromString(nexusId));
+            } catch (IllegalArgumentException ex) {
+                return;
+            }
+            power = pdc.getOrDefault(Keys.PROJECTILE_POWER, PersistentDataType.DOUBLE, 520.0);
         }
+
         List<Block> affected = new ArrayList<>(event.blockList());
         // 直接破壊は全て取り消す。エンティティへのダメージはそのまま残す。
         event.blockList().clear();
 
-        Nexus nexus = nexuses.byId(invader.nexusId());
         if (nexus == null) {
             return;
         }
-        double power = 400.0 * invader.tier().damageMultiplier();
         Location center = nexus.center();
         double breachRadiusSq = config.nexusBreachRadius() * (double) config.nexusBreachRadius();
 

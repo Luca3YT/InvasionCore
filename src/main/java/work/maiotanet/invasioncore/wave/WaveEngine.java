@@ -13,6 +13,7 @@ import work.maiotanet.invasioncore.config.InvasionConfig;
 import work.maiotanet.invasioncore.economy.ContributionTracker;
 import work.maiotanet.invasioncore.economy.RewardService;
 import work.maiotanet.invasioncore.economy.ShardService;
+import work.maiotanet.invasioncore.mob.BossType;
 import work.maiotanet.invasioncore.mob.InvaderAiService;
 import work.maiotanet.invasioncore.mob.InvaderRegistry;
 import work.maiotanet.invasioncore.mob.InvaderSpawner;
@@ -68,6 +69,9 @@ public final class WaveEngine implements NexusCombatSink {
 
     /** 血の月当日に、どこまで事前告知を出したか（0=未告知）。 */
     private final Map<UUID, Integer> warnStage = new HashMap<>();
+
+    /** 直前に出したボス。同じ血の月で連続させないために覚えておく。 */
+    private final Map<UUID, BossType> lastBoss = new HashMap<>();
 
     /** 事前告知を出す時刻（tick）と文言。日没 13000 に向けて段階的に煽る。 */
     private static final long[] WARN_TIMES = {6000L, 10000L, 12200L};
@@ -383,12 +387,20 @@ public final class WaveEngine implements NexusCombatSink {
             }
         }
 
-        // 5波ごとにボス
+        // 5波ごとにボス。同じ血の月で同じボスが連続しないよう直前の種別を除外する。
         if (wave % 5 == 0) {
-            if (spawner.spawn(nexus, InvaderType.BOSS, MutationTier.roll(stage), stage, wave) != null) {
-                broadcast(nexus, Text.error("侵略主が現れた。"));
+            BossType boss = BossType.roll(stage, lastBoss.get(nexus.id()));
+            if (spawner.spawnBoss(nexus, boss, MutationTier.roll(stage), stage, wave) != null) {
+                lastBoss.put(nexus.id(), boss);
+                broadcast(nexus, Text.error("── " + boss.displayName() + " が現れた ──"));
+                broadcast(nexus, Text.prefixed(Text.of(boss.description(), Text.WARN)));
                 for (Player p : participants) {
-                    p.playSound(p.getLocation(), Sound.ENTITY_RAVAGER_ROAR, 1.2f, 0.7f);
+                    p.showTitle(Title.title(
+                            Text.of(boss.displayName(), boss.color()),
+                            Text.of(boss.description(), Text.MUTED),
+                            Title.Times.times(Duration.ofMillis(300), Duration.ofSeconds(3),
+                                    Duration.ofMillis(700))));
+                    p.playSound(p.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1.2f, 0.7f);
                 }
             }
         }
@@ -421,24 +433,28 @@ public final class WaveEngine implements NexusCombatSink {
         broadcast(nexus, Text.info("夜の徘徊者が近づいている（" + count + " 体）"));
     }
 
-    /** GameStage で解禁された種別から重み付き抽選する。 */
+    /**
+     * GameStage で解禁された種別から重み付き抽選する。
+     * 重みは GameStage により減衰するので、後半ほど上位個体の比率が上がる。
+     */
     private InvaderType rollType(int stage) {
         List<InvaderType> pool = new ArrayList<>();
-        int total = 0;
+        double total = 0.0;
         for (InvaderType type : InvaderType.values()) {
-            if (type.weight() <= 0 || type.minStage() > stage) {
+            double weight = type.effectiveWeight(stage);
+            if (weight <= 0.0) {
                 continue;
             }
             pool.add(type);
-            total += type.weight();
+            total += weight;
         }
-        if (pool.isEmpty()) {
+        if (pool.isEmpty() || total <= 0.0) {
             return InvaderType.GRUNT;
         }
-        int roll = ThreadLocalRandom.current().nextInt(total);
+        double roll = ThreadLocalRandom.current().nextDouble(total);
         for (InvaderType type : pool) {
-            roll -= type.weight();
-            if (roll < 0) {
+            roll -= type.effectiveWeight(stage);
+            if (roll < 0.0) {
                 return type;
             }
         }
@@ -469,7 +485,9 @@ public final class WaveEngine implements NexusCombatSink {
         List<ItemStack> loot = rewards.victoryLoot(stage, wavesCleared);
         nexus.rewardBuffer().addAll(loot);
 
-        int shardPool = 40 + stage * 2 + wavesCleared * 12;
+        // 壁の維持・強化と、消耗ガジェットの再補充が回る量にする。
+        // ここが渋いと「勝ったのに次の準備ができない」詰みが起きる。
+        int shardPool = 60 + stage * 3 + wavesCleared * 15;
         List<UUID> ids = new ArrayList<>();
         for (Player p : participants) {
             ids.add(p.getUniqueId());

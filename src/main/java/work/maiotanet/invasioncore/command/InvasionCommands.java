@@ -36,7 +36,9 @@ public final class InvasionCommands implements BasicCommand {
     private static final List<String> ROOT = List.of(
             "status", "join", "leave", "stop", "perks", "top", "give", "admin", "help");
     private static final List<String> ITEMS = List.of(
-            "nexus", "hammer", "shard", "kit", "turret_arrow", "turret_flame", "turret_frost", "turret_heal");
+            "nexus", "hammer", "shard", "kit",
+            "turret_arrow", "turret_flame", "turret_frost", "turret_heal",
+            "spike", "mine", "flash", "medkit", "barrier");
     private static final List<String> ADMIN = List.of(
             "forcewave", "setlevel", "setday", "restore", "despawn", "reload", "info");
 
@@ -260,6 +262,13 @@ public final class InvasionCommands implements BasicCommand {
                     InvasionItems.turret(InvasionItems.TURRET_FROST, amount));
             case "turret_heal" -> player.getInventory().addItem(
                     InvasionItems.turret(InvasionItems.TURRET_HEAL, amount));
+            case "spike" -> player.getInventory().addItem(
+                    InvasionItems.trap(InvasionItems.TRAP_SPIKE, amount));
+            case "mine" -> player.getInventory().addItem(
+                    InvasionItems.trap(InvasionItems.TRAP_MINE, amount));
+            case "flash" -> player.getInventory().addItem(InvasionItems.flashCharge(amount));
+            case "medkit" -> player.getInventory().addItem(InvasionItems.medkit(amount));
+            case "barrier" -> player.getInventory().addItem(InvasionItems.barrier(amount));
             default -> {
                 sender.sendMessage(Text.error("不明なアイテム: " + args[1]));
                 return;

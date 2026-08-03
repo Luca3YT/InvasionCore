@@ -87,18 +87,38 @@ public final class FortifyService {
 
     // ---------- 強化 / 修理 ----------
 
-    /** 未強化ブロックを木枠ティアに変える。 */
-    public Fortified fortify(Block block) {
+    /**
+     * 未強化ブロックを木枠ティアに変える。
+     *
+     * @param healthMultiplier 強化した本人の「要塞化」パーク倍率
+     */
+    public Fortified fortify(Block block, double healthMultiplier) {
         BlockTier tier = BlockTier.first();
         block.setType(tier.material());
-        Fortified f = new Fortified(tier, tier.maxHealth(), tier.maxHealth(), true);
+        double max = tier.maxHealth() * Math.max(1.0, healthMultiplier);
+        Fortified f = new Fortified(tier, max, max, true);
         blocks.put(key(block), f);
         effectUpgrade(block);
         return f;
     }
 
-    /** 次のティアへ上げる。上限なら false。 */
-    public boolean upgrade(Block block) {
+    /**
+     * 既存ブロックを、マテリアルを変えずに指定ティアとして登録する。
+     * 緊急バリアのように「見た目はそのままで耐久だけ持たせたい」ケースで使う。
+     */
+    public Fortified register(Block block, BlockTier tier, double healthMultiplier) {
+        double max = tier.maxHealth() * Math.max(1.0, healthMultiplier);
+        Fortified f = new Fortified(tier, max, max, true);
+        blocks.put(key(block), f);
+        return f;
+    }
+
+    /**
+     * 次のティアへ上げる。上限なら false。
+     *
+     * @param healthMultiplier 強化した本人の「要塞化」パーク倍率
+     */
+    public boolean upgrade(Block block, double healthMultiplier) {
         Fortified f = get(block);
         if (f == null || !f.managed) {
             return false;
@@ -108,8 +128,8 @@ public final class FortifyService {
             return false;
         }
         f.tier = next;
-        f.maxHealth = next.maxHealth();
-        f.health = next.maxHealth();
+        f.maxHealth = next.maxHealth() * Math.max(1.0, healthMultiplier);
+        f.health = f.maxHealth;
         block.setType(next.material());
         effectUpgrade(block);
         return true;
@@ -285,8 +305,10 @@ public final class FortifyService {
             }
             try {
                 BlockTier tier = BlockTier.valueOf(sec.getString("tier", BlockTier.WOOD_FRAME.name()));
-                double hp = sec.getDouble("hp", tier.maxHealth());
-                blocks.put(k, new Fortified(tier, hp, tier.maxHealth(), true));
+                // 最大耐久は「要塞化」パークで嵩上げされている場合があるので保存値から復元する
+                double max = sec.getDouble("max", tier.maxHealth());
+                double hp = Math.min(max, sec.getDouble("hp", max));
+                blocks.put(k, new Fortified(tier, hp, max, true));
             } catch (IllegalArgumentException ignored) {
                 // 未知ティアはスキップ
             }
@@ -307,6 +329,7 @@ public final class FortifyService {
             ConfigurationSection sec = root.createSection(e.getKey());
             sec.set("tier", f.tier.name());
             sec.set("hp", f.health);
+            sec.set("max", f.maxHealth);
         }
         try {
             File parent = file.getParentFile();

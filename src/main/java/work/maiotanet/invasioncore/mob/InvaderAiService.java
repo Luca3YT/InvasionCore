@@ -13,9 +13,12 @@ import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Creeper;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.TNTPrimed;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
+import work.maiotanet.invasioncore.util.Keys;
 import work.maiotanet.invasioncore.config.InvasionConfig;
 import work.maiotanet.invasioncore.defense.FortifyService;
 import work.maiotanet.invasioncore.heat.HeatService;
@@ -49,6 +52,7 @@ public final class InvaderAiService {
     private final InvaderSpawner spawner;
     private final GameStageService stages;
     private final HeatService heat;
+    private final BossAbilities bossAbilities;
 
     private NexusCombatSink combatSink;
 
@@ -56,7 +60,7 @@ public final class InvaderAiService {
 
     public InvaderAiService(InvasionConfig config, NexusManager nexuses, InvaderRegistry registry,
                             FortifyService fortify, BreachLog breachLog, InvaderSpawner spawner,
-                            GameStageService stages, HeatService heat) {
+                            GameStageService stages, HeatService heat, BossAbilities bossAbilities) {
         this.config = config;
         this.nexuses = nexuses;
         this.registry = registry;
@@ -65,6 +69,7 @@ public final class InvaderAiService {
         this.spawner = spawner;
         this.stages = stages;
         this.heat = heat;
+        this.bossAbilities = bossAbilities;
     }
 
     public void combatSink(NexusCombatSink combatSink) {
@@ -121,8 +126,14 @@ public final class InvaderAiService {
         long now = mob.getWorld().getFullTime();
 
         // --- 役割別の常時処理 ---
-        if (type.isSupport()) {
+        if (type == InvaderType.SHIELDER) {
             applySupportAura(invader);
+        }
+        if (type == InvaderType.NECROMANCER) {
+            tickNecromancer(invader, now);
+        }
+        if (type.isStealth()) {
+            tickStealth(invader);
         }
         if (type == InvaderType.SCREAMER) {
             tickScreamer(invader, nexus, now);
@@ -148,12 +159,22 @@ public final class InvaderAiService {
         if (type.isRanged() && now >= invader.abilityReadyTick()) {
             tryShoot(invader, now);
         }
+        if (type.isArtillery()) {
+            // 砲撃型は懐に入られると何もできない。射程内へ下がることを最優先にする。
+            if (distSq < 100.0) {
+                retreatFrom(mob, target);
+                return;
+            }
+            if (now >= invader.abilityReadyTick()) {
+                lobBomb(invader, nexus, target, now);
+            }
+        }
         if (type.isBoss() && now >= invader.abilityReadyTick()) {
-            bossAbility(invader, nexus, now);
+            invader.abilityReadyTick(now + bossAbilities.execute(invader, nexus));
         }
 
         // --- 飛行型は経路探索を使わず直行する ---
-        if (type.isFlying()) {
+        if (type.isFlying() || (invader.bossType() != null && invader.bossType().isAirborne())) {
             flyToward(mob, target);
             return;
         }
@@ -359,49 +380,126 @@ public final class InvaderAiService {
                 shielder.getLocation().add(0, 1.2, 0), 6, 0.6, 0.6, 0.6, 0.4);
     }
 
-    private void bossAbility(Invader invader, Nexus nexus, long now) {
-        invader.abilityReadyTick(now + 200L);
-        Mob boss = invader.entity();
-        World world = boss.getWorld();
-        int stage = stages.computeCurrent(nexus);
+    /**
+     * 質量爆弾の投擲。
+     *
+     * <p>着火済みTNTを放物線で撃ち込む。バニラの爆発に任せず PDC で発射元を刻み、
+     * 着弾時は爆導体と同じくブロック強化ティアを通したダメージに変換する。
+     * これにより「遠距離から壁を削られるが、上位ティアなら耐えられる」が成立する。</p>
+     */
+    private void lobBomb(Invader invader, Nexus nexus, Location target, long now) {
+        Mob mob = invader.entity();
+        double distance = mob.getLocation().distance(target);
+        // 近すぎると自爆する。離れている時だけ撃つ。
+        if (distance < 10.0 || distance > 45.0) {
+            return;
+        }
+        invader.abilityReadyTick(now + 120L);
 
-        switch (ThreadLocalRandom.current().nextInt(3)) {
-            case 0 -> {
-                // 増援召喚
-                world.playSound(boss.getLocation(), Sound.ENTITY_RAVAGER_ROAR, 1.4f, 0.7f);
-                for (int i = 0; i < 4; i++) {
-                    Location spot = boss.getLocation().add(
-                            ThreadLocalRandom.current().nextDouble(-3, 3), 0,
-                            ThreadLocalRandom.current().nextDouble(-3, 3));
-                    spawner.spawnAt(nexus, InvaderType.GRUNT, MutationTier.roll(stage),
-                            stage, invader.wave(), spot);
-                }
+        Location muzzle = mob.getEyeLocation().add(0, 0.4, 0);
+        TNTPrimed bomb = mob.getWorld().spawn(muzzle, TNTPrimed.class, tnt -> {
+            tnt.setFuseTicks(60);
+            tnt.setSource(mob);
+            tnt.setIsIncendiary(false);
+            tnt.getPersistentDataContainer().set(
+                    Keys.PROJECTILE_NEXUS, PersistentDataType.STRING, nexus.id().toString());
+            tnt.getPersistentDataContainer().set(
+                    Keys.PROJECTILE_POWER, PersistentDataType.DOUBLE,
+                    520.0 * invader.tier().damageMultiplier());
+        });
+        bomb.setVelocity(ballisticVelocity(muzzle, target));
+
+        mob.swingMainHand();
+        mob.getWorld().playSound(mob.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 0.9f, 1.6f);
+        mob.getWorld().spawnParticle(Particle.SMOKE, muzzle, 12, 0.2, 0.2, 0.2, 0.02);
+    }
+
+    /**
+     * 放物線の初速を求める。
+     * 水平距離から所要時間を見積もり、重力で落ちる分を上方向に足す。
+     */
+    private Vector ballisticVelocity(Location from, Location to) {
+        Vector delta = to.toVector().subtract(from.toVector());
+        double dy = delta.getY();
+        Vector flat = new Vector(delta.getX(), 0, delta.getZ());
+        double horizontal = flat.length();
+        if (horizontal < 0.01) {
+            return new Vector(0, 0.6, 0);
+        }
+        // TNT の水平初速をこの程度に置くと、45ブロック先でも導火線内に着弾する
+        double speed = Math.min(1.35, 0.5 + horizontal * 0.022);
+        double time = horizontal / speed;
+        double gravity = 0.04;
+        double vy = (dy + 0.5 * gravity * time * time) / time;
+
+        Vector v = flat.normalize().multiply(speed);
+        v.setY(Math.max(0.15, Math.min(1.6, vy)));
+        return v;
+    }
+
+    /** 潜伏体は接近するまで不可視。近づいたら姿を現し、以後は見える。 */
+    private void tickStealth(Invader invader) {
+        if (invader.isRevealed()) {
+            return;
+        }
+        Mob mob = invader.entity();
+        Player near = nearestPlayer(mob, 7.0);
+        if (near == null) {
+            return;
+        }
+        invader.revealed(true);
+        mob.removePotionEffect(PotionEffectType.INVISIBILITY);
+        mob.setGlowing(true);
+        mob.getWorld().playSound(mob.getLocation(), Sound.ENTITY_ELDER_GUARDIAN_CURSE, 1.2f, 1.4f);
+        mob.getWorld().spawnParticle(Particle.LARGE_SMOKE,
+                mob.getLocation().add(0, 1, 0), 20, 0.4, 0.6, 0.4, 0.02);
+    }
+
+    /**
+     * 蘇生者は周囲の味方を回復し、瀕死の個体を全快させる。
+     * 最優先で潰さないと前線が崩れなくなる。
+     */
+    private void tickNecromancer(Invader invader, long now) {
+        if (now < invader.abilityReadyTick()) {
+            return;
+        }
+        invader.abilityReadyTick(now + 100L);
+
+        Mob healer = invader.entity();
+        int healed = 0;
+        for (Invader ally : registry.forNexus(invader.nexusId())) {
+            if (ally == invader || !ally.isValid() || healed >= 5) {
+                continue;
             }
-            case 1 -> {
-                // 咆哮：周囲のプレイヤーを吹き飛ばして鈍足化
-                world.playSound(boss.getLocation(), Sound.ENTITY_WARDEN_ROAR, 1.6f, 1.0f);
-                world.spawnParticle(Particle.SONIC_BOOM, boss.getLocation().add(0, 1, 0), 3);
-                for (Player p : world.getPlayers()) {
-                    if (p.getLocation().distanceSquared(boss.getLocation()) > 100.0) {
-                        continue;
-                    }
-                    Vector push = p.getLocation().toVector()
-                            .subtract(boss.getLocation().toVector()).normalize().multiply(1.1).setY(0.45);
-                    p.setVelocity(push);
-                    p.addPotionEffect(new PotionEffect(PotionEffectType.SLOWNESS, 80, 1));
-                }
+            if (ally.entity().getLocation().distanceSquared(healer.getLocation()) > 144.0) {
+                continue;
             }
-            default -> {
-                // 突進：ネクサスへ一直線に加速する
-                Location center = nexus.center();
-                if (center != null) {
-                    Vector dash = center.toVector().subtract(boss.getLocation().toVector());
-                    if (dash.lengthSquared() > 1.0e-4) {
-                        boss.setVelocity(dash.normalize().multiply(1.3).setY(0.25));
-                    }
-                    world.playSound(boss.getLocation(), Sound.ENTITY_RAVAGER_CELEBRATE, 1.2f, 0.8f);
-                }
+            AttributeInstance max = ally.entity().getAttribute(Attribute.MAX_HEALTH);
+            if (max == null || ally.entity().getHealth() >= max.getValue()) {
+                continue;
             }
+            double amount = max.getValue() * 0.25;
+            ally.entity().setHealth(Math.min(max.getValue(), ally.entity().getHealth() + amount));
+            drawLink(healer.getLocation().add(0, 1.2, 0),
+                    ally.entity().getLocation().add(0, 1.0, 0));
+            healed++;
+        }
+        if (healed > 0) {
+            healer.getWorld().playSound(healer.getLocation(), Sound.ENTITY_WITCH_DRINK, 1.2f, 0.8f);
+        }
+    }
+
+    private void drawLink(Location from, Location to) {
+        Vector delta = to.toVector().subtract(from.toVector());
+        double length = delta.length();
+        if (length < 0.1 || length > 16.0) {
+            return;
+        }
+        Vector step = delta.normalize().multiply(0.7);
+        Location cursor = from.clone();
+        for (int i = 0; i < (int) (length / 0.7); i++) {
+            cursor.add(step);
+            from.getWorld().spawnParticle(Particle.HEART, cursor, 1, 0, 0, 0, 0);
         }
     }
 
@@ -444,6 +542,17 @@ public final class InvaderAiService {
     }
 
     // ---------- ヘルパ ----------
+
+    /** 対象から離れる方向へ経路をとる。砲撃型が射程を取り直すために使う。 */
+    private void retreatFrom(Mob mob, Location target) {
+        Vector away = mob.getLocation().toVector().subtract(target.toVector());
+        if (away.lengthSquared() < 1.0e-4) {
+            return;
+        }
+        Location destination = mob.getLocation().clone()
+                .add(away.normalize().multiply(14.0));
+        mob.getPathfinder().moveTo(destination, 1.1);
+    }
 
     private void flyToward(Mob mob, Location target) {
         Vector dir = target.toVector().subtract(mob.getLocation().toVector());

@@ -8,6 +8,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import work.maiotanet.invasioncore.command.InvasionCommands;
 import work.maiotanet.invasioncore.config.InvasionConfig;
 import work.maiotanet.invasioncore.defense.FortifyService;
+import work.maiotanet.invasioncore.defense.TrapService;
 import work.maiotanet.invasioncore.defense.TurretService;
 import work.maiotanet.invasioncore.economy.ContributionTracker;
 import work.maiotanet.invasioncore.economy.RewardService;
@@ -15,13 +16,16 @@ import work.maiotanet.invasioncore.economy.ShardService;
 import work.maiotanet.invasioncore.heat.HeatService;
 import work.maiotanet.invasioncore.item.RecipeRegistrar;
 import work.maiotanet.invasioncore.listener.DefenseListener;
+import work.maiotanet.invasioncore.listener.GadgetListener;
 import work.maiotanet.invasioncore.listener.InvaderListener;
 import work.maiotanet.invasioncore.listener.NexusListener;
 import work.maiotanet.invasioncore.listener.PlayerListener;
+import work.maiotanet.invasioncore.mob.BossAbilities;
 import work.maiotanet.invasioncore.mob.InvaderAiService;
 import work.maiotanet.invasioncore.mob.InvaderRegistry;
 import work.maiotanet.invasioncore.mob.InvaderSpawner;
 import work.maiotanet.invasioncore.nexus.NexusManager;
+import work.maiotanet.invasioncore.perk.PerkEffectService;
 import work.maiotanet.invasioncore.perk.PerkService;
 import work.maiotanet.invasioncore.stage.GameStageService;
 import work.maiotanet.invasioncore.ui.HudService;
@@ -48,6 +52,7 @@ public final class InvasionCore extends JavaPlugin {
     private InvaderRegistry registry;
     private FortifyService fortify;
     private TurretService turrets;
+    private TrapService traps;
     private HeatService heat;
     private PerkService perks;
     private HudService hud;
@@ -75,12 +80,16 @@ public final class InvasionCore extends JavaPlugin {
         BreachLog breachLog = new BreachLog();
 
         InvaderSpawner spawner = new InvaderSpawner(config, nexuses, registry);
+        BossAbilities bossAbilities = new BossAbilities(
+                config, registry, spawner, stages, fortify, breachLog);
         InvaderAiService ai = new InvaderAiService(
-                config, nexuses, registry, fortify, breachLog, spawner, stages, heat);
+                config, nexuses, registry, fortify, breachLog, spawner, stages, heat, bossAbilities);
 
         this.turrets = new TurretService(this, config, nexuses, registry, fortify, perks);
+        this.traps = new TrapService(this, registry, perks);
         this.worldEvents = new WorldEventService(
                 this, config, nexuses, spawner, stages, heat, rewards);
+        PerkEffectService perkEffects = new PerkEffectService(nexuses, perks);
 
         this.waves = new WaveEngine(this, config, nexuses, registry, spawner, ai, stages,
                 rewards, contributions, shards, perks, hudBridge(), breachLog);
@@ -94,6 +103,7 @@ public final class InvasionCore extends JavaPlugin {
         nexuses.load();
         fortify.load();
         turrets.load();
+        traps.load();
         perks.load();
 
         // ---- 登録 ----
@@ -102,7 +112,9 @@ public final class InvasionCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(
                 new NexusListener(config, nexuses, gui, waves), this);
         getServer().getPluginManager().registerEvents(
-                new DefenseListener(config, nexuses, fortify, turrets, shards, perks, contributions), this);
+                new DefenseListener(config, nexuses, fortify, turrets, traps, shards, perks, contributions), this);
+        getServer().getPluginManager().registerEvents(
+                new GadgetListener(this, nexuses, registry, perks, fortify), this);
         getServer().getPluginManager().registerEvents(
                 new InvaderListener(config, nexuses, registry, spawner, ai, fortify, breachLog,
                         shards, perks, contributions, stages, heat, waves), this);
@@ -123,6 +135,9 @@ public final class InvasionCore extends JavaPlugin {
         getServer().getScheduler().runTaskTimer(this, sidebar::tick, 80L, 20L);
         getServer().getScheduler().runTaskTimer(this, turrets::tick,
                 100L, config.turretTickInterval());
+        getServer().getScheduler().runTaskTimer(this, traps::tick, 110L, 10L);
+        getServer().getScheduler().runTaskTimer(this,
+                () -> perkEffects.tick(getServer().getOnlinePlayers()), 120L, 20L);
         // 自動保存と記録の掃除は5分ごと。
         getServer().getScheduler().runTaskTimer(this, this::autoSave, 6000L, 6000L);
 
@@ -156,6 +171,9 @@ public final class InvasionCore extends JavaPlugin {
         }
         if (turrets != null) {
             turrets.save();
+        }
+        if (traps != null) {
+            traps.save();
         }
         if (perks != null) {
             perks.save();

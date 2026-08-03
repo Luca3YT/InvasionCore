@@ -30,6 +30,12 @@ public final class InvasionItems {
     public static final String TURRET_FROST = "turret_frost";
     public static final String TURRET_HEAL = "turret_heal";
 
+    public static final String TRAP_SPIKE = "trap_spike";
+    public static final String TRAP_MINE = "trap_mine";
+    public static final String FLASH_CHARGE = "flash_charge";
+    public static final String MEDKIT = "medkit";
+    public static final String BARRIER = "emergency_barrier";
+
     private InvasionItems() {
     }
 
@@ -83,6 +89,44 @@ public final class InvasionItems {
         };
     }
 
+    public static ItemStack trap(String id, int amount) {
+        if (TRAP_MINE.equals(id)) {
+            return build(Material.HEAVY_WEIGHTED_PRESSURE_PLATE, amount, TRAP_MINE,
+                    Component.text("爆裂地雷", TextColor.color(0xFF7043)),
+                    Text.lore("設置型・使い切り。",
+                            "踏んだ侵略者と周囲を吹き飛ばす。",
+                            "重装体やボスの足止めに有効。"));
+        }
+        return build(Material.POINTED_DRIPSTONE, amount, TRAP_SPIKE,
+                Component.text("スパイクトラップ", TextColor.color(0xB0BEC5)),
+                Text.lore("設置型・繰り返し作動。",
+                        "上を通る侵略者に継続ダメージと鈍足。",
+                        "誘導路と組み合わせると効果が高い。"));
+    }
+
+    public static ItemStack flashCharge(int amount) {
+        return build(Material.SNOWBALL, amount, FLASH_CHARGE,
+                Component.text("閃光弾", TextColor.color(0xFFF59D)),
+                Text.lore("右クリックで投擲。",
+                        "着弾点の侵略者を盲目化し、鈍足にする。",
+                        "押し切られた時の立て直しに使う。"));
+    }
+
+    public static ItemStack medkit(int amount) {
+        return build(Material.GHAST_TEAR, amount, MEDKIT,
+                Component.text("救急キット", TextColor.color(0xEF9A9A)),
+                Text.lore("右クリックで使用。",
+                        "自分と周囲の味方を回復する。"));
+    }
+
+    public static ItemStack barrier(int amount) {
+        return build(Material.IRON_TRAPDOOR, amount, BARRIER,
+                Component.text("緊急バリア", TextColor.color(0x90CAF9)),
+                Text.lore("ブロックを右クリックで展開。",
+                        "その面に鋼鉄級の壁を一時的に張る。",
+                        "45秒で消滅する。決壊時の応急処置。"));
+    }
+
     private static ItemStack build(Material material, int amount, String id,
                                    Component name, List<Component> lore) {
         ItemStack stack = new ItemStack(material, Math.max(1, amount));
@@ -118,5 +162,10 @@ public final class InvasionItems {
         String id = idOf(stack);
         return TURRET_ARROW.equals(id) || TURRET_FLAME.equals(id)
                 || TURRET_FROST.equals(id) || TURRET_HEAL.equals(id);
+    }
+
+    public static boolean isTrap(ItemStack stack) {
+        String id = idOf(stack);
+        return TRAP_SPIKE.equals(id) || TRAP_MINE.equals(id);
     }
 }

@@ -27,6 +27,48 @@ public final class RecipeRegistrar {
         registerHammer();
         registerRepairKit();
         registerTurrets();
+        registerGadgets();
+    }
+
+    /** 消耗ガジェット。血の月の直前に量産できる程度のコストにしてある。 */
+    private void registerGadgets() {
+        ShapedRecipe spike = new ShapedRecipe(Keys.key("recipe_trap_spike"),
+                InvasionItems.trap(InvasionItems.TRAP_SPIKE, 4));
+        spike.shape(" I ", "III", "SSS");
+        spike.setIngredient('I', Material.IRON_INGOT);
+        spike.setIngredient('S', Material.STONE);
+        add(spike);
+
+        ShapedRecipe mine = new ShapedRecipe(Keys.key("recipe_trap_mine"),
+                InvasionItems.trap(InvasionItems.TRAP_MINE, 2));
+        mine.shape("III", "ITI", "IRI");
+        mine.setIngredient('I', Material.IRON_INGOT);
+        mine.setIngredient('T', Material.TNT);
+        mine.setIngredient('R', Material.REDSTONE);
+        add(mine);
+
+        ShapedRecipe flash = new ShapedRecipe(Keys.key("recipe_flash_charge"),
+                InvasionItems.flashCharge(4));
+        flash.shape(" G ", "GBG", " G ");
+        flash.setIngredient('G', Material.GLOWSTONE_DUST);
+        flash.setIngredient('B', Material.GUNPOWDER);
+        add(flash);
+
+        ShapedRecipe medkit = new ShapedRecipe(Keys.key("recipe_medkit"),
+                InvasionItems.medkit(2));
+        medkit.shape("SPS", "PGP", "SPS");
+        medkit.setIngredient('S', Material.STRING);
+        medkit.setIngredient('P', Material.GLISTERING_MELON_SLICE);
+        medkit.setIngredient('G', Material.GOLDEN_CARROT);
+        add(medkit);
+
+        ShapedRecipe barrier = new ShapedRecipe(Keys.key("recipe_barrier"),
+                InvasionItems.barrier(2));
+        barrier.shape("IRI", "RDR", "IRI");
+        barrier.setIngredient('I', Material.IRON_BLOCK);
+        barrier.setIngredient('R', Material.REDSTONE_BLOCK);
+        barrier.setIngredient('D', Material.DIAMOND);
+        add(barrier);
     }
 
     private void registerNexus() {

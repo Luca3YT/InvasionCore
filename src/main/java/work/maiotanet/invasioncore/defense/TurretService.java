@@ -28,6 +28,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.logging.Level;
 
 /**
@@ -170,7 +171,7 @@ public final class TurretService {
         switch (turret.type) {
             case HEAL -> {
                 if (healAround(block, muzzle, range)) {
-                    turret.ammo--;
+                    consumeAmmo(turret);
                     turret.readyAtTick = now + turret.type.cooldownTicks();
                 }
             }
@@ -179,7 +180,7 @@ public final class TurretService {
                 if (target == null) {
                     return;
                 }
-                turret.ammo--;
+                consumeAmmo(turret);
                 turret.readyAtTick = now + turret.type.cooldownTicks();
                 // 設置者の「砲手」パークが威力に乗る
                 double power = turret.type.power()
@@ -187,6 +188,15 @@ public final class TurretService {
                 fire(turret.type, muzzle, target, power);
             }
         }
+    }
+
+    /** 弾薬を1発消費する。設置者の「弾薬工」パークで消費しないことがある。 */
+    private void consumeAmmo(Turret turret) {
+        if (turret.owner != null
+                && ThreadLocalRandom.current().nextDouble() < perks.ammoSaveChance(turret.owner)) {
+            return;
+        }
+        turret.ammo--;
     }
 
     private void fire(TurretType type, Location muzzle, Invader target, double power) {

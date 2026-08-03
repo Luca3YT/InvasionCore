@@ -87,8 +87,9 @@ heat:
 economy:
   # 侵略者1体あたりの基礎 Shard ドロップ量の基準
   shard-base-drop: 2
-  # 修理コスト。missing HP をこの値で割った量の Shard を要求する
-  repair-cost-per-hp: 20
+  # 修理コスト。missing HP をこの値で割った量の Shard を要求する。
+  # 鋼鉄(3200HP)の全損修理が約53 Shard になる想定。小さくすると修理が高騰する
+  repair-cost-per-hp: 60
 
 world-events:
   wandering-horde:

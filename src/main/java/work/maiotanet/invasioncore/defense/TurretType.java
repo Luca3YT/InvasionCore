@@ -10,10 +10,12 @@ import work.maiotanet.invasioncore.item.InvasionItems;
  */
 public enum TurretType {
 
+    // 重装体(実HP 140〜)やボス(600〜)が居る前提の火力に引き上げてある。
+    // 射撃タレット1基で重装体を落とすには 20 秒強かかる計算で、複数基か手動火力の併用が要る。
     ARROW("射撃タレット", InvasionItems.TURRET_ARROW, Material.DISPENSER, Material.ARROW,
-            14.0, 20, 4.0, 256),
+            14.0, 20, 6.5, 256),
     FLAME("火炎タレット", InvasionItems.TURRET_FLAME, Material.BLAST_FURNACE, Material.BLAZE_POWDER,
-            8.0, 40, 3.0, 128),
+            8.0, 30, 4.5, 128),
     FROST("凍結タレット", InvasionItems.TURRET_FROST, Material.PACKED_ICE, Material.SNOWBALL,
             11.0, 40, 0.0, 128),
     HEAL("修復タレット", InvasionItems.TURRET_HEAL, Material.BEACON, Material.REDSTONE,
