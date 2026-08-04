@@ -43,6 +43,13 @@ public final class SidebarUpdater {
         this.hud = hud;
     }
 
+    /**
+     * 区切り用の空行。
+     * 完全に空の Component はクライアントがエントリ名にフォールバックすることがあるため、
+     * 半角スペースを1つ入れて「中身のある空行」にしておく。
+     */
+    private static final Component BLANK = Component.text(" ");
+
     /** 前回のtickでサイドバーを出していたプレイヤー。範囲外へ出た人を消すために持つ。 */
     private final Set<UUID> shown = new HashSet<>();
 
@@ -92,13 +99,13 @@ public final class SidebarUpdater {
                     until <= 1 ? Text.ACCENT : Text.WARN));
         }
 
-        lines.add(Component.empty());
+        lines.add(BLANK);
         lines.add(Text.of("ネクサス Lv." + nexus.level(), Text.INFO));
         lines.add(Text.of(Text.bar(nexuses.healthRatio(nexus), 12)
                 + " " + (int) nexus.health(), Text.MUTED));
         lines.add(Text.of("GameStage " + stage, Text.MUTED));
 
-        lines.add(Component.empty());
+        lines.add(BLANK);
         lines.add(Text.of("Shard " + shards.count(player), Text.GOOD));
         if (config.heatEnabled()) {
             double ratio = heat.ratio(player.getLocation());

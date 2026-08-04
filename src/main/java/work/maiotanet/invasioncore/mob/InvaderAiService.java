@@ -142,6 +142,12 @@ public final class InvaderAiService {
 
         double distSq = mob.getLocation().distanceSquared(target);
 
+        // --- ボススキルは位置に関係なく回す ---
+        // ネクサス到達後に止めてしまうと、防衛線を抜かれた瞬間からボスがただの殴り屋になる。
+        if (type.isBoss() && now >= invader.abilityReadyTick()) {
+            invader.abilityReadyTick(now + bossAbilities.execute(invader, nexus));
+        }
+
         // --- ネクサスに到達していれば殴る ---
         if (distSq <= 9.0) {
             attackNexus(invader, nexus, now);
@@ -169,10 +175,6 @@ public final class InvaderAiService {
                 lobBomb(invader, nexus, target, now);
             }
         }
-        if (type.isBoss() && now >= invader.abilityReadyTick()) {
-            invader.abilityReadyTick(now + bossAbilities.execute(invader, nexus));
-        }
-
         // --- 飛行型は経路探索を使わず直行する ---
         if (type.isFlying() || (invader.bossType() != null && invader.bossType().isAirborne())) {
             flyToward(mob, target);
@@ -327,10 +329,10 @@ public final class InvaderAiService {
     // ---------- 特殊行動 ----------
 
     private void attackNexus(Invader invader, Nexus nexus, long now) {
-        if (now < invader.abilityReadyTick()) {
+        if (now < invader.attackReadyTick()) {
             return;
         }
-        invader.abilityReadyTick(now + 20L);
+        invader.attackReadyTick(now + 20L);
 
         Mob mob = invader.entity();
         mob.swingMainHand();

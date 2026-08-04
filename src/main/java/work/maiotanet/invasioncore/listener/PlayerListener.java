@@ -1,5 +1,6 @@
 package work.maiotanet.invasioncore.listener;
 
+import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -12,6 +13,7 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.inventory.ItemStack;
 import work.maiotanet.invasioncore.config.InvasionConfig;
 import work.maiotanet.invasioncore.heat.HeatService;
+import work.maiotanet.invasioncore.nexus.Nexus;
 import work.maiotanet.invasioncore.nexus.NexusManager;
 import work.maiotanet.invasioncore.perk.PerkService;
 import work.maiotanet.invasioncore.ui.HudService;
@@ -89,7 +91,7 @@ public final class PlayerListener implements Listener {
             return;
         }
         Player player = event.getEntity();
-        if (nexuses.nearestActive(player.getLocation()) == null) {
+        if (!isInsideInvasionArea(player)) {
             // 侵攻に無関係な場所での死亡は通常どおりに任せる
             return;
         }
@@ -97,5 +99,37 @@ public final class PlayerListener implements Listener {
         if (worldEvents.placeBackpack(player, drops)) {
             event.getDrops().clear();
         }
+    }
+
+    /**
+     * 侵攻の影響圏内で死んだかどうか。
+     *
+     * <p>判定を「稼働中ネクサスの有無」だけにすると、ネクサスが崩壊した瞬間に
+     * バックパックが働かなくなる。落城直後こそ死にやすい場面なので、
+     * 崩壊済みのネクサスも拠点として扱い、そのうえで距離で絞る。</p>
+     */
+    private boolean isInsideInvasionArea(Player player) {
+        Location loc = player.getLocation();
+        if (loc.getWorld() == null) {
+            return false;
+        }
+        // 防衛範囲そのものより広く取る。拠点から少し離れた交戦も対象にしたい。
+        double radius = config.nexusDefenseRadius() * 3.0;
+        double radiusSq = radius * radius;
+
+        for (Nexus nexus : nexuses.all()) {
+            if (nexus.phase() == Nexus.Phase.DORMANT) {
+                // 一度も起動していないネクサスは拠点として扱わない
+                continue;
+            }
+            Location center = nexus.center();
+            if (center == null || !center.getWorld().equals(loc.getWorld())) {
+                continue;
+            }
+            if (center.distanceSquared(loc) <= radiusSq) {
+                return true;
+            }
+        }
+        return false;
     }
 }

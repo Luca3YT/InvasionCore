@@ -1,5 +1,6 @@
 package work.maiotanet.invasioncore.ui;
 
+import io.papermc.paper.scoreboard.numbers.NumberFormat;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
@@ -7,14 +8,17 @@ import org.bukkit.entity.Player;
 import org.bukkit.scoreboard.Criteria;
 import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
+import org.bukkit.scoreboard.Score;
 import org.bukkit.scoreboard.Scoreboard;
-import org.bukkit.scoreboard.Team;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.logging.Level;
 
 /**
  * BossBar とサイドバーの管理。
@@ -24,15 +28,21 @@ import java.util.UUID;
  */
 public final class HudService {
 
-    /** サイドバー1行分の不可視エントリ。行数の上限でもある。 */
+    /**
+     * サイドバー1行分のエントリ名。行数の上限でもある。
+     *
+     * <p>エントリ文字列そのものは画面に出ない。{@link Score#customName(Component)} で
+     * 表示内容を差し替えるため、一意でありさえすればよい。</p>
+     */
     private static final String[] SLOTS = {
-            "§0", "§1", "§2", "§3", "§4", "§5", "§6",
-            "§7", "§8", "§9", "§a", "§b", "§c", "§d", "§e"
+            "line0", "line1", "line2", "line3", "line4", "line5", "line6", "line7",
+            "line8", "line9", "line10", "line11", "line12", "line13", "line14"
     };
 
     private final Map<UUID, BossBar> nexusBars = new HashMap<>();
     private final Map<UUID, List<UUID>> barViewers = new HashMap<>();
     private final Map<UUID, Scoreboard> boards = new HashMap<>();
+    private final Set<UUID> sidebarFailureLogged = new HashSet<>();
 
     // ---------- BossBar ----------
 
@@ -86,39 +96,46 @@ public final class HudService {
     // ---------- サイドバー ----------
 
     public void updateSidebar(Player player, Component title, List<Component> lines) {
-        Scoreboard board = boards.get(player.getUniqueId());
-        if (board == null) {
-            board = Bukkit.getScoreboardManager().getNewScoreboard();
-            boards.put(player.getUniqueId(), board);
-        }
-
-        Objective objective = board.getObjective("invasion");
-        if (objective == null) {
-            objective = board.registerNewObjective("invasion", Criteria.DUMMY, title);
-            objective.setDisplaySlot(DisplaySlot.SIDEBAR);
-        } else {
-            objective.displayName(title);
-        }
-
-        int max = Math.min(lines.size(), SLOTS.length);
-        for (int i = 0; i < max; i++) {
-            String entry = SLOTS[i];
-            Team team = board.getTeam("line" + i);
-            if (team == null) {
-                team = board.registerNewTeam("line" + i);
-                team.addEntry(entry);
+        try {
+            Scoreboard board = boards.get(player.getUniqueId());
+            if (board == null) {
+                board = Bukkit.getScoreboardManager().getNewScoreboard();
+                boards.put(player.getUniqueId(), board);
             }
-            team.prefix(lines.get(i));
-            // 上の行ほど高いスコアにする
-            objective.getScore(entry).setScore(max - i);
-        }
-        // 余った行は消す
-        for (int i = max; i < SLOTS.length; i++) {
-            board.resetScores(SLOTS[i]);
-        }
 
-        if (player.getScoreboard() != board) {
-            player.setScoreboard(board);
+            Objective objective = board.getObjective("invasion");
+            if (objective == null) {
+                objective = board.registerNewObjective("invasion", Criteria.DUMMY, title);
+                objective.setDisplaySlot(DisplaySlot.SIDEBAR);
+                // 行ごとの数値（右端に出る赤い数字）は表示しない
+                objective.numberFormat(NumberFormat.blank());
+            } else {
+                objective.displayName(title);
+            }
+
+            int max = Math.min(lines.size(), SLOTS.length);
+            for (int i = 0; i < max; i++) {
+                Score score = objective.getScore(SLOTS[i]);
+                score.customName(lines.get(i));
+                // 上の行ほど高いスコアにする
+                score.setScore(max - i);
+            }
+            // 余った行は消す
+            for (int i = max; i < SLOTS.length; i++) {
+                board.resetScores(SLOTS[i]);
+            }
+
+            if (player.getScoreboard() != board) {
+                player.setScoreboard(board);
+            }
+        } catch (RuntimeException ex) {
+            // 毎秒呼ばれるので、同じ例外でログを埋めないよう1回だけ出す。
+            // 例外を握り潰したままだと「サイドバーが出ない」原因が追えなくなる。
+            if (sidebarFailureLogged.add(player.getUniqueId())) {
+                Bukkit.getLogger().log(Level.WARNING,
+                        "[InvasionCore] サイドバーの更新に失敗しました: " + player.getName(), ex);
+            }
+            boards.remove(player.getUniqueId());
         }
     }
 

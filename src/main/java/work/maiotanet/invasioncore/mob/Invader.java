@@ -38,8 +38,16 @@ public final class Invader {
     /** 工兵が設置した足場。侵攻終了時に撤去するため記録する。 */
     private final Deque<Location> placedBlocks = new ArrayDeque<>();
 
-    /** 次に特殊行動（射撃・自爆・叫喚など）を行える時刻(tick)。 */
+    /** 次に特殊行動（射撃・投擲・ボススキル・叫喚など）を行える時刻(tick)。 */
     private long abilityReadyTick;
+
+    /**
+     * 次にネクサスを殴れる時刻(tick)。
+     *
+     * <p>特殊行動と同じ変数を使うと、ネクサスに張り付いた瞬間から毎秒上書きされて
+     * ボススキルが永久に発動しなくなる。攻撃とスキルで別々に持つ必要がある。</p>
+     */
+    private long attackReadyTick;
 
     public Invader(Mob entity, InvaderType type, MutationTier tier, UUID nexusId, int wave) {
         this.entity = entity;
@@ -127,5 +135,13 @@ public final class Invader {
 
     public void abilityReadyTick(long abilityReadyTick) {
         this.abilityReadyTick = abilityReadyTick;
+    }
+
+    public long attackReadyTick() {
+        return attackReadyTick;
+    }
+
+    public void attackReadyTick(long attackReadyTick) {
+        this.attackReadyTick = attackReadyTick;
     }
 }

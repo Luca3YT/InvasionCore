@@ -48,7 +48,7 @@ public final class InvasionCommands implements BasicCommand {
             "spike", "mine", "flash", "medkit", "barrier");
     private static final List<String> ADMIN = List.of(
             "forcewave", "setlevel", "setday", "restore", "despawn", "reload", "info",
-            "list", "create", "activate", "spawn", "boss");
+            "list", "create", "activate", "spawn", "boss", "points");
 
     private final InvasionCore plugin;
     private final NexusManager nexuses;
@@ -323,6 +323,7 @@ public final class InvasionCommands implements BasicCommand {
             }
             case "spawn" -> spawnInvaders(sender, nexus, args);
             case "boss" -> spawnBoss(sender, nexus, args);
+            case "points" -> grantPoints(sender, player, args);
             case "reload" -> {
                 plugin.config().reload();
                 sender.sendMessage(Text.good("config.yml を再読み込みした。"));
@@ -486,6 +487,27 @@ public final class InvasionCommands implements BasicCommand {
         } else {
             sender.sendMessage(Text.error("湧き位置が確保できなかった。"));
         }
+    }
+
+    /**
+     * パークポイントを付与する。
+     *
+     * <p>通常はブラッドムーンの踏破でしか手に入らないため、
+     * 検証時や、事故で進行データを失った際の補填手段が無いと運用できない。</p>
+     */
+    private void grantPoints(CommandSender sender, Player player, String[] args) {
+        if (player == null) {
+            sender.sendMessage(Text.error("プレイヤー専用のコマンドだ。"));
+            return;
+        }
+        if (!requireNumber(sender, args, 2)) {
+            sender.sendMessage(Text.warn("使い方: /invasion admin points <数>"));
+            return;
+        }
+        int amount = Math.max(0, Math.min(999, Integer.parseInt(args[2])));
+        perks.addPoints(player.getUniqueId(), amount);
+        sender.sendMessage(Text.good("パークポイントを " + amount + " 付与した（所持 "
+                + perks.profile(player).points() + "）。"));
     }
 
     private String invaderTypeNames() {
