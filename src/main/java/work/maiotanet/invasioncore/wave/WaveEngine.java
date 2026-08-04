@@ -133,14 +133,35 @@ public final class WaveEngine implements NexusCombatSink {
         }
         nexus.phase(Nexus.Phase.PREPARATION);
         nexus.health(nexuses.maxHealth(nexus));
+
         World world = nexus.world();
+        boolean sparedTonight = false;
         if (world != null) {
-            nexus.lastProcessedWorldDay(world.getFullTime() / 24000L);
+            long fullTime = world.getFullTime();
+            long worldDay = fullTime / 24000L;
+            nexus.lastProcessedWorldDay(worldDay);
+
+            // 夜のうちに起動・再建したら、その夜は襲撃を起こさない。
+            // 崩壊直後に同じ夜の血の月へ即再突入すると、準備の余地が無く
+            // 「再建しては即壊される」だけの流れになる。
+            long timeOfDay = fullTime % 24000L;
+            if (timeOfDay >= DUSK && timeOfDay < DAWN) {
+                duskHandled.put(nexus.id(), worldDay);
+                // 夜が明けるまで告知を出し切った扱いにする
+                warnStage.put(nexus.id(), WARN_TIMES.length);
+                sparedTonight = true;
+            } else {
+                // 日中の起動なら、日没までのカウントダウンを最初から流す
+                warnStage.put(nexus.id(), 0);
+            }
         }
         if (by != null) {
             nexus.members().add(by.getUniqueId());
         }
         broadcast(nexus, Text.good("ネクサスが起動した。"));
+        if (sparedTonight) {
+            broadcast(nexus, Text.info("今夜は襲撃が来ない。夜明けまでに備えを整えろ。"));
+        }
         broadcast(nexus, Text.info("Day " + nexus.day() + " — 血の月まで残り "
                 + nexus.daysUntilBloodMoon(config.bloodMoonInterval()) + " 日"));
         return true;
