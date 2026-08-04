@@ -146,6 +146,21 @@ public final class WaveEngine implements NexusCombatSink {
         return true;
     }
 
+    /**
+     * 管理者用の強制起動。Shard コストを取らずに崩壊状態から復旧させる。
+     *
+     * <p>通常の再建はプレイヤーの Shard を要求するため、コンソールからは実行できない。
+     * 運営がトラブル対応で立て直せる経路を用意しておく必要がある。</p>
+     */
+    public boolean forceActivate(Nexus nexus) {
+        if (nexus.isActive()) {
+            return false;
+        }
+        nexus.phase(Nexus.Phase.DORMANT);
+        nexus.health(nexuses.maxHealth(nexus));
+        return activate(nexus, null);
+    }
+
     /** 崩壊したネクサスを再建するのに必要な Shard。 */
     public int rebuildCost(Nexus nexus) {
         return nexuses.discounted(nexus, 50 + nexus.level() * 20);

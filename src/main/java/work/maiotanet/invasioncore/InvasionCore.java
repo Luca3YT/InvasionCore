@@ -122,7 +122,7 @@ public final class InvasionCore extends JavaPlugin {
                 new PlayerListener(config, nexuses, heat, perks, hud, worldEvents), this);
 
         InvasionCommands commands = new InvasionCommands(
-                this, nexuses, stages, shards, perks, gui, waves, registry, breachLog);
+                this, nexuses, stages, shards, perks, gui, waves, registry, spawner, breachLog);
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event ->
                 event.registrar().register("invasion",
                         "InvasionCore の操作", List.of("inv"), commands));
