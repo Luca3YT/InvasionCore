@@ -224,9 +224,11 @@ public final class FortifyService {
             return 0.0;
         }
         if (!material.isSolid()) {
-            return 8.0;
+            return 12.0;
         }
-        return 20.0 + hardness * 26.0;
+        // 丸石で約110。序盤に石で囲う防御が最低限は機能する水準にしてある。
+        // 上限を設けないと黒曜石(硬度50)が鋼鉄を超えて、強化する意味が無くなる。
+        return Math.min(1800.0, 30.0 + hardness * 40.0);
     }
 
     // ---------- 演出 ----------

@@ -87,6 +87,17 @@ public final class InvasionConfig {
         return cfg.getInt("breach.stuck-threshold", 3);
     }
 
+    /**
+     * 壁を殴る間隔（tick）。
+     *
+     * <p>これが無いとAI更新のたびに殴ることになり、破壊力が
+     * performance.ai-buckets の設定値に左右されてしまう。
+     * 性能設定を変えたら壁の強度まで変わる、という事故を防ぐために必要。</p>
+     */
+    public int breachSwingIntervalTicks() {
+        return Math.max(1, cfg.getInt("breach.swing-interval-ticks", 20));
+    }
+
     /** この距離までプレイヤーが近づくと、ネクサスより先にプレイヤーを狙う。 */
     public double playerAggroRange() {
         return cfg.getDouble("breach.player-aggro-range", 7.0);
@@ -104,6 +115,14 @@ public final class InvasionConfig {
 
     public boolean nightSkirmishEnabled() {
         return cfg.getBoolean("cycle.night-skirmish", true);
+    }
+
+    /**
+     * 夜間襲撃が始まる日。これより前の夜は襲撃が来ない。
+     * 拠点もShardも無い初日から削られると、立ち上がりが理不尽になる。
+     */
+    public int skirmishStartDay() {
+        return cfg.getInt("cycle.skirmish-start-day", 3);
     }
 
     public double nightSkirmishScale() {

@@ -283,7 +283,7 @@ public final class WaveEngine implements NexusCombatSink {
 
         if (nexus.isBloodMoonDay(config.bloodMoonInterval())) {
             startBloodMoon(nexus);
-        } else if (config.nightSkirmishEnabled()) {
+        } else if (config.nightSkirmishEnabled() && nexus.day() >= config.skirmishStartDay()) {
             spawnSkirmish(nexus);
         }
     }

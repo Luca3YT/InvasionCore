@@ -204,6 +204,9 @@ public final class InvaderAiService {
     private void handleObstruction(Invader invader, Nexus nexus, Location target, long now) {
         InvaderType type = invader.type();
 
+        // 壁を殴るのは1スイングごと。AI更新の頻度に破壊力を依存させない。
+        boolean canSwing = now >= invader.attackReadyTick();
+
         if (type.isBomber()) {
             // 爆導体は壁を殴らず、壁際で起爆する
             igniteBomber(invader, target);
@@ -214,13 +217,17 @@ public final class InvaderAiService {
                 return;
             }
         }
+        if (!canSwing) {
+            return;
+        }
         if (type.canBurrow()) {
             if (burrowToward(invader, nexus, target)) {
+                invader.attackReadyTick(now + config.breachSwingIntervalTicks());
                 return;
             }
         }
-        if (type.canBreach()) {
-            breachToward(invader, nexus, target);
+        if (type.canBreach() && breachToward(invader, nexus, target)) {
+            invader.attackReadyTick(now + config.breachSwingIntervalTicks());
         }
     }
 
@@ -228,14 +235,14 @@ public final class InvaderAiService {
      * ネクサス方向の障害ブロックを殴る。
      * 破壊範囲はネクサス中心からの半径で制限し、拠点外の建築物を巻き込まない。
      */
-    private void breachToward(Invader invader, Nexus nexus, Location target) {
+    private boolean breachToward(Invader invader, Nexus nexus, Location target) {
         Block block = invader.breachTarget();
         if (block == null || block.getType().isAir() || !isBreachable(nexus, block)) {
             block = findObstructingBlock(invader, target, nexus);
             invader.breachTarget(block);
         }
         if (block == null) {
-            return;
+            return false;
         }
 
         double power = breachPower(invader);
@@ -249,6 +256,7 @@ public final class InvaderAiService {
             invader.stuckTicks(0);
             invader.bestDistance(Double.MAX_VALUE);
         }
+        return true;
     }
 
     /** 掘削者は地形を直線的に掘り進む。堀や地下壁を無効化する。 */

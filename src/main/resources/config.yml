@@ -41,6 +41,11 @@ breach:
   power-per-damage: 1.5
   # 何回のAI更新で距離が縮まらなければ「閉塞」と判断するか
   stuck-threshold: 3
+  # 壁を殴る間隔（tick）。20 = 毎秒1回。
+  # この値が無いとAI更新のたびに殴ることになり、破壊力が
+  # performance.ai-buckets の設定に左右されてしまう。
+  # 小さくすると壁が一瞬で溶けるので注意
+  swing-interval-ticks: 20
   # この距離までプレイヤーが近づくと、ネクサスより先にプレイヤーを狙う
   player-aggro-range: 7.0
   # 工兵が積める足場の最大段数
@@ -51,6 +56,9 @@ cycle:
   blood-moon-interval: 7
   # 血の月以外の夜にも小規模襲撃を行うか
   night-skirmish: true
+  # 夜間襲撃が始まる日。これより前の夜は襲撃が来ない。
+  # 拠点もShardも無い初日から削られると立ち上がりが理不尽になるため猶予を置く
+  skirmish-start-day: 3
   # 小規模襲撃の規模（血の月に対する比率）
   night-skirmish-scale: 0.22
 
