@@ -32,9 +32,14 @@
 
 ## サーバーの起動
 
+**Java 25 の実体を明示的に指定すること。** PATH の `java` が 21 のままだと
+`Minecraft 26.1 and newer requires running the server with Java 25 or above` で即座に終了する。
+
 ```bash
-java -Xms1G -Xmx2G -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -jar paper-26.2-92.jar nogui
+"C:\tools\jdk-25.0.4+7\bin\java.exe" -Xms1G -Xmx2G -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -jar paper-26.2-92.jar nogui
 ```
+
+検証用サーバーには `run/start.cmd` を用意してあるので、通常はそれを実行すればよい。
 
 > **`-Dstdout.encoding=UTF-8` は Windows では必須。** Java 18 以降、`System.out` は
 > `file.encoding` ではなくコンソールのコードページを使うため、指定しないと
