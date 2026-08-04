@@ -24,6 +24,7 @@ import work.maiotanet.invasioncore.util.Text;
 import work.maiotanet.invasioncore.wave.WaveEngine;
 import work.maiotanet.invasioncore.wave.WaveModifier;
 import work.maiotanet.invasioncore.world.BreachLog;
+import work.maiotanet.invasioncore.world.WorldEventService;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -48,7 +49,7 @@ public final class InvasionCommands implements BasicCommand {
             "spike", "mine", "flash", "medkit", "barrier");
     private static final List<String> ADMIN = List.of(
             "forcewave", "setlevel", "setday", "restore", "despawn", "reload", "info",
-            "list", "create", "activate", "spawn", "boss", "points");
+            "list", "create", "activate", "spawn", "boss", "points", "airdrop");
 
     private final InvasionCore plugin;
     private final NexusManager nexuses;
@@ -59,12 +60,13 @@ public final class InvasionCommands implements BasicCommand {
     private final WaveEngine waves;
     private final InvaderRegistry registry;
     private final InvaderSpawner spawner;
+    private final WorldEventService worldEvents;
     private final BreachLog breachLog;
 
     public InvasionCommands(InvasionCore plugin, NexusManager nexuses, GameStageService stages,
                             ShardService shards, PerkService perks, NexusGui gui,
                             WaveEngine waves, InvaderRegistry registry, InvaderSpawner spawner,
-                            BreachLog breachLog) {
+                            WorldEventService worldEvents, BreachLog breachLog) {
         this.plugin = plugin;
         this.nexuses = nexuses;
         this.stages = stages;
@@ -74,6 +76,7 @@ public final class InvasionCommands implements BasicCommand {
         this.waves = waves;
         this.registry = registry;
         this.spawner = spawner;
+        this.worldEvents = worldEvents;
         this.breachLog = breachLog;
     }
 
@@ -324,6 +327,17 @@ public final class InvasionCommands implements BasicCommand {
             case "spawn" -> spawnInvaders(sender, nexus, args);
             case "boss" -> spawnBoss(sender, nexus, args);
             case "points" -> grantPoints(sender, player, args);
+            case "airdrop" -> {
+                if (requireNexus(sender, nexus)) {
+                    Location spot = worldEvents.forceAirDrop(nexus);
+                    if (spot == null) {
+                        sender.sendMessage(Text.error("投下地点を確保できなかった。"));
+                    } else {
+                        sender.sendMessage(Text.good("補給物資を投下した: "
+                                + spot.getBlockX() + " " + spot.getBlockY() + " " + spot.getBlockZ()));
+                    }
+                }
+            }
             case "reload" -> {
                 plugin.config().reload();
                 sender.sendMessage(Text.good("config.yml を再読み込みした。"));
