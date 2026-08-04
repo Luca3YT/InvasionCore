@@ -1,5 +1,6 @@
 package work.maiotanet.invasioncore.util;
 
+import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
@@ -56,6 +57,33 @@ public final class Text {
 
     public static Component error(String s) {
         return prefixed(of(s, NamedTextColor.RED));
+    }
+
+    /**
+     * 繰り返し行う操作の結果はアクションバーに出す。
+     *
+     * <p>ブロック強化やトラップ設置は数十回連続で行うため、
+     * 1回ごとにチャットへ流すとログが即座に埋まって他の通知が読めなくなる。
+     * アクションバーは上書き表示なので、何度出しても流れが壊れない。</p>
+     */
+    public static void actionBar(Audience audience, Component message) {
+        audience.sendActionBar(message);
+    }
+
+    public static void actionBarGood(Audience audience, String s) {
+        actionBar(audience, of(s, GOOD));
+    }
+
+    public static void actionBarWarn(Audience audience, String s) {
+        actionBar(audience, of(s, WARN));
+    }
+
+    public static void actionBarError(Audience audience, String s) {
+        actionBar(audience, of(s, NamedTextColor.RED));
+    }
+
+    public static void actionBarInfo(Audience audience, String s) {
+        actionBar(audience, of(s, INFO));
     }
 
     public static List<Component> lore(String... lines) {

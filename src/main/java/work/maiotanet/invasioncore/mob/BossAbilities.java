@@ -105,8 +105,9 @@ public final class BossAbilities {
                     if (ally.entity().getLocation().distanceSquared(boss.getLocation()) > 256.0) {
                         continue;
                     }
+                    // 速度IIを配ると群れ全体が手に負えない速さになる。Iに留める。
                     ally.entity().addPotionEffect(new PotionEffect(
-                            PotionEffectType.SPEED, 200, 1, false, false, false));
+                            PotionEffectType.SPEED, 200, 0, false, false, false));
                 }
                 dash(boss, nexus, 1.3);
             }

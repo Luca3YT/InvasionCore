@@ -91,11 +91,11 @@ public final class DefenseListener implements Listener {
     private void handleHammer(Player player, Block block) {
         Nexus nexus = nexuses.nearest(block.getLocation());
         if (nexus == null) {
-            player.sendMessage(Text.error("ネクサスの防衛範囲内でのみ強化できる。"));
+            Text.actionBarError(player, "ネクサスの防衛範囲内でのみ強化できる。");
             return;
         }
         if (nexuses.at(block.getLocation()) != null) {
-            player.sendMessage(Text.warn("ネクサス本体は強化できない。"));
+            Text.actionBarWarn(player, "ネクサス本体は強化できない。");
             return;
         }
 
@@ -109,7 +109,7 @@ public final class DefenseListener implements Listener {
         // 1) 未強化 → 木枠へ
         if (current == null || !current.isManaged()) {
             if (!isFortifiable(block)) {
-                player.sendMessage(Text.error("このブロックは強化できない。"));
+                Text.actionBarError(player, "このブロックは強化できない。");
                 return;
             }
             int cost = adjustedCost(player, nexus, BlockTier.first().upgradeCost());
@@ -119,7 +119,7 @@ public final class DefenseListener implements Listener {
             }
             fortify.fortify(block, perks.fortifyHealthMultiplier(player.getUniqueId()));
             contributions.record(nexus.id(), player.getUniqueId(), ContributionTracker.Kind.FORTIFY, 1);
-            player.sendMessage(Text.good("木枠に強化した。（-" + cost + " Shard）"));
+            Text.actionBarGood(player, "木枠に強化した。（-" + cost + " Shard）");
             return;
         }
 
@@ -136,15 +136,15 @@ public final class DefenseListener implements Listener {
             double healed = fortify.repair(block, current.maxHealth());
             contributions.record(nexus.id(), player.getUniqueId(),
                     ContributionTracker.Kind.REPAIR, healed / 10.0);
-            player.sendMessage(Text.good(current.tier().displayName()
-                    + " を修理した。（-" + cost + " Shard）"));
+            Text.actionBarGood(player, current.tier().displayName()
+                    + " を修理した。（-" + cost + " Shard）");
             return;
         }
 
         // 3) 無傷 → 次のティアへ
         BlockTier next = current.tier().next();
         if (next == null) {
-            player.sendMessage(Text.warn("すでに最高ティア（" + current.tier().displayName() + "）だ。"));
+            Text.actionBarWarn(player, "すでに最高ティア（" + current.tier().displayName() + "）だ。");
             return;
         }
         int cost = adjustedCost(player, nexus, next.upgradeCost());
@@ -154,17 +154,17 @@ public final class DefenseListener implements Listener {
         }
         fortify.upgrade(block, perks.fortifyHealthMultiplier(player.getUniqueId()));
         contributions.record(nexus.id(), player.getUniqueId(), ContributionTracker.Kind.FORTIFY, 1);
-        player.sendMessage(Text.good(next.displayName() + " に強化した。（-" + cost + " Shard）"));
+        Text.actionBarGood(player, next.displayName() + " に強化した。（-" + cost + " Shard）");
     }
 
     private void handleRepairKit(Player player, Block block, ItemStack held) {
         FortifyService.Fortified f = fortify.get(block);
         if (f == null || !f.isManaged()) {
-            player.sendMessage(Text.error("強化ブロックにのみ使える。"));
+            Text.actionBarError(player, "強化ブロックにのみ使える。");
             return;
         }
         if (f.ratio() >= 1.0) {
-            player.sendMessage(Text.warn("このブロックは無傷だ。"));
+            Text.actionBarWarn(player, "このブロックは無傷だ。");
             return;
         }
         double amount = f.maxHealth() * perks.repairKitMultiplier(player.getUniqueId());
@@ -178,7 +178,7 @@ public final class DefenseListener implements Listener {
         if (player.getGameMode() != GameMode.CREATIVE) {
             held.setAmount(held.getAmount() - 1);
         }
-        player.sendMessage(Text.good("補修キットで修復した。"));
+        Text.actionBarGood(player, "補修キットで修復した。");
     }
 
     private void handleTurretInteract(Player player, Block block,
@@ -187,32 +187,32 @@ public final class DefenseListener implements Listener {
         if (held != null && held.getType() == type.ammo()) {
             int loaded = turrets.loadAmmo(block, held.getAmount());
             if (loaded <= 0) {
-                player.sendMessage(Text.warn("すでに満載だ。"));
+                Text.actionBarWarn(player, "すでに満載だ。");
                 return;
             }
             if (player.getGameMode() != GameMode.CREATIVE) {
                 held.setAmount(held.getAmount() - loaded);
             }
-            player.sendMessage(Text.good(type.displayName() + " に "
-                    + loaded + " 発 装填した。（" + turret.ammo() + " / " + type.maxAmmo() + "）"));
+            Text.actionBarGood(player, type.displayName() + " に "
+                    + loaded + " 発 装填した。（" + turret.ammo() + " / " + type.maxAmmo() + "）");
             return;
         }
-        player.sendMessage(Text.info(type.displayName()
+        Text.actionBarInfo(player, type.displayName()
                 + " — 残弾 " + turret.ammo() + " / " + type.maxAmmo()
-                + "（弾薬: " + type.ammo().name() + "）"));
+                + "（弾薬: " + type.ammo().name() + "）");
     }
 
     private void showBlockInfo(Player player, Block block) {
         FortifyService.Fortified f = fortify.get(block);
         if (f == null || !f.isManaged()) {
             double implicit = fortify.implicitHealth(block.getType());
-            player.sendMessage(Text.info("未強化ブロック — 推定耐久 "
-                    + (implicit <= 0 ? "破壊不能" : String.valueOf((int) implicit))));
+            Text.actionBarInfo(player, "未強化ブロック — 推定耐久 "
+                    + (implicit <= 0 ? "破壊不能" : String.valueOf((int) implicit)));
             return;
         }
-        player.sendMessage(Text.info(f.tier().displayName() + " — 耐久 "
+        Text.actionBarInfo(player, f.tier().displayName() + " — 耐久 "
                 + (int) f.health() + " / " + (int) f.maxHealth() + "  "
-                + Text.bar(f.ratio(), 12)));
+                + Text.bar(f.ratio(), 12));
     }
 
     // ---------- 設置・破壊 ----------
@@ -231,13 +231,13 @@ public final class DefenseListener implements Listener {
             Nexus nexus = nexuses.nearest(block.getLocation());
             if (nexus == null) {
                 event.setCancelled(true);
-                player.sendMessage(Text.error("タレットはネクサスの防衛範囲内にのみ設置できる。"));
+                Text.actionBarError(player, "タレットはネクサスの防衛範囲内にのみ設置できる。");
                 return;
             }
             turrets.place(block, type, player);
             contributions.record(nexus.id(), player.getUniqueId(), ContributionTracker.Kind.TURRET, 1);
-            player.sendMessage(Text.good(type.displayName() + " を設置した。"
-                    + type.ammo().name() + " を右クリックで装填すること。"));
+            Text.actionBarGood(player, type.displayName() + " を設置した。"
+                    + type.ammo().name() + " を右クリックで装填すること。");
             return;
         }
 
@@ -249,12 +249,12 @@ public final class DefenseListener implements Listener {
             Nexus nexus = nexuses.nearest(block.getLocation());
             if (nexus == null) {
                 event.setCancelled(true);
-                player.sendMessage(Text.error("トラップはネクサスの防衛範囲内にのみ設置できる。"));
+                Text.actionBarError(player, "トラップはネクサスの防衛範囲内にのみ設置できる。");
                 return;
             }
             traps.place(block, type, player);
             contributions.record(nexus.id(), player.getUniqueId(), ContributionTracker.Kind.TURRET, 1);
-            player.sendMessage(Text.good(type.displayName() + " を設置した。"));
+            Text.actionBarGood(player, type.displayName() + " を設置した。");
         }
     }
 
@@ -310,8 +310,8 @@ public final class DefenseListener implements Listener {
     }
 
     private void sendInsufficient(Player player, int cost) {
-        player.sendMessage(Text.error("Shard が足りない（必要 " + cost
-                + " / 所持 " + shards.count(player) + "）"));
+        Text.actionBarError(player, "Shard が足りない（必要 " + cost
+                + " / 所持 " + shards.count(player) + "）");
         player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
     }
 }

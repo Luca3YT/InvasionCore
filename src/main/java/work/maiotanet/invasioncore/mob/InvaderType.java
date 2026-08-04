@@ -23,7 +23,7 @@ public enum InvaderType {
             Material.LEATHER_HELMET, null),
 
     /** 俊足。夜とブラッドムーンで真価を発揮する。 */
-    RUNNER("疾走者", EntityType.HUSK, 0.80, 1.45, 0.90, 3, 8, 68,
+    RUNNER("疾走者", EntityType.HUSK, 0.80, 1.15, 0.90, 3, 8, 68,
             Material.CHAINMAIL_HELMET, null),
 
     /** 遠距離攻撃。タレットとプレイヤーを優先的に狙う。 */
@@ -31,7 +31,7 @@ public enum InvaderType {
             null, Material.BOW),
 
     /** 壁を登る。高い壁で囲うだけの防御を無効化する。 */
-    CRAWLER("壁蟲", EntityType.SPIDER, 0.75, 1.25, 0.85, 4, 14, 42,
+    CRAWLER("壁蟲", EntityType.SPIDER, 0.75, 1.00, 0.85, 4, 14, 42,
             null, null),
 
     // ---- 突破層（Stage 16〜30）----
@@ -63,7 +63,7 @@ public enum InvaderType {
             null, null),
 
     /** 接近するまで不可視。前衛を素通りして後衛を刈りに来る。 */
-    STALKER("潜伏体", EntityType.ZOMBIE, 0.70, 1.50, 1.45, 10, 34, 18,
+    STALKER("潜伏体", EntityType.ZOMBIE, 0.70, 1.18, 1.45, 10, 34, 18,
             null, Material.IRON_SWORD),
 
     /** 周囲の味方にダメージ軽減を配る支援型。放置すると硬直する。 */

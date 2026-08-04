@@ -142,7 +142,7 @@ public final class InvaderSpawner {
         setAttribute(mob, Attribute.ATTACK_DAMAGE,
                 damageMult * tier.damageMultiplier() * stageDamage, true);
         setAttribute(mob, Attribute.MOVEMENT_SPEED,
-                speedMult * tier.speedMultiplier(), true);
+                speedMult * tier.speedMultiplier() * config.mobSpeedMultiplier(), true);
 
         AttributeInstance armor = mob.getAttribute(Attribute.ARMOR);
         if (armor != null) {

@@ -53,6 +53,24 @@ public final class InvasionConfig {
         return cfg.getBoolean("nexus.suppress-vanilla-spawns", true);
     }
 
+    // ---- 侵略Mobの速度 ----
+    /**
+     * 全侵略Mobの移動速度に掛かる係数。
+     * 種別ごとの相対関係を保ったまま、全体の速さだけを調整するためのノブ。
+     */
+    public double mobSpeedMultiplier() {
+        return cfg.getDouble("mob.speed-multiplier", 0.85);
+    }
+
+    /**
+     * 飛行型の移動速度（ブロック/tick）。
+     * 経路探索を使わず速度を直接与えるため、属性ではなくこの値で決まる。
+     * 参考: 歩行約0.215 / 疾走約0.28。
+     */
+    public double flyerSpeed() {
+        return cfg.getDouble("mob.flyer-speed", 0.20);
+    }
+
     // ---- 突破AI ----
     /** AI更新1回あたりの基礎ブロック破壊力。 */
     public double breachPowerBase() {

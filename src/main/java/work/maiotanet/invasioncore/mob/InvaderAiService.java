@@ -556,12 +556,18 @@ public final class InvaderAiService {
         mob.getPathfinder().moveTo(destination, 1.1);
     }
 
+    /**
+     * 飛行型をネクサスへ直進させる。
+     *
+     * <p>経路探索を使わず速度を直接与えるため、移動速度の属性ではなくここの係数で速さが決まる。
+     * 0.42 だと毎秒8.4ブロックとなり、疾走するプレイヤー（約5.6）より明確に速くて逃げ場がない。</p>
+     */
     private void flyToward(Mob mob, Location target) {
         Vector dir = target.toVector().subtract(mob.getLocation().toVector());
         if (dir.lengthSquared() < 1.0e-4) {
             return;
         }
-        mob.setVelocity(dir.normalize().multiply(0.42));
+        mob.setVelocity(dir.normalize().multiply(config.flyerSpeed()));
     }
 
     private double breachPower(Invader invader) {

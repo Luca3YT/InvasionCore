@@ -155,7 +155,7 @@ public final class GadgetListener implements Listener {
             healed++;
         }
         player.getWorld().playSound(player.getLocation(), Sound.ITEM_TOTEM_USE, 0.7f, 1.6f);
-        player.sendMessage(Text.good(healed + " 人を回復した。"));
+        Text.actionBarGood(player, healed + " 人を回復した。");
         consume(player, held);
     }
 
@@ -167,7 +167,7 @@ public final class GadgetListener implements Listener {
      */
     private void deployBarrier(Player player, ItemStack held, Block clicked, BlockFace face) {
         if (nexuses.nearest(clicked.getLocation()) == null) {
-            player.sendMessage(Text.error("ネクサスの防衛範囲内でのみ展開できる。"));
+            Text.actionBarError(player, "ネクサスの防衛範囲内でのみ展開できる。");
             return;
         }
         Block origin = clicked.getRelative(face);
@@ -192,14 +192,14 @@ public final class GadgetListener implements Listener {
             }
         }
         if (placed.isEmpty()) {
-            player.sendMessage(Text.warn("展開できる空間がない。"));
+            Text.actionBarWarn(player, "展開できる空間がない。");
             return;
         }
         World world = origin.getWorld();
         world.playSound(origin.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 1.6f);
         world.spawnParticle(Particle.END_ROD, origin.getLocation().add(0.5, 0.5, 0.5),
                 24, 1.0, 1.0, 1.0, 0.05);
-        player.sendMessage(Text.good("緊急バリアを展開した（45秒）。"));
+        Text.actionBarGood(player, "緊急バリアを展開した（45秒）。");
         consume(player, held);
 
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
