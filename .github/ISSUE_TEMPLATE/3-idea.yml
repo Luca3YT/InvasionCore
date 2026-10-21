@@ -1,0 +1,27 @@
+name: 要望・アイデア
+description: こうなったら面白い・これを追加してほしいというアイデアはこちら
+title: "[アイデア] "
+labels: ["要望・アイデア", "状態: 確認待ち"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        どんな小さなアイデアでも歓迎です。すべてを取り入れられるとは限りませんが、全部読みます。
+        **ここに書いた内容は誰でも見られます。** 個人情報は書かないでください。
+  - type: textarea
+    id: idea
+    attributes:
+      label: どんなアイデアですか？
+      placeholder: 例）血の月の前に、敵の種類がわかる予告がほしい
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: それがあると何がうれしいですか？
+      placeholder: 例）どこの守りを固めればいいか、みんなで相談できる
+  - type: textarea
+    id: reference
+    attributes:
+      label: 参考になるもの
+      description: 似た仕組みのあるゲームや MOD、絵や図があれば貼ってください。

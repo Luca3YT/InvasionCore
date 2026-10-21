@@ -1,0 +1,27 @@
+name: 感想・その他
+description: 遊んでみた感想や、上のどれにも当てはまらない意見はこちら
+title: "[感想] "
+labels: ["感想", "状態: 確認待ち"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        遊んでくれてありがとうございます。感想は開発の一番の励みになります。
+        **ここに書いた内容は誰でも見られます。** 個人情報は書かないでください。
+  - type: textarea
+    id: good
+    attributes:
+      label: 楽しかったところ
+      placeholder: 例）ギリギリで血の月を守り切ったときが最高だった
+  - type: textarea
+    id: bad
+    attributes:
+      label: 気になったところ・その他
+      placeholder: 例）最初に何をすればいいかわからなかった
+  - type: checkboxes
+    id: written
+    attributes:
+      label: 確認
+      options:
+        - label: 楽しかったところか気になったところの、どちらかに書いた
+          required: true

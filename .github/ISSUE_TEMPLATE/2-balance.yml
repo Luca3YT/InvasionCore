@@ -1,0 +1,57 @@
+name: バランスの意見
+description: 強すぎる・弱すぎる・難しすぎる・簡単すぎると感じたらこちら
+title: "[バランス] "
+labels: ["バランス", "状態: 確認待ち"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        遊んでみて感じたことをそのまま書いてください。調整の参考にします。
+        **ここに書いた内容は誰でも見られます。** 個人情報は書かないでください。
+  - type: dropdown
+    id: target
+    attributes:
+      label: 何についてですか？
+      options:
+        - 敵（侵略者）
+        - ボス
+        - ネクサスの硬さ・HP
+        - 壁の強化・修理のコスト
+        - タレット・罠
+        - ガジェット（閃光弾・救急キット・緊急バリア）
+        - 報酬・Shard の量
+        - パーク
+        - 血の月の長さ・ウェーブ数
+        - その他
+    validations:
+      required: true
+  - type: dropdown
+    id: direction
+    attributes:
+      label: どう感じましたか？
+      options:
+        - 強すぎる・難しすぎる
+        - 弱すぎる・簡単すぎる
+        - 高すぎる・少なすぎる
+        - 安すぎる・多すぎる
+        - なんとなく違和感がある
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: どんな場面でそう感じましたか？
+      placeholder: 例）鉄槌（ボス）が出た瞬間に鋼鉄の壁が全部壊れて、何もできずに負けた
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: どうなったらいいと思いますか？
+      description: 思いつかなければ空欄で大丈夫です。
+  - type: input
+    id: situation
+    attributes:
+      label: そのときの状況
+      description: わかる範囲で。サイドバーやボスバーに出ています。
+      placeholder: 例）参加者 4 人、Day 14、ネクサス Lv.3、Wave 5
