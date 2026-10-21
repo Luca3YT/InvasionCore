@@ -4,6 +4,8 @@ import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -28,6 +30,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.logging.Level;
 
 /**
@@ -137,8 +140,11 @@ public final class TurretService {
             Block block = fromKey(entry.getKey());
             Turret turret = entry.getValue();
 
-            if (block == null) {
-                // ワールド未ロード。次回に持ち越す。
+            if (block == null
+                    || !block.getWorld().isChunkLoaded(block.getX() >> 4, block.getZ() >> 4)) {
+                // ワールド／チャンク未ロード。次回に持ち越す。
+                // getType() で確かめるとチャンクを同期ロードしてしまい、誰もいない拠点のタレットが
+                // 10tickごとにチャンクを読み込み続ける。
                 continue;
             }
             if (block.getType() != turret.type.block()) {
@@ -170,7 +176,7 @@ public final class TurretService {
         switch (turret.type) {
             case HEAL -> {
                 if (healAround(block, muzzle, range)) {
-                    turret.ammo--;
+                    consumeAmmo(turret);
                     turret.readyAtTick = now + turret.type.cooldownTicks();
                 }
             }
@@ -179,7 +185,7 @@ public final class TurretService {
                 if (target == null) {
                     return;
                 }
-                turret.ammo--;
+                consumeAmmo(turret);
                 turret.readyAtTick = now + turret.type.cooldownTicks();
                 // 設置者の「砲手」パークが威力に乗る
                 double power = turret.type.power()
@@ -187,6 +193,15 @@ public final class TurretService {
                 fire(turret.type, muzzle, target, power);
             }
         }
+    }
+
+    /** 弾薬を1発消費する。設置者の「弾薬工」パークで消費しないことがある。 */
+    private void consumeAmmo(Turret turret) {
+        if (turret.owner != null
+                && ThreadLocalRandom.current().nextDouble() < perks.ammoSaveChance(turret.owner)) {
+            return;
+        }
+        turret.ammo--;
     }
 
     private void fire(TurretType type, Location muzzle, Invader target, double power) {
@@ -224,6 +239,11 @@ public final class TurretService {
 
         for (Player p : world.getPlayers()) {
             if (p.isDead() || p.getLocation().distanceSquared(muzzle) > rangeSq) {
+                continue;
+            }
+            // 無傷の人しかいないのに作動すると、近くに立っているだけで弾薬が尽きる
+            AttributeInstance max = p.getAttribute(Attribute.MAX_HEALTH);
+            if (max != null && p.getHealth() >= max.getValue()) {
                 continue;
             }
             p.addPotionEffect(new PotionEffect(PotionEffectType.REGENERATION, 60, 0, true, false, true));

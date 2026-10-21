@@ -6,8 +6,12 @@ import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.Chest;
+import org.bukkit.block.Container;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 
 import java.io.File;
@@ -87,18 +91,38 @@ public final class FortifyService {
 
     // ---------- 強化 / 修理 ----------
 
-    /** 未強化ブロックを木枠ティアに変える。 */
-    public Fortified fortify(Block block) {
+    /**
+     * 未強化ブロックを木枠ティアに変える。
+     *
+     * @param healthMultiplier 強化した本人の「要塞化」パーク倍率
+     */
+    public Fortified fortify(Block block, double healthMultiplier) {
         BlockTier tier = BlockTier.first();
         block.setType(tier.material());
-        Fortified f = new Fortified(tier, tier.maxHealth(), tier.maxHealth(), true);
+        double max = tier.maxHealth() * Math.max(1.0, healthMultiplier);
+        Fortified f = new Fortified(tier, max, max, true);
         blocks.put(key(block), f);
         effectUpgrade(block);
         return f;
     }
 
-    /** 次のティアへ上げる。上限なら false。 */
-    public boolean upgrade(Block block) {
+    /**
+     * 既存ブロックを、マテリアルを変えずに指定ティアとして登録する。
+     * 緊急バリアのように「見た目はそのままで耐久だけ持たせたい」ケースで使う。
+     */
+    public Fortified register(Block block, BlockTier tier, double healthMultiplier) {
+        double max = tier.maxHealth() * Math.max(1.0, healthMultiplier);
+        Fortified f = new Fortified(tier, max, max, true);
+        blocks.put(key(block), f);
+        return f;
+    }
+
+    /**
+     * 次のティアへ上げる。上限なら false。
+     *
+     * @param healthMultiplier 強化した本人の「要塞化」パーク倍率
+     */
+    public boolean upgrade(Block block, double healthMultiplier) {
         Fortified f = get(block);
         if (f == null || !f.managed) {
             return false;
@@ -108,8 +132,8 @@ public final class FortifyService {
             return false;
         }
         f.tier = next;
-        f.maxHealth = next.maxHealth();
-        f.health = next.maxHealth();
+        f.maxHealth = next.maxHealth() * Math.max(1.0, healthMultiplier);
+        f.health = f.maxHealth;
         block.setType(next.material());
         effectUpgrade(block);
         return true;
@@ -175,6 +199,7 @@ public final class FortifyService {
             Location center = block.getLocation().add(0.5, 0.5, 0.5);
             w.spawnParticle(Particle.BLOCK, center, 24, 0.3, 0.3, 0.3, 0.0, block.getBlockData());
             w.playSound(center, Sound.BLOCK_STONE_BREAK, 1.0f, 0.7f);
+            dropContainerContents(block, center);
             block.setType(Material.AIR);
             return true;
         }
@@ -183,6 +208,28 @@ public final class FortifyService {
         w.spawnParticle(Particle.BLOCK, block.getLocation().add(0.5, 0.5, 0.5), 4,
                 0.25, 0.25, 0.25, 0.0, block.getBlockData());
         return false;
+    }
+
+    /**
+     * 容器の中身をその場に落とす。
+     *
+     * <p>setType(AIR) で消すと中身ごと消滅し、BreachLog の復元でも空の容器しか戻らない。
+     * 拠点のチェストが侵略者に壊されるたびに保管物が失われるので、必ず先に吐き出させる。
+     * ラージチェストは片側だけを対象にする（もう片方は残るので、その中身まで落とすと散らかる）。</p>
+     */
+    private void dropContainerContents(Block block, Location at) {
+        if (!(block.getState(false) instanceof Container container)) {
+            return;
+        }
+        Inventory inventory = container instanceof Chest chest
+                ? chest.getBlockInventory()
+                : container.getInventory();
+        for (ItemStack stack : inventory.getContents()) {
+            if (stack != null && !stack.getType().isAir()) {
+                block.getWorld().dropItemNaturally(at, stack);
+            }
+        }
+        inventory.clear();
     }
 
     /** プレイヤーが自分で壊した／置き換えたときに記録を消す。 */
@@ -204,9 +251,11 @@ public final class FortifyService {
             return 0.0;
         }
         if (!material.isSolid()) {
-            return 8.0;
+            return 12.0;
         }
-        return 20.0 + hardness * 26.0;
+        // 丸石で約110。序盤に石で囲う防御が最低限は機能する水準にしてある。
+        // 上限を設けないと黒曜石(硬度50)が鋼鉄を超えて、強化する意味が無くなる。
+        return Math.min(1800.0, 30.0 + hardness * 40.0);
     }
 
     // ---------- 演出 ----------
@@ -229,8 +278,9 @@ public final class FortifyService {
         while (it.hasNext()) {
             Map.Entry<String, Fortified> e = it.next();
             Block block = fromKey(e.getKey());
-            if (block == null) {
-                // ワールドが読み込まれていないだけの可能性があるので残す
+            if (block == null || !isChunkLoaded(block)) {
+                // ワールド／チャンクが読み込まれていないだけの可能性があるので残す。
+                // 確認のためにチャンクを同期ロードすると、5分ごとに全記録分の読み込みが走る。
                 continue;
             }
             Fortified f = e.getValue();
@@ -244,6 +294,10 @@ public final class FortifyService {
                 it.remove();
             }
         }
+    }
+
+    private static boolean isChunkLoaded(Block block) {
+        return block.getWorld().isChunkLoaded(block.getX() >> 4, block.getZ() >> 4);
     }
 
     // ---------- 永続化 ----------
@@ -285,8 +339,10 @@ public final class FortifyService {
             }
             try {
                 BlockTier tier = BlockTier.valueOf(sec.getString("tier", BlockTier.WOOD_FRAME.name()));
-                double hp = sec.getDouble("hp", tier.maxHealth());
-                blocks.put(k, new Fortified(tier, hp, tier.maxHealth(), true));
+                // 最大耐久は「要塞化」パークで嵩上げされている場合があるので保存値から復元する
+                double max = sec.getDouble("max", tier.maxHealth());
+                double hp = Math.min(max, sec.getDouble("hp", max));
+                blocks.put(k, new Fortified(tier, hp, max, true));
             } catch (IllegalArgumentException ignored) {
                 // 未知ティアはスキップ
             }
@@ -307,6 +363,7 @@ public final class FortifyService {
             ConfigurationSection sec = root.createSection(e.getKey());
             sec.set("tier", f.tier.name());
             sec.set("hp", f.health);
+            sec.set("max", f.maxHealth);
         }
         try {
             File parent = file.getParentFile();

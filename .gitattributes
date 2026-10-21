@@ -1,0 +1,4 @@
+# cmd.exe は LF 改行のバッチを誤解析することがあるため CRLF に固定する
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf

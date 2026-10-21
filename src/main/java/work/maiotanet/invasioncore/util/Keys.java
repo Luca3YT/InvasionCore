@@ -21,6 +21,12 @@ public final class Keys {
     public static NamespacedKey INVADER_WAVE;
     /** 侵略Mobが落とすShard量 (Integer) */
     public static NamespacedKey INVADER_SHARD;
+    /** ボスの種別 (String / BossType.name()) */
+    public static NamespacedKey INVADER_BOSS;
+    /** 侵略Mobが撃ち出した質量爆弾であることの目印 (String / nexus uuid) */
+    public static NamespacedKey PROJECTILE_NEXUS;
+    /** 質量爆弾の威力倍率 (Double) */
+    public static NamespacedKey PROJECTILE_POWER;
 
     /** カスタムアイテムのID (String) */
     public static NamespacedKey ITEM_ID;
@@ -37,6 +43,9 @@ public final class Keys {
         INVADER_TIER = key("invader_tier");
         INVADER_WAVE = key("invader_wave");
         INVADER_SHARD = key("invader_shard");
+        INVADER_BOSS = key("invader_boss");
+        PROJECTILE_NEXUS = key("projectile_nexus");
+        PROJECTILE_POWER = key("projectile_power");
         ITEM_ID = key("item_id");
         ITEM_USES = key("item_uses");
     }

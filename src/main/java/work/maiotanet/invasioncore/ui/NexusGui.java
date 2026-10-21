@@ -37,6 +37,13 @@ public final class NexusGui {
     private static final int SLOT_UPGRADE = 15;
     private static final int SLOT_PERK = 22;
 
+    /** パーク画面（45スロット）の配置。2行に分けて最大14種まで並べられる。 */
+    private static final int[] PERK_SLOTS = {
+            10, 11, 12, 13, 14, 15, 16,
+            19, 20, 21, 22, 23, 24, 25
+    };
+    private static final int PERK_BACK_SLOT = 40;
+
     private final InvasionConfig config;
     private final NexusManager nexuses;
     private final GameStageService stages;
@@ -126,7 +133,8 @@ public final class NexusGui {
             NexusUpgrade up = all[i];
             int level = nexus.upgradeLevel(up);
             int cost = up.costFor(level);
-            cost = cost < 0 ? -1 : nexuses.discounted(nexus, cost);
+            // 表示と実際の請求額がずれないよう、購入時と同じ計算（パーク割引込み）を使う
+            cost = cost < 0 ? -1 : upgradeCost(player, nexus, cost);
 
             List<String> lore = new ArrayList<>();
             lore.add(up.description());
@@ -145,12 +153,12 @@ public final class NexusGui {
     public void openPerks(Player player, Nexus nexus) {
         InvasionHolder holder = new InvasionHolder(InvasionHolder.Kind.PERK,
                 nexus == null ? null : nexus.id());
-        Inventory inv = Bukkit.createInventory(holder, 27, Text.of("パーク", Text.GOOD));
+        Inventory inv = Bukkit.createInventory(holder, 45, Text.of("パーク", Text.GOOD));
         holder.inventory(inv);
 
         PerkService.Profile profile = perks.profile(player);
         Perk[] all = Perk.values();
-        for (int i = 0; i < all.length; i++) {
+        for (int i = 0; i < all.length && i < PERK_SLOTS.length; i++) {
             Perk perk = all[i];
             int level = profile.level(perk);
             int cost = perk.costFor(level);
@@ -161,16 +169,17 @@ public final class NexusGui {
             lore.add(Text.bar((double) level / perk.maxLevel(), 10));
             lore.add(cost < 0 ? "上限に達している。" : "必要ポイント: " + cost);
             lore.add("残りポイント: " + profile.points());
-            inv.setItem(10 + i + (i >= 3 ? 1 : 0), icon(perk.icon(),
+            inv.setItem(PERK_SLOTS[i], icon(perk.icon(),
                     Text.of(perk.displayName(), Text.GOOD), lore));
         }
 
         inv.setItem(4, icon(Material.PAPER, Text.of("累計戦績", Text.INFO),
                 List.of("撃破数: " + profile.totalKills(),
                         "血の月踏破: " + profile.bloodMoonsSurvived() + " 回",
-                        "最高到達ウェーブ: " + profile.bestWave())));
+                        "最高到達ウェーブ: " + profile.bestWave(),
+                        "残りポイント: " + profile.points())));
         if (nexus != null) {
-            inv.setItem(26, icon(Material.ARROW, Text.of("戻る", Text.MUTED), List.of()));
+            inv.setItem(PERK_BACK_SLOT, icon(Material.ARROW, Text.of("戻る", Text.MUTED), List.of()));
         }
         fill(inv);
         player.openInventory(inv);
@@ -229,9 +238,7 @@ public final class NexusGui {
                 player.sendMessage(Text.warn(up.displayName() + " は上限に達している。"));
                 return true;
             }
-            int actual = (int) Math.round(nexuses.discounted(nexus, cost)
-                    * perks.costMultiplier(player.getUniqueId()));
-            actual = Math.max(1, actual);
+            int actual = upgradeCost(player, nexus, cost);
             if (!shards.take(player, actual)) {
                 player.sendMessage(Text.error("Shard が足りない（必要 " + actual
                         + " / 所持 " + shards.count(player) + "）"));
@@ -252,14 +259,13 @@ public final class NexusGui {
     }
 
     public boolean handlePerk(Player player, Nexus nexus, int slot) {
-        if (slot == 26 && nexus != null) {
+        if (slot == PERK_BACK_SLOT && nexus != null) {
             openMain(player, nexus);
             return true;
         }
         Perk[] all = Perk.values();
-        for (int i = 0; i < all.length; i++) {
-            int expected = 10 + i + (i >= 3 ? 1 : 0);
-            if (expected != slot) {
+        for (int i = 0; i < all.length && i < PERK_SLOTS.length; i++) {
+            if (PERK_SLOTS[i] != slot) {
                 continue;
             }
             Perk perk = all[i];
@@ -275,6 +281,12 @@ public final class NexusGui {
             return true;
         }
         return true;
+    }
+
+    /** アップグレードの実請求額。整備術式の割引と、本人の「建築士」パークの両方を掛ける。 */
+    private int upgradeCost(Player player, Nexus nexus, int base) {
+        return Math.max(1, (int) Math.round(nexuses.discounted(nexus, base)
+                * perks.costMultiplier(player.getUniqueId())));
     }
 
     private void collectRewards(Player player, Nexus nexus) {

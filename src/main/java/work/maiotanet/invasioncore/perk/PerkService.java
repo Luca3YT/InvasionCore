@@ -76,9 +76,17 @@ public final class PerkService {
 
     // ---------- 効果の適用 ----------
 
-    /** 侵略者への与ダメージ倍率。 */
-    public double outgoingDamageMultiplier(UUID id) {
-        return 1.0 + 0.08 * profile(id).level(Perk.DEMOLITION);
+    /**
+     * 侵略者への与ダメージ倍率。
+     *
+     * @param healthRatio 現在HPの割合。半分以下なら「猛者」が乗る。
+     */
+    public double outgoingDamageMultiplier(UUID id, double healthRatio) {
+        double multiplier = 1.0 + 0.08 * profile(id).level(Perk.DEMOLITION);
+        if (healthRatio <= 0.5) {
+            multiplier += 0.15 * profile(id).level(Perk.BERSERKER);
+        }
+        return multiplier;
     }
 
     /** 侵略者からの被ダメージ倍率。 */
@@ -101,9 +109,24 @@ public final class PerkService {
         return 1.0 + 0.25 * profile(id).level(Perk.MEDIC);
     }
 
-    /** タレット威力倍率。 */
+    /** タレット・トラップ威力倍率。 */
     public double turretMultiplier(UUID id) {
         return 1.0 + 0.08 * profile(id).level(Perk.GUNNER);
+    }
+
+    /** 強化ブロックの最大耐久倍率。強化した本人のパークが乗る。 */
+    public double fortifyHealthMultiplier(UUID id) {
+        return 1.0 + 0.12 * profile(id).level(Perk.FORTIFIER);
+    }
+
+    /** タレットの弾薬を消費しない確率。 */
+    public double ammoSaveChance(UUID id) {
+        return Math.min(0.6, 0.12 * profile(id).level(Perk.AMMO_SMITH));
+    }
+
+    /** 「遊撃」による移動速度の上乗せ段階。0 なら効果なし。 */
+    public int skirmisherLevel(UUID id) {
+        return profile(id).level(Perk.SKIRMISHER);
     }
 
     // ---------- 進行 ----------

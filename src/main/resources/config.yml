@@ -15,13 +15,24 @@ nexus:
   defense-radius: 48
   # 侵略者がブロックを破壊してよい半径。範囲外の建築物は絶対に壊されない
   breach-radius: 40
-  # 侵略者1撃あたりのネクサスへのダメージ（種別・変異ティアで倍率がかかる）
-  damage-per-hit: 6.0
+  # 侵略者1撃あたりのネクサスへのダメージ（種別・変異ティアで倍率がかかる）。
+  # 各個体は1秒に1回殴るため、実効DPSは「到達した敵の数 x この値」になる。
+  # 6.0 だと20体が到達した時点で毎秒120ダメージとなり、防衛線が破られた瞬間に
+  # 立て直す時間が一切無くなる（実機検証で確認）。反応できる余地を残す値にしている。
+  damage-per-hit: 2.5
   # ネクサスレベルの上限
   max-level: 30
   # 稼働中ネクサスの周囲でバニラ敵Mobの自然湧きを止める。
   # 止めないと侵略者と混ざって判別できなくなるため、既定で有効
   suppress-vanilla-spawns: true
+
+mob:
+  # 全侵略Mobの移動速度に掛かる係数。種別ごとの相対関係は保たれる。
+  # まだ速いと感じるなら 0.7 前後まで下げてよい。1.0 が素の設定値
+  speed-multiplier: 0.85
+  # 飛行型の速度（ブロック/tick）。経路探索を使わないためここで決まる。
+  # 参考: プレイヤーの歩行が約0.215、疾走が約0.28
+  flyer-speed: 0.20
 
 breach:
   # AI更新1回あたりの基礎ブロック破壊力
@@ -30,6 +41,11 @@ breach:
   power-per-damage: 1.5
   # 何回のAI更新で距離が縮まらなければ「閉塞」と判断するか
   stuck-threshold: 3
+  # 壁を殴る間隔（tick）。20 = 毎秒1回。
+  # この値が無いとAI更新のたびに殴ることになり、破壊力が
+  # performance.ai-buckets の設定に左右されてしまう。
+  # 小さくすると壁が一瞬で溶けるので注意
+  swing-interval-ticks: 20
   # この距離までプレイヤーが近づくと、ネクサスより先にプレイヤーを狙う
   player-aggro-range: 7.0
   # 工兵が積める足場の最大段数
@@ -40,6 +56,9 @@ cycle:
   blood-moon-interval: 7
   # 血の月以外の夜にも小規模襲撃を行うか
   night-skirmish: true
+  # 夜間襲撃が始まる日。これより前の夜は襲撃が来ない。
+  # 拠点もShardも無い初日から削られると立ち上がりが理不尽になるため猶予を置く
+  skirmish-start-day: 3
   # 小規模襲撃の規模（血の月に対する比率）
   night-skirmish-scale: 0.22
 
@@ -87,8 +106,9 @@ heat:
 economy:
   # 侵略者1体あたりの基礎 Shard ドロップ量の基準
   shard-base-drop: 2
-  # 修理コスト。missing HP をこの値で割った量の Shard を要求する
-  repair-cost-per-hp: 20
+  # 修理コスト。missing HP をこの値で割った量の Shard を要求する。
+  # 鋼鉄(3200HP)の全損修理が約53 Shard になる想定。小さくすると修理が高騰する
+  repair-cost-per-hp: 60
 
 world-events:
   wandering-horde:

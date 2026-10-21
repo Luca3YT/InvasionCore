@@ -12,8 +12,8 @@ import java.util.concurrent.ThreadLocalRandom;
 public enum MutationTier {
 
     NORMAL("", 1.00, 1.00, 1.00, 0, NamedTextColor.WHITE, false),
-    FERAL("凶暴", 1.85, 1.15, 1.50, 24, NamedTextColor.GOLD, false),
-    RADIATED("汚染", 3.10, 1.22, 2.20, 60, NamedTextColor.GREEN, true);
+    FERAL("凶暴", 1.85, 1.08, 1.50, 24, NamedTextColor.GOLD, false),
+    RADIATED("汚染", 3.10, 1.12, 2.20, 60, NamedTextColor.GREEN, true);
 
     private final String prefix;
     private final double healthMultiplier;

@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>InvasionCore 参加者ガイド</title>
+<meta name="description" content="配信のマイクラサーバーで、みんなでネクサスを守る防衛ゲーム InvasionCore の参加者向けガイド。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column under a night-sky hero band; tables scroll inside their own wrapper. */
+:root {
+  --bg: #eef0f4;
+  --surface: #ffffff;
+  --sunk: #e2e5ec;
+  --fg: #1b1f2a;
+  --muted: #5a6172;
+  --line: #cfd4de;
+  --accent: #b3261e;
+  --accent-soft: #f7dedb;
+  --shard: #6d4bb5;
+  --shard-soft: #e9e2f7;
+  --night: #161a26;
+  --night-fg: #e9ebf2;
+  --font-display: "DotGothic16", "Noto Sans JP", system-ui, sans-serif;
+  --font-body: "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12141c; --surface: #1b1e29; --sunk: #232735; --fg: #e6e8ef; --muted: #9aa1b4;
+    --line: #2e3344; --accent: #ff6b5e; --accent-soft: #3a1d1d; --shard: #b79cf2; --shard-soft: #2a2340;
+    --night: #0b0d13; --night-fg: #e9ebf2; color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15.5px; line-height: 1.8; }
+a { color: var(--accent); }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.gutter { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.inner { max-width: 820px; margin: 0 auto; }
+
+.hero { background: var(--night); color: var(--night-fg); padding-block: calc(env(safe-area-inset-top, 0px) + 56px) 48px; position: relative; overflow: hidden; }
+.hero::after { content: ""; position: absolute; width: 220px; height: 220px; border-radius: 50%; right: -40px; top: -50px; background: radial-gradient(circle at 40% 40%, #ff7a6b, #b3261e 60%, #6e140f); box-shadow: 0 0 80px 20px rgba(179, 38, 30, .35); opacity: .9; }
+.hero .inner { position: relative; z-index: 1; }
+.eyebrow { font-family: var(--font-display); letter-spacing: .14em; font-size: 13px; color: #ff8a7e; margin: 0; }
+h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(30px, 6vw, 48px); line-height: 1.25; margin: 8px 0 14px; text-wrap: balance; max-width: 16em; }
+.hero p { max-width: 58ch; margin: 0; color: #c3c8d6; }
+.hero .links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.btn { display: inline-block; padding: 9px 18px; border-radius: 6px; text-decoration: none; font-weight: 500; font-size: 14.5px; }
+.btn.primary { background: var(--accent); color: #fff; }
+.btn.ghost { border: 1px solid #4a5168; color: var(--night-fg); }
+.btn:hover { filter: brightness(1.08); }
+
+main { padding-block: 8px 72px; }
+section { padding-top: 44px; scroll-margin-top: 12px; }
+h2 { font-family: var(--font-display); font-weight: 400; font-size: 25px; margin: 0 0 8px; text-wrap: balance; }
+h3 { font-size: 16.5px; margin: 24px 0 6px; }
+p { margin: 8px 0; max-width: 68ch; }
+
+.steps { counter-reset: s; list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 12px; }
+.steps li { counter-increment: s; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; }
+.steps li::before { content: counter(s); font-family: var(--font-display); font-size: 20px; color: var(--accent); text-align: center; line-height: 1.4; }
+.steps p { margin: 2px 0; }
+
+code { font-family: var(--font-mono); font-size: .9em; background: var(--sunk); padding: 1px 6px; border-radius: 4px; }
+.cmd { display: flex; align-items: center; gap: 8px; background: var(--sunk); border-radius: 6px; padding: 6px 6px 6px 12px; margin: 8px 0; }
+.cmd span { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; font-family: var(--font-mono); font-size: 14px; }
+.cmd button { font: 12px var(--font-body); background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 3px 10px; cursor: pointer; flex: none; }
+
+.cycle { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin: 16px 0 6px; }
+.day { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 8px; text-align: center; min-width: 0; }
+.day b { font-family: var(--font-display); font-weight: 400; display: block; }
+.day span { font-size: 11.5px; color: var(--muted); display: block; line-height: 1.4; }
+.day.raid { border-color: var(--shard); }
+.day.moon { background: var(--accent); border-color: var(--accent); }
+.day.moon b, .day.moon span { color: #fff; }
+@media (max-width: 520px) { .cycle { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+.table-wrap { overflow-x: auto; margin: 12px 0; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 500; color: var(--muted); font-size: 12.5px; background: var(--sunk); white-space: nowrap; }
+tr:last-child td { border-bottom: none; }
+
+.callout { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 12px 16px; border-radius: 0 6px 6px 0; margin: 14px 0; max-width: 68ch; }
+.callout.shard { border-left-color: var(--shard); background: var(--shard-soft); }
+.callout ul { margin: 6px 0 0; padding-left: 1.2em; }
+
+.rules { list-style: none; padding: 0; display: grid; gap: 8px; margin: 12px 0; }
+.rules li { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; }
+.rules b { display: block; }
+
+details { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; margin: 8px 0; }
+summary { cursor: pointer; font-weight: 500; }
+details p { margin: 8px 0 0; }
+
+footer { border-top: 1px solid var(--line); padding-block: 20px calc(env(safe-area-inset-bottom, 0px) + 28px); font-size: 13px; color: var(--muted); }
+footer .inner { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+</style>
+</head>
+<body>
+
+<header class="hero gutter">
+  <div class="inner">
+    <p class="eyebrow">INVASIONCORE · 配信参加型</p>
+    <h1>7日目の夜を、みんなで守り抜く。</h1>
+    <p>配信のマイクラサーバーに入って、拠点の中心にある「ネクサス」を侵略者の大群から一緒に守るゲームです。このページでは、参加のしかたと遊び方の基本を説明します。</p>
+    <div class="links">
+      <a class="btn primary" href="#join">参加のしかた</a>
+      <a class="btn ghost" href="usage.html">詳しい遊び方ガイド</a>
+    </div>
+  </div>
+</header>
+
+<main class="gutter">
+  <div class="inner">
+
+    <section id="about">
+      <h2>どんなゲーム？</h2>
+      <p>日にちは <strong>7日周期</strong> で進みます。Day 1〜6 は準備期間で、7日目の夜が <strong>血の月</strong> です。血の月には侵略者が何波も押し寄せ、<strong>夜明けまでネクサスが残れば勝ち</strong> です。</p>
+      <div class="cycle">
+        <div class="day"><b>Day 1</b><span>探索</span></div>
+        <div class="day"><b>Day 2</b><span>壁づくり</span></div>
+        <div class="day raid"><b>Day 3</b><span>夜に小襲撃</span></div>
+        <div class="day raid"><b>Day 4</b><span>強化</span></div>
+        <div class="day raid"><b>Day 5</b><span>弾薬準備</span></div>
+        <div class="day raid"><b>Day 6</b><span>最終確認</span></div>
+        <div class="day moon"><b>Day 7</b><span>血の月</span></div>
+      </div>
+      <p>侵略者はプレイヤーより <strong>ネクサスを優先して狙い</strong>、行く手の壁を殴って壊します。勝つたびにネクサスが強くなり、次の血の月はもっと厳しくなります。</p>
+    </section>
+
+    <section id="join">
+      <h2>参加のしかた</h2>
+      <ol class="steps">
+        <li><div><p><strong>Minecraft Java Edition 26.2</strong> を用意します。統合版では入れません。</p></div></li>
+        <li><div><p>サーバーのアドレスは <strong>配信の中で案内します</strong>。マルチプレイの「サーバーを追加」に入力して接続してください。</p></div></li>
+        <li><div><p>ログインしたら、ネクサス（ロードストーンのブロック）の近くまで行きます。周囲 <strong>48 ブロック以内</strong> にいれば自動で参加者になります。</p></div></li>
+        <li><div><p>拠点から離れて探索することが多い人は、ネクサスの近くで次のコマンドを打っておきます。<strong>120 ブロック</strong> 離れても参加者として扱われます。</p>
+          <div class="cmd"><span>/invasion join</span><button type="button">コピー</button></div></div></li>
+      </ol>
+    </section>
+
+    <section id="first">
+      <h2>まずやること</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>やること</th><th>どうやって</th></tr></thead>
+        <tbody>
+          <tr><td>状況を確認する</td><td>画面右のサイドバーに Day・血の月までの日数・ネクサスの HP・自分の Shard が出ます</td></tr>
+          <tr><td>お金（Shard）を集める</td><td>侵略者を倒すと Shard（アメジストの欠片）を落とします。拾ってインベントリに入れておくだけで使えます</td></tr>
+          <tr><td>素材を集める</td><td>準備期間は普通のマイクラと同じです。鉄・レッドストーン・矢・雪玉などがタレットや弾薬になります</td></tr>
+          <tr><td>配信者の指示を聞く</td><td>どこに壁を作るか、誰が何を担当するかは配信者が決めます</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="roles">
+      <h2>役割の例</h2>
+      <p>全員が同じことをするより、分担したほうが守りやすくなります。どの役割でも報酬はちゃんともらえます。</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>役割</th><th>やること</th><th>使うもの</th></tr></thead>
+        <tbody>
+          <tr><td>前衛</td><td>壁際やネクサスに張り付いた敵を倒す</td><td>武器・救急キット・閃光弾</td></tr>
+          <tr><td>建築・強化</td><td>壁を作り、強化ハンマーで硬くする</td><td>強化ハンマー・Shard</td></tr>
+          <tr><td>修理</td><td>血の月の最中に、削られた壁を直す</td><td>強化ハンマー・応急補修キット</td></tr>
+          <tr><td>タレット係</td><td>タレットを置き、弾薬を切らさない</td><td>矢・ブレイズパウダー・雪玉・レッドストーン</td></tr>
+          <tr><td>補給</td><td>空中投下を拾いに行く、素材を集める</td><td>—</td></tr>
+        </tbody>
+      </table></div>
+      <h3>強化ハンマー</h3>
+      <p>ハンマー（鉄の斧の見た目）でブロックを右クリックすると硬くなります。木枠 → 補強木材 → 石積み → 鉄筋コンクリート → 鋼鉄 の順に上がり、1段階ごとに Shard を使います。傷んだブロックを右クリックすると修理、<strong>スニークしながら右クリック</strong> で耐久の確認です。</p>
+      <h3>タレット</h3>
+      <p>置いたあと、<strong>弾薬を手に持って右クリック</strong> で装填します。射撃は矢、火炎はブレイズパウダー、凍結は雪玉、修復はレッドストーンです。素手で右クリックすると残弾が見られます。</p>
+    </section>
+
+    <section id="bloodmoon">
+      <h2>血の月の戦い方</h2>
+      <p>7日目は昼過ぎ・夕方・日没直前の3回、警告が出ます。日没までに持ち場についてください。画面上のボスバーに、ウェーブ数・残りの敵・ネクサスの HP が出ます。</p>
+      <ul class="rules">
+        <li><b>5 波目と 10 波目にボスが出る</b>ボスごとに必要な対策（壁の厚み・屋根・火力など）が違います。</li>
+        <li><b>回復役と強化役から倒す</b>蘇生者（味方を回復）と守護者（味方を硬くする）を残すと、前線が崩れなくなります。</li>
+        <li><b>壁に穴が開いたら緊急バリア</b>右クリックした面に、鋼鉄並みの壁を 45 秒だけ張れます。</li>
+      </ul>
+      <div class="callout shard">
+        <strong>報酬をもらう条件</strong>：勝った瞬間（夜明け）に、次の両方を満たしている人に Shard とパークポイントが配られます。
+        <ul>
+          <li>拠点の近くにいる（48 ブロック以内、<code>/invasion join</code> 済みなら 120 ブロック以内）</li>
+          <li>生きている（リスポーン待ちだともらえません）</li>
+        </ul>
+      </div>
+      <p>Shard は、倒した数だけでなく <strong>壁の修理・強化、タレットや罠の設置、攻撃を受け止めた量</strong> でも多くもらえます。パークポイントは <code>/invasion perks</code> で使い、自分を強化できます。</p>
+    </section>
+
+    <section id="death">
+      <h2>死んでしまったら</h2>
+      <p>拠点の近くで死ぬと、持ち物は死んだ場所の <strong>樽（バックパック）</strong> にまとめられます。座標がチャットに出るので取りに行ってください。30 分で樽は消え、中身がその場に落ちます。</p>
+    </section>
+
+    <section id="manners">
+      <h2>参加者のマナー</h2>
+      <p>配信者が別のルールを出している場合は、そちらを優先してください。</p>
+      <ul class="rules">
+        <li><b>他の人の建物や拠点を壊さない</b>拠点の壁を作り直すときは配信者に相談してください。</li>
+        <li><b>ネクサスの報酬は勝手に受け取らない</b>「報酬を受け取る」は誰でも押せますが、全部まとめて1人に入ります。配信者の指示で受け取ってください。</li>
+        <li><b>拠点の近くで大量に採掘しない</b>拠点での採掘・建築・戦闘は「ヒート」として溜まり、溜まりすぎると仲間を呼ぶ叫喚体が出ます。サイドバーのヒートが赤くなったら一度手を止めてください。</li>
+        <li><b>血の月の最中に勝手に持ち場を離れない</b>抜けるときはチャットで一声かけてください。</li>
+      </ul>
+    </section>
+
+    <section id="commands">
+      <h2>参加者が使えるコマンド</h2>
+      <p><code>/invasion</code> は <code>/inv</code> と短く打てます。</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>コマンド</th><th>内容</th></tr></thead>
+        <tbody>
+          <tr><td><code>/invasion status</code></td><td>近くのネクサスの状態と、自分の Shard 所持数</td></tr>
+          <tr><td><code>/invasion join</code></td><td>防衛に参加する（拠点から離れても参加者として扱われる）</td></tr>
+          <tr><td><code>/invasion leave</code></td><td>防衛から抜ける</td></tr>
+          <tr><td><code>/invasion perks</code></td><td>パーク画面を開く</td></tr>
+          <tr><td><code>/invasion top</code></td><td>血の月の踏破ランキング</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="faq">
+      <h2>よくある質問</h2>
+      <details><summary>ブロックが置けない・壊せない</summary><p>稼働中のネクサスは壊せません。それ以外で置けない場合は配信者に伝えてください（サーバーの保護設定の可能性があります）。</p></details>
+      <details><summary>侵略者を倒したのに Shard が増えない</summary><p>Shard はアイテムとして落ちます。拾ってインベントリに入れてください。</p></details>
+      <details><summary>血の月に勝ったのに Shard がもらえなかった</summary><p>夜明けの瞬間に拠点から離れていたか、死んでいた可能性があります。</p></details>
+      <details><summary>強化ハンマーが使えない</summary><p>ネクサスから 48 ブロック以内でしか使えません。Shard が足りない場合も使えません。</p></details>
+      <details><summary>タレットが撃たない</summary><p>弾薬が入っていないかもしれません。素手で右クリックすると残弾が見られます。</p></details>
+    </section>
+
+    <section id="more">
+      <h2>もっと詳しく</h2>
+      <p>敵とボスの一覧、ネクサスのアップグレード、パークの全効果、クラフトレシピ（3×3 の配置図つき）は <a href="usage.html">遊び方ガイド</a> にまとめています。</p>
+    </section>
+
+  </div>
+</main>
+
+<footer class="gutter">
+  <div class="inner">
+    <span>InvasionCore / Paper 26.2</span>
+    <a href="usage.html">遊び方ガイド</a>
+    <a href="https://github.com/Luca3YT/InvasionCore">GitHub</a>
+  </div>
+</footer>
+
+<script>
+document.querySelectorAll(".cmd button").forEach(function (btn) {
+  btn.addEventListener("click", function () {
+    var target = btn.previousElementSibling;
+    var done = function () {
+      btn.textContent = "コピーした";
+      setTimeout(function () { btn.textContent = "コピー"; }, 1500);
+    };
+    var fallback = function () {
+      var range = document.createRange();
+      range.selectNodeContents(target);
+      var sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(target.textContent).then(done, fallback);
+    } else {
+      fallback();
+    }
+  });
+});
+</script>
+</body>
+</html>

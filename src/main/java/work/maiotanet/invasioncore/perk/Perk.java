@@ -21,7 +21,15 @@ public enum Perk {
     MEDIC("衛生兵", Material.GOLDEN_APPLE, 3,
             "補修キットの効果 +25%/Lv"),
     GUNNER("砲手", Material.CROSSBOW, 4,
-            "タレットの威力 +8%/Lv");
+            "タレット・トラップの威力 +8%/Lv"),
+    FORTIFIER("要塞化", Material.NETHERITE_BLOCK, 4,
+            "自分が強化したブロックの耐久 +12%/Lv"),
+    AMMO_SMITH("弾薬工", Material.TIPPED_ARROW, 4,
+            "タレットの弾薬を 12%/Lv の確率で消費しない"),
+    BERSERKER("猛者", Material.NETHERITE_AXE, 3,
+            "HP半分以下のとき与ダメージ +15%/Lv"),
+    SKIRMISHER("遊撃", Material.FEATHER, 4,
+            "移動速度 +4%/Lv、被弾直後に短時間の加速");
 
     private final String displayName;
     private final Material icon;

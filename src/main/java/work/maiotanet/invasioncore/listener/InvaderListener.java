@@ -1,6 +1,10 @@
 package work.maiotanet.invasioncore.listener;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Monster;
 import org.bukkit.entity.Player;
@@ -12,8 +16,13 @@ import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.EntityTargetLivingEntityEvent;
+import org.bukkit.event.world.EntitiesLoadEvent;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import work.maiotanet.invasioncore.config.InvasionConfig;
+import work.maiotanet.invasioncore.defense.FortifyService;
 import work.maiotanet.invasioncore.economy.ContributionTracker;
 import work.maiotanet.invasioncore.economy.ShardService;
 import work.maiotanet.invasioncore.heat.HeatService;
@@ -31,8 +40,12 @@ import work.maiotanet.invasioncore.stage.GameStageService;
 import work.maiotanet.invasioncore.util.Keys;
 import work.maiotanet.invasioncore.wave.WaveEngine;
 import work.maiotanet.invasioncore.wave.WaveModifier;
+import work.maiotanet.invasioncore.world.BreachLog;
 
 import org.bukkit.persistence.PersistentDataType;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 侵略Mobの被弾・撃破処理。
@@ -45,6 +58,8 @@ public final class InvaderListener implements Listener {
     private final InvaderRegistry registry;
     private final InvaderSpawner spawner;
     private final InvaderAiService ai;
+    private final FortifyService fortify;
+    private final BreachLog breachLog;
     private final ShardService shards;
     private final PerkService perks;
     private final ContributionTracker contributions;
@@ -53,7 +68,8 @@ public final class InvaderListener implements Listener {
     private final WaveEngine waves;
 
     public InvaderListener(InvasionConfig config, NexusManager nexuses, InvaderRegistry registry,
-                           InvaderSpawner spawner, InvaderAiService ai, ShardService shards,
+                           InvaderSpawner spawner, InvaderAiService ai, FortifyService fortify,
+                           BreachLog breachLog, ShardService shards,
                            PerkService perks, ContributionTracker contributions,
                            GameStageService stages, HeatService heat, WaveEngine waves) {
         this.config = config;
@@ -61,6 +77,8 @@ public final class InvaderListener implements Listener {
         this.registry = registry;
         this.spawner = spawner;
         this.ai = ai;
+        this.fortify = fortify;
+        this.breachLog = breachLog;
         this.shards = shards;
         this.perks = perks;
         this.contributions = contributions;
@@ -78,7 +96,10 @@ public final class InvaderListener implements Listener {
 
         // プレイヤー → 侵略者
         if (attacker != null && victim != null) {
-            double multiplier = perks.outgoingDamageMultiplier(attacker.getUniqueId());
+            AttributeInstance max = attacker.getAttribute(Attribute.MAX_HEALTH);
+            double ratio = max == null || max.getValue() <= 0
+                    ? 1.0 : attacker.getHealth() / max.getValue();
+            double multiplier = perks.outgoingDamageMultiplier(attacker.getUniqueId(), ratio);
             event.setDamage(event.getDamage() * multiplier);
             contributions.record(victim.nexusId(), attacker.getUniqueId(),
                     ContributionTracker.Kind.DAMAGE, event.getFinalDamage());
@@ -97,6 +118,13 @@ public final class InvaderListener implements Listener {
             event.setDamage(event.getDamage() * multiplier);
             contributions.record(source.nexusId(), defender.getUniqueId(),
                     ContributionTracker.Kind.TANKED, event.getFinalDamage());
+
+            // 「遊撃」は被弾直後に離脱できる加速を得る
+            int skirmisher = perks.skirmisherLevel(defender.getUniqueId());
+            if (skirmisher > 0) {
+                defender.addPotionEffect(new PotionEffect(PotionEffectType.SPEED,
+                        40, Math.min(2, skirmisher / 2 + 1), true, false, false));
+            }
         }
     }
 
@@ -110,6 +138,64 @@ public final class InvaderListener implements Listener {
         // 動物やビレジャーを追いかけ回すのは侵攻として不自然なので切る
         if (event.getTarget() != null && !(event.getTarget() instanceof Player)) {
             event.setCancelled(true);
+        }
+    }
+
+    /**
+     * 爆導体の自爆と、投擲手が撃ち込んだ質量爆弾の爆発を処理する。
+     *
+     * <p>素の爆発に任せると鋼鉄の壁も一撃で消え、ブロック強化という仕組み自体が無意味になる。
+     * ブロック破壊を全て取り消し、強化ティアのHPを通したダメージに変換することで
+     * 「低ティアの壁は崩れるが、上位ティアなら耐える」が成立し、壁を上げる動機が保たれる。
+     * 破壊は BreachLog にも記録され、復元コマンドの対象になる。
+     * エンティティへの爆発ダメージは取り消さないので、直撃すればプレイヤーは普通に吹き飛ぶ。</p>
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onInvaderExplode(EntityExplodeEvent event) {
+        Nexus nexus;
+        double power;
+
+        Invader invader = registry.get(event.getEntity());
+        if (invader != null) {
+            // 爆導体の自爆
+            nexus = nexuses.byId(invader.nexusId());
+            power = 400.0 * invader.tier().damageMultiplier();
+        } else {
+            // 投擲手が撃ち込んだ質量爆弾
+            var pdc = event.getEntity().getPersistentDataContainer();
+            String nexusId = pdc.get(Keys.PROJECTILE_NEXUS, PersistentDataType.STRING);
+            if (nexusId == null) {
+                return;
+            }
+            try {
+                nexus = nexuses.byId(java.util.UUID.fromString(nexusId));
+            } catch (IllegalArgumentException ex) {
+                return;
+            }
+            power = pdc.getOrDefault(Keys.PROJECTILE_POWER, PersistentDataType.DOUBLE, 520.0);
+        }
+
+        List<Block> affected = new ArrayList<>(event.blockList());
+        // 直接破壊は全て取り消す。エンティティへのダメージはそのまま残す。
+        event.blockList().clear();
+
+        if (nexus == null) {
+            return;
+        }
+        Location center = nexus.center();
+        double breachRadiusSq = config.nexusBreachRadius() * (double) config.nexusBreachRadius();
+
+        for (Block block : affected) {
+            if (nexus.isAt(block.getLocation())) {
+                continue;
+            }
+            if (center == null || !center.getWorld().equals(block.getWorld())
+                    || center.distanceSquared(block.getLocation()) > breachRadiusSq) {
+                continue;
+            }
+            if (fortify.damage(block, power)) {
+                breachLog.record(nexus.id(), block);
+            }
         }
     }
 
@@ -136,6 +222,52 @@ public final class InvaderListener implements Listener {
         if (nexus != null && nexus.isActive()) {
             event.setCancelled(true);
         }
+    }
+
+    // ---------- 残留個体の掃除 ----------
+
+    /**
+     * 読み込まれたチャンクに、制御を失った侵略Mobが残っていれば消す。
+     *
+     * <p>侵略Mobは勝手に消えないよう永続化しているため、チャンクごとアンロードされたり
+     * サーバーが異常終了したりすると、登録簿から外れた個体がワールドに保存されて残る。
+     * 放置するとネクサスと無関係に湧き続ける名前付きの強化Mobになり、ウェーブの集計にも乗らない。</p>
+     */
+    @EventHandler
+    public void onEntitiesLoad(EntitiesLoadEvent event) {
+        int removed = sweepOrphans(event.getEntities());
+        if (removed > 0) {
+            // 異常終了の後にしか起きないので、何が起きたか追えるよう記録しておく
+            Bukkit.getLogger().info("[InvasionCore] 制御を失った侵略Mobを "
+                    + removed + " 体撤去しました（チャンク " + event.getChunk().getX()
+                    + ", " + event.getChunk().getZ() + "）。");
+        }
+    }
+
+    /**
+     * PDC に侵略Mobの印があるのに、登録簿の個体と一致しないものを消す。
+     *
+     * @return 消した数
+     */
+    public int sweepOrphans(Iterable<? extends Entity> entities) {
+        int removed = 0;
+        for (Entity entity : entities) {
+            if (!entity.getPersistentDataContainer().has(Keys.INVADER_NEXUS, PersistentDataType.STRING)) {
+                continue;
+            }
+            Invader tracked = registry.get(entity.getUniqueId());
+            if (tracked != null && tracked.entity() == entity) {
+                continue;
+            }
+            if (tracked != null) {
+                // アンロード前の古い参照が残っている。足場も含めて片付ける。
+                registry.unregister(entity.getUniqueId());
+                ai.removePlaced(tracked);
+            }
+            entity.remove();
+            removed++;
+        }
+        return removed;
     }
 
     // ---------- 撃破 ----------

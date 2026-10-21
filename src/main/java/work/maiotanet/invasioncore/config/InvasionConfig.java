@@ -53,6 +53,24 @@ public final class InvasionConfig {
         return cfg.getBoolean("nexus.suppress-vanilla-spawns", true);
     }
 
+    // ---- 侵略Mobの速度 ----
+    /**
+     * 全侵略Mobの移動速度に掛かる係数。
+     * 種別ごとの相対関係を保ったまま、全体の速さだけを調整するためのノブ。
+     */
+    public double mobSpeedMultiplier() {
+        return cfg.getDouble("mob.speed-multiplier", 0.85);
+    }
+
+    /**
+     * 飛行型の移動速度（ブロック/tick）。
+     * 経路探索を使わず速度を直接与えるため、属性ではなくこの値で決まる。
+     * 参考: 歩行約0.215 / 疾走約0.28。
+     */
+    public double flyerSpeed() {
+        return cfg.getDouble("mob.flyer-speed", 0.20);
+    }
+
     // ---- 突破AI ----
     /** AI更新1回あたりの基礎ブロック破壊力。 */
     public double breachPowerBase() {
@@ -67,6 +85,17 @@ public final class InvasionConfig {
     /** 何回のAI更新で距離が縮まらなければ閉塞と判断するか。 */
     public int breachStuckThreshold() {
         return cfg.getInt("breach.stuck-threshold", 3);
+    }
+
+    /**
+     * 壁を殴る間隔（tick）。
+     *
+     * <p>これが無いとAI更新のたびに殴ることになり、破壊力が
+     * performance.ai-buckets の設定値に左右されてしまう。
+     * 性能設定を変えたら壁の強度まで変わる、という事故を防ぐために必要。</p>
+     */
+    public int breachSwingIntervalTicks() {
+        return Math.max(1, cfg.getInt("breach.swing-interval-ticks", 20));
     }
 
     /** この距離までプレイヤーが近づくと、ネクサスより先にプレイヤーを狙う。 */
@@ -86,6 +115,14 @@ public final class InvasionConfig {
 
     public boolean nightSkirmishEnabled() {
         return cfg.getBoolean("cycle.night-skirmish", true);
+    }
+
+    /**
+     * 夜間襲撃が始まる日。これより前の夜は襲撃が来ない。
+     * 拠点もShardも無い初日から削られると、立ち上がりが理不尽になる。
+     */
+    public int skirmishStartDay() {
+        return cfg.getInt("cycle.skirmish-start-day", 3);
     }
 
     public double nightSkirmishScale() {

@@ -116,11 +116,18 @@ public final class ContributionTracker {
             out.put(p, amount);
             handed += amount;
         }
-        // 端数は最上位に寄せる
+        // 端数は参加者のうち最上位に寄せる。
+        // 貢献度ランキングの1位が既に範囲外へ出ている（死亡中を含む）と、その人に割り当てた分は
+        // 誰にも配られずに消えるので、必ず参加者の中から選ぶ。
         int remainder = total - handed;
         if (remainder > 0) {
-            List<Map.Entry<UUID, Double>> rank = ranking(nexusId);
-            UUID top = rank.isEmpty() ? participants.get(0) : rank.get(0).getKey();
+            UUID top = participants.get(0);
+            for (Map.Entry<UUID, Double> e : ranking(nexusId)) {
+                if (participants.contains(e.getKey())) {
+                    top = e.getKey();
+                    break;
+                }
+            }
             out.merge(top, remainder, Integer::sum);
         }
         return out;

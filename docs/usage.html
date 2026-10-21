@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>InvasionCore 遊び方ガイド</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: left sticky table of contents + one reading column; stacks to one column on phones. */
+:root {
+  --bg: #eef0f4;          /* cool stone */
+  --surface: #ffffff;
+  --sunk: #e2e5ec;
+  --fg: #1b1f2a;
+  --muted: #5a6172;
+  --line: #cfd4de;
+  --accent: #b3261e;      /* blood moon */
+  --accent-soft: #f7dedb;
+  --shard: #6d4bb5;       /* amethyst shard */
+  --shard-soft: #e9e2f7;
+  --good: #2f7d4f;
+  --font-display: "DotGothic16", "Noto Sans JP", system-ui, sans-serif;
+  --font-body: "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12141c; --surface: #1b1e29; --sunk: #232735; --fg: #e6e8ef; --muted: #9aa1b4;
+    --line: #2e3344; --accent: #ff6b5e; --accent-soft: #3a1d1d; --shard: #b79cf2; --shard-soft: #2a2340;
+    --good: #6cc790; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12141c; --surface: #1b1e29; --sunk: #232735; --fg: #e6e8ef; --muted: #9aa1b4;
+  --line: #2e3344; --accent: #ff6b5e; --accent-soft: #3a1d1d; --shard: #b79cf2; --shard-soft: #2a2340;
+  --good: #6cc790; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0;
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-body); font-size: 15.5px; line-height: 1.8;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+a { color: var(--accent); }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 48px; padding-block: 40px 80px; }
+@media (max-width: 860px) { .wrap { grid-template-columns: minmax(0, 1fr); gap: 24px; padding-block: 24px 56px; } }
+
+nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px); align-self: start; font-size: 13.5px; }
+nav.toc p { font-family: var(--font-display); color: var(--muted); letter-spacing: .08em; margin: 0 0 8px; }
+nav.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+nav.toc a { display: block; color: var(--fg); text-decoration: none; padding: 3px 10px; border-left: 2px solid var(--line); }
+nav.toc a:hover { border-left-color: var(--accent); color: var(--accent); }
+@media (max-width: 860px) {
+  nav.toc { position: static; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; }
+  nav.toc ol { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+}
+
+main { min-width: 0; }
+header.hero { padding-bottom: 28px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+.eyebrow { font-family: var(--font-display); color: var(--accent); letter-spacing: .12em; font-size: 13px; margin: 0; }
+h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(30px, 5vw, 44px); line-height: 1.25; margin: 6px 0 14px; text-wrap: balance; }
+.lede { max-width: 62ch; color: var(--muted); margin: 0; }
+.moon { display: inline-block; width: .8em; height: .8em; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); vertical-align: .05em; margin-right: .3em; }
+
+section { padding-top: 44px; scroll-margin-top: 16px; }
+h2 { font-family: var(--font-display); font-weight: 400; font-size: 25px; margin: 0 0 6px; text-wrap: balance; }
+h2 small { font-family: var(--font-body); font-size: 13px; color: var(--muted); margin-left: 10px; }
+h3 { font-size: 16.5px; margin: 28px 0 8px; }
+p { max-width: 68ch; margin: 8px 0; }
+.who { display: inline-block; font-size: 12px; letter-spacing: .06em; padding: 1px 8px; border-radius: 99px; margin-bottom: 6px; }
+.who.admin { background: var(--accent-soft); color: var(--accent); }
+.who.player { background: var(--shard-soft); color: var(--shard); }
+
+/* Setup steps are a real sequence, so they are numbered. */
+ol.steps { counter-reset: step; list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 14px; }
+ol.steps > li { counter-increment: step; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; }
+ol.steps > li::before { content: counter(step); font-family: var(--font-display); font-size: 20px; color: var(--accent); line-height: 1.4; text-align: center; }
+ol.steps strong { display: block; }
+ol.steps p { margin: 4px 0; }
+
+code, .cmd { font-family: var(--font-mono); font-size: .9em; }
+code { background: var(--sunk); padding: 1px 6px; border-radius: 4px; }
+.cmd { display: flex; align-items: center; gap: 8px; background: var(--sunk); border-radius: 6px; padding: 6px 6px 6px 12px; margin: 8px 0; max-width: 100%; }
+.cmd span { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; }
+.cmd button { font: 12px var(--font-body); background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 3px 10px; cursor: pointer; flex: none; }
+.cmd button:hover { border-color: var(--accent); }
+
+.note { border-left: 3px solid var(--shard); background: var(--shard-soft); padding: 10px 14px; border-radius: 0 6px 6px 0; margin: 14px 0; max-width: 68ch; }
+.warn { border-left-color: var(--accent); background: var(--accent-soft); }
+
+/* 7-day cycle strip */
+.cycle { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin: 18px 0 8px; }
+.day { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 8px; min-width: 0; }
+.day b { font-family: var(--font-display); font-weight: 400; display: block; font-size: 15px; }
+.day span { font-size: 12px; color: var(--muted); line-height: 1.5; display: block; }
+.day.raid { border-color: var(--shard); }
+.day.moon-day { background: var(--accent); border-color: var(--accent); }
+.day.moon-day b, .day.moon-day span { color: #fff; }
+@media (max-width: 560px) { .cycle { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+.table-wrap { overflow-x: auto; margin: 12px 0; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 500; color: var(--muted); font-size: 12.5px; letter-spacing: .04em; background: var(--sunk); white-space: nowrap; }
+tr:last-child td { border-bottom: none; }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.shard { color: var(--shard); font-weight: 500; white-space: nowrap; }
+
+/* Fortification tier ladder */
+.ladder { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin: 14px 0; }
+.tier { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px; min-width: 0; }
+.tier i { display: block; height: 6px; border-radius: 3px; background: var(--fg); opacity: .8; margin-bottom: 8px; }
+.tier b { display: block; font-size: 13.5px; }
+.tier span { display: block; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+@media (max-width: 560px) { .ladder { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Crafting grids */
+.recipes { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 14px; margin-top: 14px; }
+.recipe { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px; min-width: 0; }
+.recipe h4 { margin: 0 0 10px; font-size: 14.5px; display: flex; justify-content: space-between; gap: 8px; }
+.recipe h4 span { color: var(--muted); font-weight: 400; font-variant-numeric: tabular-nums; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; width: 100%; max-width: 210px; }
+.cell { aspect-ratio: 1; background: var(--sunk); border: 1px solid var(--line); border-radius: 3px; display: grid; place-items: center; font-size: 10.5px; line-height: 1.25; text-align: center; padding: 2px; color: var(--fg); overflow: hidden; max-width: 100%; }
+.cell.empty { background: transparent; border-style: dashed; }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-top: 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px; min-width: 0; }
+.card b { display: block; }
+.card .meta { font-size: 12.5px; color: var(--muted); }
+.card p { font-size: 14px; margin: 6px 0 0; }
+
+.gui { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 3px; max-width: 360px; margin: 12px 0; }
+.gui div { aspect-ratio: 1; background: var(--sunk); border-radius: 3px; font-size: 9.5px; display: grid; place-items: center; text-align: center; line-height: 1.2; }
+.gui .on { background: var(--surface); border: 1px solid var(--accent); color: var(--fg); font-weight: 500; }
+
+footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <nav class="toc" aria-label="目次">
+    <a class="home" href="index.html">← 参加者ガイド</a>
+    <p>CONTENTS</p>
+    <ol>
+      <li><a href="#overview">どんなゲーム？</a></li>
+      <li><a href="#setup">はじめる手順</a></li>
+      <li><a href="#cycle">7日間の流れ</a></li>
+      <li><a href="#nexus">ネクサスの操作</a></li>
+      <li><a href="#fortify">拠点を固める</a></li>
+      <li><a href="#turrets">タレットと罠</a></li>
+      <li><a href="#gadgets">ガジェット</a></li>
+      <li><a href="#bloodmoon">血の月</a></li>
+      <li><a href="#enemies">敵とボス</a></li>
+      <li><a href="#growth">報酬と成長</a></li>
+      <li><a href="#recipes">クラフト</a></li>
+      <li><a href="#commands">コマンド</a></li>
+      <li><a href="#trouble">困ったとき</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <header class="hero">
+      <p class="eyebrow">INVASIONCORE / PAPER 26.2</p>
+      <h1><span class="moon" aria-hidden="true"></span>7日目の夜を、みんなで守り抜く。</h1>
+      <p class="lede">拠点の中心に「ネクサス」を置き、7日ごとにやってくる「血の月」の総攻撃から守るマルチプレイ防衛ゲームです。このページでは、マイクラにログインしてからの準備と遊び方を順番に説明します。</p>
+    </header>
+
+    <section id="overview">
+      <h2>どんなゲーム？</h2>
+      <p>ネクサスを起動すると日数が進み始めます。Day 1〜6 は準備期間で、採掘・建築・拠点の強化を進めます。7日目の日没から<strong>血の月</strong>が始まり、夜明けまで侵略者の大群が何波も押し寄せます。</p>
+      <p>侵略者はプレイヤーではなく<strong>ネクサスを最優先で狙い</strong>、行く手を塞ぐ壁は殴って壊します。壁を強化し、タレットや罠を置き、全員で役割を分けて守り切りましょう。夜明けまでネクサスが残れば防衛成功です。</p>
+    </section>
+
+    <section id="setup">
+      <h2>はじめる手順</h2>
+      <span class="who admin">配信者・管理者</span>
+      <p>サーバーにログインしてから、最初の血の月の準備に入るまでの手順です。</p>
+      <ol class="steps">
+        <li><div><strong>OP 権限をもらう</strong>
+          <p>サーバーのコンソールで、自分の MCID に OP を付けます。</p>
+          <div class="cmd"><span>op &lt;自分のMCID&gt;</span><button type="button">コピー</button></div></div></li>
+        <li><div><strong>ネクサスを手に入れる</strong>
+          <p>クラフトでも作れますが（<a href="#recipes">レシピ</a>）、ネザースターが要るので最初はコマンドで配るのが早いです。</p>
+          <div class="cmd"><span>/invasion give nexus</span><button type="button">コピー</button></div>
+          <p>テスト用に一式欲しいときは <code>hammer</code>・<code>shard</code>・<code>turret_arrow</code> なども配れます（<a href="#commands">一覧</a>）。</p></div></li>
+        <li><div><strong>拠点の中心にネクサスを置く</strong>
+          <p>見た目はロードストーンです。周囲 <strong>48 ブロック</strong>が防衛範囲、<strong>40 ブロック</strong>以内が「侵略者が壁を壊してよい範囲」になります。範囲の外の建物は壊されません。</p>
+          <p>ネクサス同士は 96 ブロック以上離す必要があります。</p></div></li>
+        <li><div><strong>右クリックして「侵攻を起動する」</strong>
+          <p>ネクサスの画面が開きます。緑の染料のボタンを押すと Day 1 が始まります。日没後に起動した場合、その夜は襲撃が来ません。</p></div></li>
+        <li><div><strong>参加者を集める</strong>
+          <p>防衛範囲（48 ブロック）にいるプレイヤーは自動で参加者になります。範囲の外に出ることが多い人は、ネクサスの近くで次のコマンドを打っておくと、120 ブロック以内まで参加者として扱われます。</p>
+          <div class="cmd"><span>/invasion join</span><button type="button">コピー</button></div></div></li>
+        <li><div><strong>壁と設備を整えて Day 7 を待つ</strong>
+          <p>ここからは全員で準備です。<a href="#cycle">7日間の流れ</a>へ進んでください。</p></div></li>
+      </ol>
+      <div class="note"><strong>視聴者に参加してもらうときは</strong>：スポーン保護が有効だと、OP 以外はスポーン付近にブロックを置けません。テストサーバーは保護なしで作ってありますが、別のサーバーでは <code>spawn-protection=0</code> を確認してください。難易度がピースフルだと侵略者が消えてしまうので、ノーマル以上にします。</div>
+    </section>
+
+    <section id="cycle">
+      <h2>7日間の流れ</h2>
+      <span class="who player">参加者</span>
+      <div class="cycle" role="list">
+        <div class="day" role="listitem"><b>Day 1</b><span>探索・採掘。夜も安全</span></div>
+        <div class="day" role="listitem"><b>Day 2</b><span>壁を作り始める</span></div>
+        <div class="day raid" role="listitem"><b>Day 3</b><span>夜に小規模襲撃が始まる</span></div>
+        <div class="day raid" role="listitem"><b>Day 4</b><span>強化・タレット設置</span></div>
+        <div class="day raid" role="listitem"><b>Day 5</b><span>弾薬・ガジェットを準備</span></div>
+        <div class="day raid" role="listitem"><b>Day 6</b><span>最終確認</span></div>
+        <div class="day moon-day" role="listitem"><b>Day 7</b><span>日没から血の月</span></div>
+      </div>
+      <p>Day 3 以降は、血の月以外の夜にも小規模な襲撃があります。準備期間中にも、次のようなイベントが起きます。</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>イベント</th><th>内容</th></tr></thead>
+        <tbody>
+          <tr><td>徘徊ホード</td><td>10〜25 分おきに、少数の侵略者が拠点に向かってくる</td></tr>
+          <tr><td>空中投下</td><td>20 分おきに、拠点から 40〜80 ブロック離れた場所へ補給物資の樽が落ちる（15 分で消える）。座標はチャットに出る</td></tr>
+          <tr><td>ヒートと叫喚体</td><td>拠点での採掘・建築・撃破・射撃が「熱」として溜まり、溜まりすぎると<strong>叫喚体</strong>が現れて仲間を呼ぶ。サイドバーの「ヒート」が赤くなったら手を止める</td></tr>
+          <tr><td>死亡バックパック</td><td>拠点の近くで死ぬと、所持品が死亡地点の樽にまとめられる（30 分で中身がその場に落ちる）</td></tr>
+        </tbody>
+      </table></div>
+      <p>血の月の当日は、昼過ぎ・夕方・日没直前の 3 回、チャットとサウンドで警告が出ます。</p>
+    </section>
+
+    <section id="nexus">
+      <h2>ネクサスの操作</h2>
+      <p>ネクサスを右クリックすると画面が開きます。右クリックした人はネクサスのメンバーになります。</p>
+      <div class="gui" aria-hidden="true">
+        <div></div><div></div><div></div><div></div><div class="on">状態</div><div></div><div></div><div></div><div></div>
+        <div></div><div></div><div class="on">起動</div><div></div><div class="on">報酬</div><div></div><div class="on">強化</div><div></div><div></div>
+        <div></div><div></div><div></div><div></div><div class="on">パーク</div><div></div><div></div><div></div><div></div>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>ボタン</th><th>できること</th></tr></thead>
+        <tbody>
+          <tr><td>状態</td><td>フェーズ・Day・レベル・GameStage（難易度）・HP を確認する</td></tr>
+          <tr><td>起動 / 再建</td><td>侵攻を始める。崩壊したネクサスは Shard を払って再建する（<span class="shard">50 + Lv×20 Shard</span>）</td></tr>
+          <tr><td>報酬を受け取る</td><td>防衛成功で溜まった報酬をまとめて受け取る。インベントリが満杯の分は残る</td></tr>
+          <tr><td>アップグレード</td><td>Shard を払ってネクサスを強化する（下の表）</td></tr>
+          <tr><td>パーク</td><td>血の月を踏破して得たポイントで、自分を強化する（<a href="#growth">報酬と成長</a>）</td></tr>
+        </tbody>
+      </table></div>
+      <h3>アップグレード</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>名前</th><th>効果</th><th>最大Lv</th><th>初回コスト</th></tr></thead>
+        <tbody>
+          <tr><td>装甲強化</td><td>ネクサス最大 HP +15%/Lv</td><td class="num">5</td><td class="shard">40</td></tr>
+          <tr><td>自己修復</td><td>準備期間中に毎秒 HP 回復</td><td class="num">5</td><td class="shard">55</td></tr>
+          <tr><td>結界拡張</td><td>敵の湧き位置を +4 ブロック/Lv 遠ざける</td><td class="num">4</td><td class="shard">60</td></tr>
+          <tr><td>照準演算</td><td>タレット射程 +2 ブロック/Lv</td><td class="num">4</td><td class="shard">50</td></tr>
+          <tr><td>残滓精製</td><td>Shard 獲得量 +12%/Lv</td><td class="num">5</td><td class="shard">45</td></tr>
+          <tr><td>整備術式</td><td>修理・強化コスト -10%/Lv</td><td class="num">4</td><td class="shard">50</td></tr>
+        </tbody>
+      </table></div>
+      <p>コストはレベルが上がるごとに約 1.6〜1.8 倍になります。</p>
+    </section>
+
+    <section id="fortify">
+      <h2>拠点を固める</h2>
+      <p>通貨は <strong class="shard">Shard</strong>（アメジストの欠片の見た目）です。侵略者を倒すと落とし、防衛成功でも配られます。インベントリに入っている実物を使います。</p>
+      <h3>強化ハンマー</h3>
+      <p>強化ハンマー（鉄の斧の見た目）でブロックを右クリックすると、そのブロックの状態に応じて次のどれかが起きます。防衛範囲の中でだけ使えます。</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>ブロックの状態</th><th>右クリックの結果</th></tr></thead>
+        <tbody>
+          <tr><td>未強化</td><td>木枠に変わる</td></tr>
+          <tr><td>強化済みで傷んでいる</td><td>Shard を払って修理する</td></tr>
+          <tr><td>強化済みで無傷</td><td>次のティアに上げる</td></tr>
+          <tr><td>スニークしながら</td><td>耐久を確認するだけ</td></tr>
+        </tbody>
+      </table></div>
+      <div class="ladder">
+        <div class="tier"><i style="width:14%"></i><b>木枠</b><span>耐久 250</span><span class="shard">3 Shard</span></div>
+        <div class="tier"><i style="width:30%"></i><b>補強木材</b><span>耐久 550</span><span class="shard">8 Shard</span></div>
+        <div class="tier"><i style="width:48%"></i><b>石積み</b><span>耐久 1000</span><span class="shard">16 Shard</span></div>
+        <div class="tier"><i style="width:70%"></i><b>鉄筋コンクリート</b><span>耐久 1900</span><span class="shard">30 Shard</span></div>
+        <div class="tier"><i style="width:100%"></i><b>鋼鉄</b><span>耐久 3600</span><span class="shard">55 Shard</span></div>
+      </div>
+      <p>未強化のブロックも硬さに応じた耐久を持っていますが、丸石で約 110 と低めです。土で囲んでも一瞬で抜かれます。</p>
+      <p><strong>応急補修キット</strong>（ハニカムの見た目）を強化ブロックに右クリックすると、Shard なしで即座に全回復します。</p>
+      <div class="note"><strong>侵略者が得意なこと</strong>：壁蟲は壁を登り、工兵は足場を積んで高所を越え、掘削者は地面を掘って入ってきます。高い壁だけ・一枚壁だけでは止まりません。厚み・屋根・罠の組み合わせが大事です。</div>
+    </section>
+
+    <section id="turrets">
+      <h2>タレットと罠</h2>
+      <p>どちらも防衛範囲の中にだけ置けます。タレットは置いたあと、<strong>弾薬を持って右クリックで装填</strong>してください。弾が無いと動きません。</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>タレット</th><th>役割</th><th>弾薬</th><th>射程</th><th>最大装填</th></tr></thead>
+        <tbody>
+          <tr><td>射撃タレット</td><td>1体に強い単発ダメージ</td><td>矢</td><td class="num">14</td><td class="num">256</td></tr>
+          <tr><td>火炎タレット</td><td>燃やして継続ダメージ</td><td>ブレイズパウダー</td><td class="num">8</td><td class="num">128</td></tr>
+          <tr><td>凍結タレット</td><td>鈍足にして足止め</td><td>雪玉</td><td class="num">11</td><td class="num">128</td></tr>
+          <tr><td>修復タレット</td><td>傷ついた味方と強化ブロックを回復</td><td>レッドストーン</td><td class="num">10</td><td class="num">128</td></tr>
+        </tbody>
+      </table></div>
+      <div class="cards">
+        <div class="card"><b>スパイクトラップ</b><span class="meta">尖ったドリップストーン・繰り返し作動</span><p>上を通る侵略者に継続ダメージと鈍足。侵略者が通る道に並べて使います。</p></div>
+        <div class="card"><b>爆裂地雷</b><span class="meta">重量感圧板・使い切り</span><p>踏まれると周囲を吹き飛ばします。ブロックは壊さないので、自分の拠点は崩れません。重装体の足止めに。</p></div>
+      </div>
+    </section>
+
+    <section id="gadgets">
+      <h2>ガジェット</h2>
+      <p>押し切られそうな瞬間を立て直すための消耗品です。どれも右クリックで使います。</p>
+      <div class="cards">
+        <div class="card"><b>閃光弾</b><span class="meta">雪玉の見た目・投げる</span><p>着弾点から 7 ブロック以内の侵略者を盲目・鈍足にして、狙いを外させます。ボスにも効きます。</p></div>
+        <div class="card"><b>救急キット</b><span class="meta">ガストの涙の見た目</span><p>自分と、周囲 6 ブロックの味方をまとめて回復します。</p></div>
+        <div class="card"><b>緊急バリア</b><span class="meta">鉄のトラップドアの見た目</span><p>右クリックしたブロックの面に、鋼鉄並みに硬い 3×3 の壁を 45 秒だけ張ります。壁に穴が開いたときの応急処置に。</p></div>
+      </div>
+    </section>
+
+    <section id="bloodmoon">
+      <h2>血の月</h2>
+      <p>7日目の日没とともに始まります。侵略者は拠点から 26〜42 ブロック離れた場所に湧き、ネクサスへ向かってきます。</p>
+      <div class="table-wrap"><table>
+        <tbody>
+          <tr><th>ウェーブ数</th><td>5 波から。難易度（GameStage）15 ごとに 1 波増え、最大 12 波</td></tr>
+          <tr><th>ウェーブ間隔</th><td>約 45 秒</td></tr>
+          <tr><th>ボス</th><td>5 波目・10 波目に出現</td></tr>
+          <tr><th>変調</th><td>夜ごとにランダムで、敵の数が増える・全員凶暴化・視界が暗い・倒すと分裂する、などの特殊ルールが付く</td></tr>
+          <tr><th>勝利</th><td>夜明けまでネクサスが残る、または全ウェーブを倒しきる</td></tr>
+          <tr><th>敗北</th><td>ネクサスの HP が 0。ネクサスは崩壊し、レベルが 1 下がる。Shard を払えば再建できる</td></tr>
+        </tbody>
+      </table></div>
+      <p>画面上部のボスバーに、ウェーブ数・残りの敵・ネクサスの HP が出ます。右側のサイドバーでは、Day・Shard 所持数・ヒートを確認できます。</p>
+      <div class="note warn"><strong>ネクサスが削られ始めたら</strong>：侵略者 1 体ごとに毎秒ダメージが入ります。壁が抜かれたら緊急バリアで塞ぎ、ネクサスに張り付いた敵から倒してください。</div>
+    </section>
+
+    <section id="enemies">
+      <h2>敵とボス</h2>
+      <p>難易度が上がるにつれて、強い種類が解禁され、弱い種類と入れ替わっていきます。名前が光っている敵は凶暴化・汚染（自己再生）した上位個体です。</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>敵</th><th>特徴・対処</th></tr></thead>
+        <tbody>
+          <tr><td>侵略者・疾走者</td><td>基本の歩兵と、足の速い歩兵</td></tr>
+          <tr><td>射手・投擲手</td><td>遠くから矢や爆弾を撃ってくる。投擲手は懐に入ると逃げる</td></tr>
+          <tr><td>壁蟲・工兵・掘削者</td><td>壁を登る・足場を積む・地面を掘る。壁だけでは止まらない</td></tr>
+          <tr><td>爆導体</td><td>壁際やネクサスの近くで自爆する。強化ティアが高い壁なら耐えられる</td></tr>
+          <tr><td>重装体</td><td>とても硬く、ノックバックしない。罠・凍結タレットで足止め</td></tr>
+          <tr><td>飛翔体</td><td>空から来るので地上の壁を無視する</td></tr>
+          <tr><td>潜伏体</td><td>近づくまで透明。後ろのプレイヤーを狙う</td></tr>
+          <tr><td>守護者・蘇生者</td><td>周りの敵を硬くする・回復する。<strong>最優先で倒す</strong></td></tr>
+          <tr><td>叫喚体</td><td>ヒートが溜まると出現。叫ぶと仲間を呼ぶ</td></tr>
+        </tbody>
+      </table></div>
+      <h3>ボス</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>ボス</th><th>求められる対策</th></tr></thead>
+        <tbody>
+          <tr><td>侵略主</td><td>物量の処理。手下を呼び、周りを吹き飛ばし、味方を加速させる</td></tr>
+          <tr><td>鉄槌</td><td>壁の厚み。周囲の壁をまとめて叩き壊す</td></tr>
+          <tr><td>腐敗の女王</td><td>火力。毒霧と産卵を使い、自分で回復する</td></tr>
+          <tr><td>炎心</td><td>屋根。空を飛び、火炎弾を降らせる</td></tr>
+          <tr><td>虚空の使者</td><td>隊列の維持。瞬間移動し、プレイヤーを引き寄せる</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="growth">
+      <h2>報酬と成長</h2>
+      <p>血の月を守り抜くと、次のものが手に入ります。</p>
+      <div class="table-wrap"><table>
+        <tbody>
+          <tr><th>ネクサス</th><td>レベルが 1 上がり、HP が全快する</td></tr>
+          <tr><th>報酬</th><td>アイテムがネクサスに溜まる。画面の「報酬を受け取る」から回収</td></tr>
+          <tr><th>Shard</th><td>参加者に配られる。4 割は全員に均等、6 割は貢献度に応じて分配</td></tr>
+          <tr><th>パークポイント</th><td>1 点＋5 波ごとに 1 点</td></tr>
+        </tbody>
+      </table></div>
+      <p>貢献度は、倒した数だけでなく、壁の修理・強化、タレットや罠の設置、攻撃を受け止めた量でも上がります。サポート役もしっかり報われます。</p>
+      <h3>パーク</h3>
+      <p>ネクサスの画面か <code>/invasion perks</code> から開きます。次のレベルに上げるのに、今のレベル＋1 ポイントかかります。</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>パーク</th><th>効果</th><th>最大Lv</th></tr></thead>
+        <tbody>
+          <tr><td>解体屋</td><td>侵略者への与ダメージ +8%/Lv</td><td class="num">5</td></tr>
+          <tr><td>重装</td><td>侵略者からの被ダメージ -6%/Lv</td><td class="num">5</td></tr>
+          <tr><td>建築士</td><td>強化・修理コスト -8%/Lv</td><td class="num">4</td></tr>
+          <tr><td>漁り屋</td><td>Shard 獲得量 +10%/Lv</td><td class="num">5</td></tr>
+          <tr><td>衛生兵</td><td>補修キット・救急キットの効果 +25%/Lv</td><td class="num">3</td></tr>
+          <tr><td>砲手</td><td>自分が置いたタレット・罠の威力 +8%/Lv</td><td class="num">4</td></tr>
+          <tr><td>要塞化</td><td>自分が強化したブロックの耐久 +12%/Lv</td><td class="num">4</td></tr>
+          <tr><td>弾薬工</td><td>自分のタレットが 12%/Lv の確率で弾を消費しない</td><td class="num">4</td></tr>
+          <tr><td>猛者</td><td>HP が半分以下のとき与ダメージ +15%/Lv</td><td class="num">3</td></tr>
+          <tr><td>遊撃</td><td>拠点の近くで移動速度アップ、被弾直後に加速</td><td class="num">4</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="recipes">
+      <h2>クラフト<small>作業台で作れます</small></h2>
+      <div class="recipes" id="recipe-list"></div>
+    </section>
+
+    <section id="commands">
+      <h2>コマンド</h2>
+      <p><code>/invasion</code> は <code>/inv</code> と短く打てます。</p>
+      <h3>参加者</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>コマンド</th><th>内容</th></tr></thead>
+        <tbody>
+          <tr><td><code>/invasion status</code></td><td>近くのネクサスの状態と、自分の Shard 所持数</td></tr>
+          <tr><td><code>/invasion join</code></td><td>防衛に参加する（範囲の外でも参加者として扱われる）</td></tr>
+          <tr><td><code>/invasion leave</code></td><td>防衛から抜ける</td></tr>
+          <tr><td><code>/invasion perks</code></td><td>パーク画面を開く</td></tr>
+          <tr><td><code>/invasion top</code></td><td>血の月の踏破ランキング</td></tr>
+          <tr><td><code>/invasion stop</code></td><td>侵攻を止める（ネクサスの所有者と管理者のみ）</td></tr>
+        </tbody>
+      </table></div>
+      <h3>管理者 <small>OP が必要。コンソールからも打てます</small></h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>コマンド</th><th>内容</th></tr></thead>
+        <tbody>
+          <tr><td><code>/invasion give &lt;アイテム&gt; [数]</code></td><td>nexus / hammer / shard / kit / turret_arrow / turret_flame / turret_frost / turret_heal / spike / mine / flash / medkit / barrier</td></tr>
+          <tr><td><code>/invasion admin activate</code></td><td>Shard なしで起動する。崩壊したネクサスも復旧できる</td></tr>
+          <tr><td><code>/invasion admin setday &lt;日&gt;</code></td><td>経過日数を変える。<code>7</code> にして夜にすると、すぐ血の月を試せる</td></tr>
+          <tr><td><code>/invasion admin setlevel &lt;Lv&gt;</code></td><td>ネクサスのレベルを変える</td></tr>
+          <tr><td><code>/invasion admin forcewave</code></td><td>血の月の次のウェーブをすぐ出す</td></tr>
+          <tr><td><code>/invasion admin spawn &lt;種類&gt; [数]</code></td><td>侵略者を湧かせる（稼働中のネクサスが必要）</td></tr>
+          <tr><td><code>/invasion admin boss &lt;名前&gt;</code></td><td>ボスを出す（warlord / siege_titan / blight_queen / emberheart / void_herald）</td></tr>
+          <tr><td><code>/invasion admin airdrop</code></td><td>補給物資をすぐ落とす</td></tr>
+          <tr><td><code>/invasion admin points &lt;数&gt;</code></td><td>自分にパークポイントを付与する</td></tr>
+          <tr><td><code>/invasion admin despawn</code></td><td>侵略者を全員消す</td></tr>
+          <tr><td><code>/invasion admin restore</code></td><td>侵略者に壊されたブロックを元に戻す</td></tr>
+          <tr><td><code>/invasion admin list</code> / <code>info</code></td><td>ネクサスの一覧と、侵略者の数</td></tr>
+          <tr><td><code>/invasion admin reload</code></td><td>config.yml を読み直す</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="trouble">
+      <h2>困ったとき</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>こんなとき</th><th>こうする</th></tr></thead>
+        <tbody>
+          <tr><td>拠点が穴だらけになった</td><td><code>/invasion admin restore</code>。ただし復元できるのは、サーバーを再起動するまでに壊されたブロックだけ</td></tr>
+          <tr><td>ネクサスが崩壊して Shard も無い</td><td>管理者が <code>/invasion admin activate</code> で復旧できる</td></tr>
+          <tr><td>敵が多すぎて配信が止まりそう</td><td><code>/invasion admin despawn</code> で全員消す</td></tr>
+          <tr><td>ネクサスを片付けたい</td><td><code>/invasion stop</code> で止めてから壊す（稼働中は OP しか壊せない）</td></tr>
+          <tr><td>ブロックが置けない</td><td>スポーン保護を確認する（<code>spawn-protection=0</code>）</td></tr>
+          <tr><td>侵略者がすぐ消える</td><td>難易度がピースフルになっていないか確認する</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <footer>InvasionCore 0.1.0 / Paper 26.2 build 92。数値は既定の config.yml の値です。サーバーの設定を変えている場合は異なります。</footer>
+  </main>
+</div>
+
+<script>
+(function () {
+  // 3x3 crafting grids. Rows are 3-character strings; a space is an empty slot.
+  var recipes = [
+    { name: "ネクサス", out: 1, rows: ["ODO", "DNP", "ODO"], key: { O: "黒曜石", D: "ダイヤ", N: "ネザースター", P: "エンダーアイ" } },
+    { name: "強化ハンマー", out: 1, rows: ["III", "ISI", " S "], key: { I: "鉄インゴット", S: "棒" } },
+    { name: "応急補修キット", out: 2, rows: ["SIS", "IHI", "SIS"], key: { S: "糸", I: "鉄ナゲット", H: "ハニカム" } },
+    { name: "射撃タレット", out: 1, rows: ["III", "IDI", "IRI"], key: { I: "鉄インゴット", D: "ディスペンサー", R: "レッドストーンブロック" } },
+    { name: "火炎タレット", out: 1, rows: ["IBI", "BDB", "IRI"], key: { I: "鉄インゴット", B: "ブレイズロッド", D: "ディスペンサー", R: "レッドストーンブロック" } },
+    { name: "凍結タレット", out: 1, rows: ["IBI", "BDB", "IRI"], key: { I: "鉄インゴット", B: "青氷", D: "ディスペンサー", R: "レッドストーンブロック" } },
+    { name: "修復タレット", out: 1, rows: ["IGI", "GDG", "IRI"], key: { I: "鉄インゴット", G: "金ブロック", D: "ディスペンサー", R: "レッドストーンブロック" } },
+    { name: "スパイクトラップ", out: 4, rows: [" I ", "III", "SSS"], key: { I: "鉄インゴット", S: "石" } },
+    { name: "爆裂地雷", out: 2, rows: ["III", "ITI", "IRI"], key: { I: "鉄インゴット", T: "TNT", R: "レッドストーン" } },
+    { name: "閃光弾", out: 4, rows: [" G ", "GBG", " G "], key: { G: "グロウストーンダスト", B: "火薬" } },
+    { name: "救急キット", out: 2, rows: ["SPS", "PGP", "SPS"], key: { S: "糸", P: "輝くスイカの薄切り", G: "金のニンジン" } },
+    { name: "緊急バリア", out: 2, rows: ["IRI", "RDR", "IRI"], key: { I: "鉄ブロック", R: "レッドストーンブロック", D: "ダイヤ" } }
+  ];
+  var list = document.getElementById("recipe-list");
+  recipes.forEach(function (r) {
+    var card = document.createElement("div");
+    card.className = "recipe";
+    var h = document.createElement("h4");
+    h.textContent = r.name;
+    var count = document.createElement("span");
+    count.textContent = "×" + r.out;
+    h.appendChild(count);
+    card.appendChild(h);
+    var grid = document.createElement("div");
+    grid.className = "grid3";
+    grid.setAttribute("role", "img");
+    var label = [];
+    r.rows.forEach(function (row) {
+      for (var i = 0; i < 3; i++) {
+        var ch = row.charAt(i);
+        var cell = document.createElement("div");
+        if (ch === " " || !ch) {
+          cell.className = "cell empty";
+        } else {
+          cell.className = "cell";
+          cell.textContent = r.key[ch];
+        }
+        grid.appendChild(cell);
+      }
+    });
+    Object.keys(r.key).forEach(function (k) {
+      var n = r.rows.join("").split(k).length - 1;
+      label.push(r.key[k] + "×" + n);
+    });
+    grid.setAttribute("aria-label", r.name + "の材料: " + label.join("、"));
+    card.appendChild(grid);
+    list.appendChild(card);
+  });
+
+  // Copy buttons: clipboard write must happen inside the click handler.
+  document.querySelectorAll(".cmd button").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var text = btn.previousElementSibling.textContent;
+      var done = function () {
+        btn.textContent = "コピーした";
+        setTimeout(function () { btn.textContent = "コピー"; }, 1500);
+      };
+      var fallback = function () {
+        var range = document.createRange();
+        range.selectNodeContents(btn.previousElementSibling);
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        btn.textContent = "選択した";
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, fallback);
+      } else {
+        fallback();
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>

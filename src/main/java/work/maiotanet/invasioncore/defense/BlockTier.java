@@ -8,11 +8,14 @@ import org.bukkit.Material;
  */
 public enum BlockTier {
 
-    WOOD_FRAME("木枠", Material.OAK_PLANKS, 140, 4),
-    REINFORCED_WOOD("補強木材", Material.STRIPPED_OAK_WOOD, 340, 11),
-    STONE("石積み", Material.COBBLESTONE, 720, 24),
-    CONCRETE("鉄筋コンクリート", Material.GRAY_CONCRETE, 1500, 52),
-    STEEL("鋼鉄", Material.IRON_BLOCK, 3200, 120);
+    // コストは「1ブロックあたり」であることに注意。
+    // 壁は数十ブロック単位で積むので、1個 100 Shard を超えると現実的な時間で完成しない。
+    // 未強化の丸石が約110なので、木枠がそれを明確に上回らないと強化する動機が生まれない。
+    WOOD_FRAME("木枠", Material.OAK_PLANKS, 250, 3),
+    REINFORCED_WOOD("補強木材", Material.STRIPPED_OAK_WOOD, 550, 8),
+    STONE("石積み", Material.COBBLESTONE, 1000, 16),
+    CONCRETE("鉄筋コンクリート", Material.GRAY_CONCRETE, 1900, 30),
+    STEEL("鋼鉄", Material.IRON_BLOCK, 3600, 55);
 
     private static final BlockTier[] ORDER = values();
 

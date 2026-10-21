@@ -9,8 +9,10 @@ import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Creeper;
+import org.bukkit.entity.Enderman;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.IronGolem;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Phantom;
 import org.bukkit.entity.Zombie;
@@ -60,23 +62,51 @@ public final class InvaderSpawner {
         return spawnAt(nexus, type, tier, gameStage, wave, spot);
     }
 
+    /**
+     * ボスを生成する。実体は {@link BossType} が決める。
+     */
+    public Invader spawnBoss(Nexus nexus, BossType boss, MutationTier tier, int gameStage, int wave) {
+        Location spot = findSpawnLocation(nexus, boss.isAirborne() ? InvaderType.FLYER : InvaderType.BRUTE);
+        if (spot == null) {
+            return null;
+        }
+        Invader invader = spawnAt(nexus, InvaderType.BOSS, tier, gameStage, wave, spot, boss);
+        if (invader != null) {
+            invader.bossType(boss);
+        }
+        return invader;
+    }
+
     /** 座標を指定して生成する。徘徊ホードや叫喚体の呼び出しで使う。 */
     public Invader spawnAt(Nexus nexus, InvaderType type, MutationTier tier, int gameStage, int wave, Location spot) {
+        return spawnAt(nexus, type, tier, gameStage, wave, spot, null);
+    }
+
+    private Invader spawnAt(Nexus nexus, InvaderType type, MutationTier tier, int gameStage, int wave,
+                            Location spot, BossType boss) {
         World world = spot.getWorld();
         if (world == null) {
             return null;
         }
-        Entity spawned = world.spawnEntity(spot, type.entityType());
+        EntityType entityType = boss != null ? boss.entityType() : type.entityType();
+        Entity spawned = world.spawnEntity(spot, entityType);
         if (!(spawned instanceof Mob mob)) {
             spawned.remove();
             return null;
         }
 
-        applyStats(mob, type, tier, gameStage);
-        applyAppearance(mob, type, tier);
-        applyBehaviourTweaks(mob, type);
+        applyStats(mob, type, tier, gameStage, boss);
+        applyAppearance(mob, type, tier, boss);
+        applyBehaviourTweaks(mob, type, boss);
+        // Phantom の setSize など、後段の設定が最大HPを変えることがある。
+        // 現在HPが最大を超えたまま残ると setHealth 系で例外になるので最後に揃える。
+        AttributeInstance maxHealth = mob.getAttribute(Attribute.MAX_HEALTH);
+        if (maxHealth != null) {
+            mob.setHealth(Math.min(mob.getHealth(), maxHealth.getValue()));
+        }
 
-        int shard = (int) Math.round(type.shardValue() * tier.shardMultiplier());
+        int baseShard = boss != null ? boss.shardValue() : type.shardValue();
+        int shard = (int) Math.round(baseShard * tier.shardMultiplier());
         shard = nexuses.shardBonus(nexus, shard);
 
         var pdc = mob.getPersistentDataContainer();
@@ -85,26 +115,34 @@ public final class InvaderSpawner {
         pdc.set(Keys.INVADER_TIER, PersistentDataType.STRING, tier.name());
         pdc.set(Keys.INVADER_WAVE, PersistentDataType.INTEGER, wave);
         pdc.set(Keys.INVADER_SHARD, PersistentDataType.INTEGER, shard);
+        if (boss != null) {
+            pdc.set(Keys.INVADER_BOSS, PersistentDataType.STRING, boss.name());
+        }
 
         Invader invader = new Invader(mob, type, tier, nexus.id(), wave);
+        invader.bossType(boss);
         registry.register(invader);
         return invader;
     }
 
     // ---------- 能力付与 ----------
 
-    private void applyStats(Mob mob, InvaderType type, MutationTier tier, int gameStage) {
+    private void applyStats(Mob mob, InvaderType type, MutationTier tier, int gameStage, BossType boss) {
         // GameStage による地力の底上げ。線形だと後半で破綻するので緩やかな伸びにする。
         double stageHealth = 1.0 + gameStage * 0.012;
         double stageDamage = 1.0 + gameStage * 0.008;
         double stageArmor = Math.min(12.0, gameStage * 0.05);
 
+        double healthMult = boss != null ? boss.healthMultiplier() : type.healthMultiplier();
+        double speedMult = boss != null ? boss.speedMultiplier() : type.speedMultiplier();
+        double damageMult = boss != null ? boss.damageMultiplier() : type.damageMultiplier();
+
         setAttribute(mob, Attribute.MAX_HEALTH,
-                type.healthMultiplier() * tier.healthMultiplier() * stageHealth, true);
+                healthMult * tier.healthMultiplier() * stageHealth, true);
         setAttribute(mob, Attribute.ATTACK_DAMAGE,
-                type.damageMultiplier() * tier.damageMultiplier() * stageDamage, true);
+                damageMult * tier.damageMultiplier() * stageDamage, true);
         setAttribute(mob, Attribute.MOVEMENT_SPEED,
-                type.speedMultiplier() * tier.speedMultiplier(), true);
+                speedMult * tier.speedMultiplier() * config.mobSpeedMultiplier(), true);
 
         AttributeInstance armor = mob.getAttribute(Attribute.ARMOR);
         if (armor != null) {
@@ -116,8 +154,10 @@ public final class InvaderSpawner {
             follow.setBaseValue(Math.max(follow.getBaseValue(), config.nexusDefenseRadius() + 24.0));
         }
         AttributeInstance kb = mob.getAttribute(Attribute.KNOCKBACK_RESISTANCE);
-        if (kb != null && type.isBoss()) {
-            kb.setBaseValue(0.85);
+        if (kb != null && type.isHeavy()) {
+            // 重装体・ボスはノックバックで足止めできない。押し返せない相手を用意することで、
+            // 「殴って下がらせる」以外の対処（トラップ・凍結・地形）に価値が生まれる。
+            kb.setBaseValue(type.isBoss() ? 0.95 : 0.85);
         }
 
         mob.setHealth(mob.getAttribute(Attribute.MAX_HEALTH) == null
@@ -142,13 +182,14 @@ public final class InvaderSpawner {
         inst.setBaseValue(base * multiplier);
     }
 
-    private void applyAppearance(Mob mob, InvaderType type, MutationTier tier) {
-        String label = tier.prefix().isEmpty()
-                ? type.displayName()
-                : tier.prefix() + " " + type.displayName();
-        mob.customName(Component.text(label, tier.color()).decoration(TextDecoration.ITALIC, false));
-        mob.setCustomNameVisible(false);
-        if (tier != MutationTier.NORMAL) {
+    private void applyAppearance(Mob mob, InvaderType type, MutationTier tier, BossType boss) {
+        String base = boss != null ? boss.displayName() : type.displayName();
+        String label = tier.prefix().isEmpty() ? base : tier.prefix() + " " + base;
+        mob.customName(Component.text(label,
+                boss != null ? boss.color() : tier.color()).decoration(TextDecoration.ITALIC, false));
+        // ボスは常時名前を出す。誰を優先して倒すべきかが一目で分かる必要がある。
+        mob.setCustomNameVisible(boss != null);
+        if (tier != MutationTier.NORMAL || boss != null) {
             mob.setGlowing(true);
         }
 
@@ -170,7 +211,7 @@ public final class InvaderSpawner {
         eq.setItemInOffHandDropChance(0f);
     }
 
-    private void applyBehaviourTweaks(Mob mob, InvaderType type) {
+    private void applyBehaviourTweaks(Mob mob, InvaderType type, BossType boss) {
         mob.setRemoveWhenFarAway(false);
         mob.setPersistent(true);
         mob.setCanPickupItems(false);
@@ -185,7 +226,24 @@ public final class InvaderSpawner {
             creeper.setExplosionRadius(2);
         }
         if (mob instanceof Phantom phantom) {
-            phantom.setSize(type.isBoss() ? 6 : 2);
+            phantom.setSize(2);
+        }
+        if (mob instanceof IronGolem golem) {
+            // 中立Mobなので、明示的に敵対状態にしないとこちらを攻撃しない
+            golem.setPlayerCreated(false);
+        }
+        if (mob instanceof Enderman enderman) {
+            // 水で溶けると虚空の使者が雨天で自滅する
+            enderman.addPotionEffect(new PotionEffect(PotionEffectType.FIRE_RESISTANCE,
+                    PotionEffect.INFINITE_DURATION, 0, false, false, false));
+        }
+        if (type.isStealth()) {
+            // 接近するまで見えない。AIが距離で解除する。
+            mob.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY,
+                    PotionEffect.INFINITE_DURATION, 0, false, false, false));
+        }
+        if (boss != null && boss.isAirborne()) {
+            mob.setGravity(false);
         }
         mob.getPathfinder().setCanOpenDoors(true);
         mob.getPathfinder().setCanPassDoors(true);
