@@ -21,3 +21,6 @@ desktop.ini
 # ログ・生成物
 *.log
 /run/
+
+# ローカル専用のツールチェーン指定（build.cmd が読む）
+build.local.cmd

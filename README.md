@@ -25,8 +25,10 @@
 ./build.cmd package
 ```
 
-`build.cmd` は `C:\tools` 配下のポータブル JDK 25 / Maven を使う（PATH は変更しない）。
-別環境では `JAVA_HOME` を JDK 25 に向けて `mvn package` でよい。
+`build.cmd` は JDK 25 以上と Maven を自動検出する（`~/.jdks`・`C:\tools`・Eclipse Adoptium・PATH・
+IntelliJ IDEA 同梱の Maven の順。PATH は変更しない）。見つからない場合はリポジトリ直下に
+`build.local.cmd`（git 管理外）を作り、`set "JAVA_HOME=..."` と `set "MVN=..."` を書く。
+詳しくは [docs/handoff.md](docs/handoff.md) を参照。
 
 成果物: `target/InvasionCore-0.1.0-SNAPSHOT.jar`
 
@@ -36,10 +38,11 @@
 `Minecraft 26.1 and newer requires running the server with Java 25 or above` で即座に終了する。
 
 ```bash
-"C:\tools\jdk-25.0.4+7\bin\java.exe" -Xms1G -Xmx2G -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -jar paper-26.2-92.jar nogui
+"<JDK 25 以上>\bin\java.exe" -Xms1G -Xmx2G -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -jar paper-26.2-92.jar nogui
 ```
 
-検証用サーバーには `run/start.cmd` を用意してあるので、通常はそれを実行すればよい。
+検証用サーバー（`run/`、git 管理外）には `run/start.cmd` を用意してあるので、通常はそれを実行すればよい。
+`run/` の用意の仕方は [docs/handoff.md](docs/handoff.md) を参照。
 
 > **`-Dstdout.encoding=UTF-8` は Windows では必須。** Java 18 以降、`System.out` は
 > `file.encoding` ではなくコンソールのコードページを使うため、指定しないと
@@ -133,7 +136,7 @@ GameStage が上がると下位種別の出現率が段階的に落ち、上位�
 ### 防衛設備
 **ブロック強化ティア**（強化ハンマーで右クリック）
 ```
-木枠(140) → 補強木材(340) → 石積み(720) → 鉄筋コンクリート(1500) → 鋼鉄(3200)
+木枠(250) → 補強木材(550) → 石積み(1000) → 鉄筋コンクリート(1900) → 鋼鉄(3600)
 ```
 未強化のバニラブロックも硬度から耐久が導出されるので、土で囲んでも一瞬で抜かれる。
 
