@@ -10,7 +10,7 @@ body:
         それでもわからなければ、気軽に聞いてください。
         **ここに書いた内容は誰でも見られます。** 個人情報は書かないでください。
   - type: textarea
-    id: question
+    id: what
     attributes:
       label: 何がわかりませんか？
       placeholder: 例）強化ハンマーで右クリックしても何も起きない。どうすれば壁を強化できる？
