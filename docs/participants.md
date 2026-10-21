@@ -155,6 +155,7 @@ A. 弾薬が入っていないかもしれません。素手で右クリック�
 
 ## もっと詳しく
 
+- このガイドの Web 版: https://luca3yt.github.io/InvasionCore/
 - 敵とボスの一覧、アップグレード、パークの全効果、クラフトレシピ（3×3 の配置図つき）は
-  [遊び方ガイド（usage.html）](usage.html) にまとめています。ダウンロードしてブラウザで開いてください。
+  [遊び方ガイド](https://luca3yt.github.io/InvasionCore/usage.html) にまとめています。
 - ゲーム全体の仕様は [README](../README.md) にあります。
