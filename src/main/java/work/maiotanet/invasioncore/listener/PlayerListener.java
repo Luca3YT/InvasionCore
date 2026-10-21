@@ -3,16 +3,20 @@ package work.maiotanet.invasioncore.listener;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.EntityShootBowEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.inventory.ItemStack;
 import work.maiotanet.invasioncore.config.InvasionConfig;
+import work.maiotanet.invasioncore.economy.ShardPickupSound;
 import work.maiotanet.invasioncore.heat.HeatService;
+import work.maiotanet.invasioncore.item.InvasionItems;
 import work.maiotanet.invasioncore.nexus.Nexus;
 import work.maiotanet.invasioncore.nexus.NexusManager;
 import work.maiotanet.invasioncore.perk.PerkService;
@@ -34,9 +38,12 @@ public final class PlayerListener implements Listener {
     private final PerkService perks;
     private final HudService hud;
     private final WorldEventService worldEvents;
+    private final ShardPickupSound shardSound;
 
     public PlayerListener(InvasionConfig config, NexusManager nexuses, HeatService heat,
-                          PerkService perks, HudService hud, WorldEventService worldEvents) {
+                          PerkService perks, HudService hud, WorldEventService worldEvents,
+                          ShardPickupSound shardSound) {
+        this.shardSound = shardSound;
         this.config = config;
         this.nexuses = nexuses;
         this.heat = heat;
@@ -49,6 +56,22 @@ public final class PlayerListener implements Listener {
     public void onJoin(PlayerJoinEvent event) {
         // 名前を最新化しておく（ランキング表示で使う）
         perks.profile(event.getPlayer());
+        // サーバーに入った時点で参加者として扱う（/invasion join と同じ）
+        for (Nexus nexus : nexuses.all()) {
+            nexus.members().add(event.getPlayer().getUniqueId());
+        }
+    }
+
+    /** Shard を拾ったら、拾えた個数ぶん効果音を鳴らす。開始前などで拾えなかったときは鳴らさない。 */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPickupShard(EntityPickupItemEvent event) {
+        if (!(event.getEntity() instanceof Player player)
+                || !InvasionItems.is(event.getItem().getItemStack(), InvasionItems.SHARD)) {
+            return;
+        }
+        // インベントリが一杯に近いと一部しか拾えないので、拾えた分だけ数える
+        int picked = event.getItem().getItemStack().getAmount() - event.getRemaining();
+        shardSound.queue(player, picked);
     }
 
     @EventHandler

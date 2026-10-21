@@ -107,6 +107,7 @@ public final class SidebarUpdater {
 
         lines.add(BLANK);
         lines.add(Text.of("Shard " + shards.count(player), Text.GOOD));
+        lines.add(Text.of("ネクサス内の Shard " + nexus.sharedShards(), Text.INFO));
         if (config.heatEnabled()) {
             double ratio = heat.ratio(player.getLocation());
             lines.add(Text.of("ヒート " + Text.bar(ratio, 8),

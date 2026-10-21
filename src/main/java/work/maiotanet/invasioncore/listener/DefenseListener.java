@@ -113,8 +113,8 @@ public final class DefenseListener implements Listener {
                 return;
             }
             int cost = adjustedCost(player, nexus, BlockTier.first().upgradeCost());
-            if (!shards.take(player, cost)) {
-                sendInsufficient(player, cost);
+            if (!shards.takeWithPool(player, nexus, cost)) {
+                sendInsufficient(player, nexus, cost);
                 return;
             }
             fortify.fortify(block, perks.fortifyHealthMultiplier(player.getUniqueId()));
@@ -129,8 +129,8 @@ public final class DefenseListener implements Listener {
             if (cost <= 0) {
                 return;
             }
-            if (!shards.take(player, cost)) {
-                sendInsufficient(player, cost);
+            if (!shards.takeWithPool(player, nexus, cost)) {
+                sendInsufficient(player, nexus, cost);
                 return;
             }
             double healed = fortify.repair(block, current.maxHealth());
@@ -148,8 +148,8 @@ public final class DefenseListener implements Listener {
             return;
         }
         int cost = adjustedCost(player, nexus, next.upgradeCost());
-        if (!shards.take(player, cost)) {
-            sendInsufficient(player, cost);
+        if (!shards.takeWithPool(player, nexus, cost)) {
+            sendInsufficient(player, nexus, cost);
             return;
         }
         fortify.upgrade(block, perks.fortifyHealthMultiplier(player.getUniqueId()));
@@ -309,9 +309,10 @@ public final class DefenseListener implements Listener {
         return Math.max(1, (int) Math.round(discounted * perks.costMultiplier(player.getUniqueId())));
     }
 
-    private void sendInsufficient(Player player, int cost) {
+    private void sendInsufficient(Player player, Nexus nexus, int cost) {
         Text.actionBarError(player, "Shard が足りない（必要 " + cost
-                + " / 所持 " + shards.count(player) + "）");
+                + " / 所持 " + shards.count(player)
+                + " / ネクサス内 " + (nexus == null ? 0 : nexus.sharedShards()) + "）");
         player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
     }
 }

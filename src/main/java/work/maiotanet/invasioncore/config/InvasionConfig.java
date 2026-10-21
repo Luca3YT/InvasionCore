@@ -267,6 +267,17 @@ public final class InvasionConfig {
         return cfg.getBoolean("performance.keep-chunks-loaded", true);
     }
 
+    // ---- ゲーム開始前 ----
+    /** ゲーム開始まで、ワールドのスポーン地点からこの半径より先へ進めない。 */
+    public int pregameRadius() {
+        return cfg.getInt("pregame.radius", 60);
+    }
+
+    /** /rule で表示するルール説明の URL。 */
+    public String rulesUrl() {
+        return cfg.getString("rules.url", "https://luca3yt.github.io/InvasionCore/");
+    }
+
     public FileConfiguration raw() {
         return cfg;
     }

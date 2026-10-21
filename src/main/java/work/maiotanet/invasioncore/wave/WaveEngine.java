@@ -131,9 +131,9 @@ public final class WaveEngine implements NexusCombatSink {
             if (by == null) {
                 return false;
             }
-            if (!shards.take(by, cost)) {
+            if (!shards.takeWithPool(by, nexus, cost)) {
                 by.sendMessage(Text.error("再建には " + cost + " Shard が必要だ（所持 "
-                        + shards.count(by) + "）"));
+                        + shards.count(by) + " / ネクサス内 " + nexus.sharedShards() + "）"));
                 return false;
             }
             by.sendMessage(Text.good("ネクサスを再建した。（-" + cost + " Shard）"));

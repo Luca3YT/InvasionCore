@@ -203,10 +203,10 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
           <div class="cmd"><span>/invasion setup</span><button type="button">コピー</button></div>
           <p>直し方のある項目は、文字をクリックするとコマンドが入力欄に入るので、Enter を押すだけで直せます（例: 難易度がピースフルなら <code>/difficulty normal</code>）。すべて ✔ になったら次へ。</p></div></li>
         <li><div><strong>右クリックして「侵攻を起動する」</strong>
-          <p>ネクサスの画面が開きます。緑の染料のボタンを押すと Day 1 が始まります。日没後に起動した場合、その夜は襲撃が来ません。</p></div></li>
+          <p>ネクサスの画面が開きます。緑の染料のボタンを押すと Day 1 が始まり、待機中の制限が解除されます。日没後に起動した場合、その夜は襲撃が来ません。</p></div></li>
         <li><div><strong>参加者を集める</strong>
-          <p>防衛範囲（48 ブロック）にいるプレイヤーは自動で参加者になります。範囲の外に出ることが多い人は、ネクサスの近くで次のコマンドを打っておくと、120 ブロック以内まで参加者として扱われます。</p>
-          <div class="cmd"><span>/invasion join</span><button type="button">コピー</button></div></div></li>
+          <p>サーバーに入った人は自動で参加者になります。起動するまでは「待機中」で、OP 以外はスポーン地点から 60 ブロックより先に進めず、ブロックの破壊・設置、アイテムを拾う・落とす、チェストを開ける、Mob への攻撃ができません。体力と満腹度が常に回復するので死にません。画面下には参加人数とルールの案内が出ます。</p>
+          <p>ルール説明の URL は <code>/rule</code> で表示できます（config.yml の <code>rules.url</code> で変更）。</p></div></li>
         <li><div><strong>壁と設備を整えて Day 7 を待つ</strong>
           <p>ここからは全員で準備です。<a href="#cycle">7日間の流れ</a>へ進んでください。</p></div></li>
       </ol>
@@ -294,6 +294,8 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
       </div>
       <p>未強化のブロックも硬さに応じた耐久を持っていますが、丸石で約 110 と低めです。土で囲んでも一瞬で抜かれます。</p>
       <p><strong>応急補修キット</strong>（ハニカムの見た目）を強化ブロックに右クリックすると、Shard なしで即座に全回復します。</p>
+      <h3>ネクサス内の Shard（共有）</h3>
+      <p>Shard を手に持ってネクサスを右クリックするとその束を、ネクサスの画面の「Shard をネクサスに預ける」で手持ちを全部、ネクサスに預けられます。預けた分はサイドバーに「ネクサス内の Shard」と出て、強化・修理・アップグレード・再建で <strong>手持ちが足りない分に自動で使われます</strong>。引き出せるのは管理者だけです（画面の「ネクサス内の Shard」から 1・10・64・全部）。</p>
       <div class="note"><strong>侵略者が得意なこと</strong>：壁蟲は壁を登り、工兵は足場を積んで高所を越え、掘削者は地面を掘って入ってきます。高い壁だけ・一枚壁だけでは止まりません。厚み・屋根・罠の組み合わせが大事です。</div>
     </section>
 
@@ -420,6 +422,7 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
           <tr><td><code>/invasion leave</code></td><td>防衛から抜ける</td></tr>
           <tr><td><code>/invasion perks</code></td><td>パーク画面を開く</td></tr>
           <tr><td><code>/invasion top</code></td><td>血の月の踏破ランキング</td></tr>
+          <tr><td><code>/rule</code></td><td>ルール説明の URL を表示する</td></tr>
           <tr><td><code>/invasion stop</code></td><td>侵攻を止める（ネクサスの所有者と管理者のみ）</td></tr>
         </tbody>
       </table></div>
@@ -436,6 +439,7 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
           <tr><td><code>/invasion admin spawn &lt;種類&gt; [数]</code></td><td>侵略者を湧かせる（稼働中のネクサスが必要）</td></tr>
           <tr><td><code>/invasion admin boss &lt;名前&gt;</code></td><td>ボスを出す（warlord / siege_titan / blight_queen / emberheart / void_herald）</td></tr>
           <tr><td><code>/invasion admin airdrop</code></td><td>補給物資をすぐ落とす</td></tr>
+          <tr><td><code>/invasion admin end</code></td><td>ゲームを強制終了する。侵略者を消し、ネクサスを中の Shard・報酬ごと撤去する（確認なし・元に戻せない）</td></tr>
           <tr><td><code>/invasion admin points &lt;数&gt;</code></td><td>自分にパークポイントを付与する</td></tr>
           <tr><td><code>/invasion admin despawn</code></td><td>侵略者を全員消す</td></tr>
           <tr><td><code>/invasion admin restore</code></td><td>侵略者に壊されたブロックを元に戻す</td></tr>

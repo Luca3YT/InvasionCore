@@ -89,6 +89,7 @@ public final class SetupChecklist {
         checks.add(checkMobGriefing(world));
         checks.add(checkTntExplodes(world));
         checks.add(checkKeepInventory(world));
+        checks.add(checkPvp(world));
         checks.add(checkSpawnProtection(nexus, origin, world));
         checks.add(checkSimulationDistance(nexus, world));
         if (nexus != null) {
@@ -166,6 +167,15 @@ public final class SetupChecklist {
                     "死亡時バックパックが働かず、死んでも失うものが無くなります。", gamerule(rule, false));
         }
         return Check.ok("死亡時バックパックが使える設定です。");
+    }
+
+    private Check checkPvp(World world) {
+        GameRule<Boolean> rule = GameRule.PVP;
+        if (Boolean.TRUE.equals(world.getGameRuleValue(rule))) {
+            return new Check(Status.WARN, "PvP が有効になっています（" + ruleName(rule) + " が true）。",
+                    "参加者同士で攻撃できてしまいます。", gamerule(rule, false));
+        }
+        return Check.ok("PvP は無効です。");
     }
 
     private Check checkSpawnProtection(Nexus nexus, Location origin, World world) {

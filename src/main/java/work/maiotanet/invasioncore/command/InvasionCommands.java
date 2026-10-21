@@ -50,7 +50,7 @@ public final class InvasionCommands implements BasicCommand {
             "spike", "mine", "flash", "medkit", "barrier");
     private static final List<String> ADMIN = List.of(
             "forcewave", "setlevel", "setday", "restore", "despawn", "reload", "info",
-            "list", "create", "activate", "spawn", "boss", "points", "airdrop");
+            "list", "create", "activate", "spawn", "boss", "points", "airdrop", "end");
 
     private final InvasionCore plugin;
     private final NexusManager nexuses;
@@ -335,6 +335,7 @@ public final class InvasionCommands implements BasicCommand {
         switch (args[1].toLowerCase(Locale.ROOT)) {
             case "list" -> listNexuses(sender);
             case "create" -> createNexus(sender, args);
+            case "end" -> endGame(sender);
             case "activate" -> {
                 if (requireNexus(sender, nexus)) {
                     // 管理コマンドなので Shard コストは取らず、崩壊状態からも復旧させる
@@ -451,15 +452,45 @@ public final class InvasionCommands implements BasicCommand {
             return;
         }
         Location loc = new Location(world, x, y, z);
-        if (nexuses.at(loc) != null) {
-            sender.sendMessage(Text.error("その座標には既にネクサスがある。"));
+        if (!nexuses.all().isEmpty()) {
+            sender.sendMessage(Text.error("ネクサスはサーバーに1基だけ置ける。先に /invasion admin end で終了すること。"));
             return;
         }
         loc.getBlock().setType(Material.LODESTONE);
         Nexus nexus = nexuses.create(loc, null, sender.getName());
+        nexuses.joinAllOnline(nexus);
         nexuses.save();
         sender.sendMessage(Text.good("ネクサスを設置した: " + world.getName()
                 + " " + x + "," + y + "," + z + "（HP " + (int) nexus.health() + "）"));
+    }
+
+    /**
+     * ゲームを強制終了する。侵略者を撤収させ、ネクサスを中の共有 Shard・報酬ごと消す。
+     *
+     * <p>配信の終わりや、やり直したいときに使う。ネクサスが無くなるので、
+     * 次にネクサスを置いて起動するまでは「ゲーム開始前」の制限が戻る。
+     * ネクサスは1基しか置けないので、距離に関係なくその1基を対象にする。</p>
+     */
+    private void endGame(CommandSender sender) {
+        Nexus nexus = nexuses.all().stream().findFirst().orElse(null);
+        if (nexus == null) {
+            sender.sendMessage(Text.error("終了するゲームがない（ネクサスが無い）。"));
+            return;
+        }
+        waves.deactivate(nexus, false);
+        breachLog.clear(nexus.id());
+        Location loc = nexus.location();
+        if (loc != null && loc.getBlock().getType() == Material.LODESTONE) {
+            loc.getBlock().setType(Material.AIR);
+        }
+        nexuses.remove(nexus);
+        nexuses.save();
+        for (Player p : plugin.getServer().getOnlinePlayers()) {
+            p.sendMessage(Text.warn("ゲームは管理者によって終了された。"));
+        }
+        if (!(sender instanceof Player)) {
+            sender.sendMessage(Text.good("ゲームを終了し、ネクサスを撤去した。"));
+        }
     }
 
     /** 指定種別の侵略Mobを湧かせる。バランス確認とトラブルシュートに使う。 */

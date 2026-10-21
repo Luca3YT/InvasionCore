@@ -70,6 +70,12 @@ public final class Nexus {
     private final Set<UUID> members = new HashSet<>();
     private final List<ItemStack> rewardBuffer = new ArrayList<>();
 
+    /**
+     * ネクサスに預けられた共有 Shard。
+     * 参加者の支払いで、手持ちが足りない分に充てられる。引き出せるのは管理者だけ。
+     */
+    private int sharedShards = 0;
+
     // --- 実行時のみの状態（永続化しない） ---
     private transient int currentWave = 0;
     private transient int totalWaves = 0;
@@ -230,6 +236,16 @@ public final class Nexus {
         return rewardBuffer;
     }
 
+    // ---------- 共有 Shard ----------
+
+    public int sharedShards() {
+        return sharedShards;
+    }
+
+    public void sharedShards(int sharedShards) {
+        this.sharedShards = Math.max(0, sharedShards);
+    }
+
     // ---------- 実行時状態 ----------
 
     public int currentWave() {
@@ -291,6 +307,7 @@ public final class Nexus {
         }
         sec.set("members", memberList);
         sec.set("rewards", new ArrayList<>(rewardBuffer));
+        sec.set("shared-shards", sharedShards);
     }
 
     @SuppressWarnings("unchecked")
@@ -314,6 +331,7 @@ public final class Nexus {
         nexus.day = Math.max(1, sec.getInt("day", 1));
         nexus.lastProcessedWorldDay = sec.getLong("last-world-day", -1L);
         nexus.bestWave = sec.getInt("best-wave", 0);
+        nexus.sharedShards = Math.max(0, sec.getInt("shared-shards", 0));
         try {
             nexus.phase = Phase.valueOf(sec.getString("phase", Phase.DORMANT.name()));
         } catch (IllegalArgumentException ex) {

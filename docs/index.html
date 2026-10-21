@@ -141,10 +141,21 @@ footer .inner { display: flex; flex-wrap: wrap; gap: 8px 20px; }
       <ol class="steps">
         <li><div><p><strong>Minecraft Java Edition 26.2</strong> を用意します。統合版では入れません。</p></div></li>
         <li><div><p>サーバーのアドレスは <strong>配信の中で案内します</strong>。マルチプレイの「サーバーを追加」に入力して接続してください。</p></div></li>
-        <li><div><p>ログインしたら、ネクサス（ロードストーンのブロック）の近くまで行きます。周囲 <strong>48 ブロック以内</strong> にいれば自動で参加者になります。</p></div></li>
-        <li><div><p>拠点から離れて探索することが多い人は、ネクサスの近くで次のコマンドを打っておきます。<strong>120 ブロック</strong> 離れても参加者として扱われます。</p>
-          <div class="cmd"><span>/invasion join</span><button type="button">コピー</button></div></div></li>
+        <li><div><p><strong>サーバーに入った時点で、自動で参加者になります。</strong> コマンドを打つ必要はありません。</p></div></li>
+        <li><div><p>ルール説明は、配信の概要欄か固定コメントにあります。ゲーム内で次のコマンドを打つと URL が表示されます。</p>
+          <div class="cmd"><span>/rule</span><button type="button">コピー</button></div></div></li>
       </ol>
+    </section>
+
+    <section id="waiting">
+      <h2>ゲームが始まるまで</h2>
+      <p>配信者がネクサスを起動するまでは「待機中」です。待機中は次のようになります。</p>
+      <ul class="rules">
+        <li><b>スポーン地点から 60 ブロックより先には進めない</b>遠くへ行って戻れなくなるのを防ぎます。</li>
+        <li><b>壊す・置く・拾う・落とす・開ける・攻撃する、ができない</b>ブロックの破壊と設置、アイテムを拾う・落とす、チェストなどを開ける、Mob や動物への攻撃は、開始まで止めています。</li>
+        <li><b>死なない</b>体力と満腹度が常に回復します。</li>
+      </ul>
+      <p>画面下に、いまの参加人数とルールの案内が出ます。ゲームが始まるとチャットに「ゲーム開始！」と出て、制限はすべて解除されます。</p>
     </section>
 
     <section id="first">
@@ -175,6 +186,9 @@ footer .inner { display: flex; flex-wrap: wrap; gap: 8px 20px; }
       </table></div>
       <h3>強化ハンマー</h3>
       <p>ハンマー（鉄の斧の見た目）でブロックを右クリックすると硬くなります。木枠 → 補強木材 → 石積み → 鉄筋コンクリート → 鋼鉄 の順に上がり、1段階ごとに Shard を使います。傷んだブロックを右クリックすると修理、<strong>スニークしながら右クリック</strong> で耐久の確認です。</p>
+      <h3>ネクサス内の Shard（みんなの共有）</h3>
+      <p><strong>Shard を手に持ってネクサスを右クリック</strong> すると、その束をネクサスに預けられます。ネクサスの画面の「Shard をネクサスに預ける」を押すと、持っている Shard を全部預けます。預けた分は画面右のサイドバーに「ネクサス内の Shard」として出ます。</p>
+      <p>強化・修理・アップグレードで払うときは、まず自分の Shard を使い、<strong>足りない分が自動でネクサス内の Shard から払われます</strong>。預けた Shard を引き出せるのは配信者（管理者）だけです。</p>
       <h3>タレット</h3>
       <p>置いたあと、<strong>弾薬を手に持って右クリック</strong> で装填します。射撃は矢、火炎はブレイズパウダー、凍結は雪玉、修復はレッドストーンです。素手で右クリックすると残弾が見られます。</p>
     </section>
@@ -190,7 +204,7 @@ footer .inner { display: flex; flex-wrap: wrap; gap: 8px 20px; }
       <div class="callout shard">
         <strong>報酬をもらう条件</strong>：勝った瞬間（夜明け）に、次の両方を満たしている人に Shard とパークポイントが配られます。
         <ul>
-          <li>拠点の近くにいる（48 ブロック以内、<code>/invasion join</code> 済みなら 120 ブロック以内）</li>
+          <li>拠点の近くにいる（ネクサスから 120 ブロック以内）</li>
           <li>生きている（リスポーン待ちだともらえません）</li>
         </ul>
       </div>
@@ -220,7 +234,8 @@ footer .inner { display: flex; flex-wrap: wrap; gap: 8px 20px; }
         <thead><tr><th>コマンド</th><th>内容</th></tr></thead>
         <tbody>
           <tr><td><code>/invasion status</code></td><td>近くのネクサスの状態と、自分の Shard 所持数</td></tr>
-          <tr><td><code>/invasion join</code></td><td>防衛に参加する（拠点から離れても参加者として扱われる）</td></tr>
+          <tr><td><code>/rule</code></td><td>ルール説明の URL を表示する</td></tr>
+          <tr><td><code>/invasion join</code></td><td>防衛に参加する（サーバーに入った時点で自動で参加しているので、普段は不要）</td></tr>
           <tr><td><code>/invasion leave</code></td><td>防衛から抜ける</td></tr>
           <tr><td><code>/invasion perks</code></td><td>パーク画面を開く</td></tr>
           <tr><td><code>/invasion top</code></td><td>血の月の踏破ランキング</td></tr>

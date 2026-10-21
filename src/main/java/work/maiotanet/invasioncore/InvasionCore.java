@@ -7,12 +7,14 @@ import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import work.maiotanet.invasioncore.command.InvasionCommands;
+import work.maiotanet.invasioncore.command.RuleCommand;
 import work.maiotanet.invasioncore.config.InvasionConfig;
 import work.maiotanet.invasioncore.defense.FortifyService;
 import work.maiotanet.invasioncore.defense.TrapService;
 import work.maiotanet.invasioncore.defense.TurretService;
 import work.maiotanet.invasioncore.economy.ContributionTracker;
 import work.maiotanet.invasioncore.economy.RewardService;
+import work.maiotanet.invasioncore.economy.ShardPickupSound;
 import work.maiotanet.invasioncore.economy.ShardService;
 import work.maiotanet.invasioncore.heat.HeatService;
 import work.maiotanet.invasioncore.item.RecipeRegistrar;
@@ -21,6 +23,7 @@ import work.maiotanet.invasioncore.listener.GadgetListener;
 import work.maiotanet.invasioncore.listener.InvaderListener;
 import work.maiotanet.invasioncore.listener.NexusListener;
 import work.maiotanet.invasioncore.listener.PlayerListener;
+import work.maiotanet.invasioncore.listener.PreGameListener;
 import work.maiotanet.invasioncore.mob.BossAbilities;
 import work.maiotanet.invasioncore.mob.InvaderAiService;
 import work.maiotanet.invasioncore.mob.InvaderRegistry;
@@ -28,6 +31,7 @@ import work.maiotanet.invasioncore.mob.InvaderSpawner;
 import work.maiotanet.invasioncore.nexus.NexusManager;
 import work.maiotanet.invasioncore.perk.PerkEffectService;
 import work.maiotanet.invasioncore.perk.PerkService;
+import work.maiotanet.invasioncore.pregame.PreGameService;
 import work.maiotanet.invasioncore.setup.SetupChecklist;
 import work.maiotanet.invasioncore.stage.GameStageService;
 import work.maiotanet.invasioncore.ui.HudService;
@@ -78,6 +82,7 @@ public final class InvasionCore extends JavaPlugin {
 
         GameStageService stages = new GameStageService(config);
         ShardService shards = new ShardService();
+        ShardPickupSound shardSound = new ShardPickupSound();
         ContributionTracker contributions = new ContributionTracker();
         RewardService rewards = new RewardService();
         BreachLog breachLog = new BreachLog();
@@ -113,7 +118,7 @@ public final class InvasionCore extends JavaPlugin {
         new RecipeRegistrar(this).registerAll();
 
         getServer().getPluginManager().registerEvents(
-                new NexusListener(config, nexuses, gui, waves), this);
+                new NexusListener(config, nexuses, gui, waves, shards), this);
         getServer().getPluginManager().registerEvents(
                 new DefenseListener(config, nexuses, fortify, turrets, traps, shards, perks, contributions), this);
         this.gadgets = new GadgetListener(this, nexuses, registry, perks, fortify);
@@ -131,14 +136,18 @@ public final class InvasionCore extends JavaPlugin {
             getLogger().info("前回から残っていた侵略Mobを " + orphans + " 体撤去しました。");
         }
         getServer().getPluginManager().registerEvents(
-                new PlayerListener(config, nexuses, heat, perks, hud, worldEvents), this);
+                new PlayerListener(config, nexuses, heat, perks, hud, worldEvents, shardSound), this);
+        PreGameService pregame = new PreGameService(config, nexuses);
+        getServer().getPluginManager().registerEvents(new PreGameListener(pregame), this);
 
         InvasionCommands commands = new InvasionCommands(
                 this, nexuses, stages, shards, perks, gui, waves, registry, spawner,
                 worldEvents, breachLog, new SetupChecklist(config, nexuses, stages));
-        getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event ->
-                event.registrar().register("invasion",
-                        "InvasionCore の操作", List.of("inv"), commands));
+        RuleCommand rule = new RuleCommand(config);
+        getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
+            event.registrar().register("invasion", "InvasionCore の操作", List.of("inv"), commands);
+            event.registrar().register("rule", "ルール説明の URL を表示する", List.of("rules"), rule);
+        });
 
         // ---- 定期処理 ----
         // AI は毎tick呼ぶが、内部でバケット分割しているので1tickあたりの実処理は 1/N。
@@ -146,6 +155,8 @@ public final class InvasionCore extends JavaPlugin {
         getServer().getScheduler().runTaskTimer(this, waves::tick, 40L, 20L);
         getServer().getScheduler().runTaskTimer(this, worldEvents::tick, 60L, 20L);
         getServer().getScheduler().runTaskTimer(this, sidebar::tick, 80L, 20L);
+        getServer().getScheduler().runTaskTimer(this, pregame::tick, 85L, 20L);
+        getServer().getScheduler().runTaskTimer(this, shardSound::tick, 1L, 1L);
         getServer().getScheduler().runTaskTimer(this, turrets::tick,
                 100L, config.turretTickInterval());
         getServer().getScheduler().runTaskTimer(this, traps::tick, 110L, 10L);

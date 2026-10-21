@@ -126,6 +126,16 @@ public final class NexusManager {
         return nexus;
     }
 
+    /**
+     * いまオンラインの全員をメンバーにする。
+     * サーバーに入った人は全員が参加者として扱われるため、後から置かれたネクサスにも揃えておく。
+     */
+    public void joinAllOnline(Nexus nexus) {
+        for (var player : plugin.getServer().getOnlinePlayers()) {
+            nexus.members().add(player.getUniqueId());
+        }
+    }
+
     public void remove(Nexus nexus) {
         byId.remove(nexus.id());
     }
