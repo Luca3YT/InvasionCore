@@ -198,6 +198,10 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
         <li><div><strong>拠点の中心にネクサスを置く</strong>
           <p>見た目はロードストーンです。周囲 <strong>48 ブロック</strong>が防衛範囲、<strong>40 ブロック</strong>以内が「侵略者が壁を壊してよい範囲」になります。範囲の外の建物は壊されません。</p>
           <p>ネクサス同士は 96 ブロック以上離す必要があります。</p></div></li>
+        <li><div><strong>開始前チェックをする</strong>
+          <p>ネクサスの近くで次のコマンドを打つと、ゲームを始められる状態かを一覧で確認できます。赤い <code>[✘]</code> は直さないと進まない項目、黄色の <code>[⚠]</code> は注意です。</p>
+          <div class="cmd"><span>/invasion setup</span><button type="button">コピー</button></div>
+          <p>直し方のある項目は、文字をクリックするとコマンドが入力欄に入るので、Enter を押すだけで直せます（例: 難易度がピースフルなら <code>/difficulty normal</code>）。すべて ✔ になったら次へ。</p></div></li>
         <li><div><strong>右クリックして「侵攻を起動する」</strong>
           <p>ネクサスの画面が開きます。緑の染料のボタンを押すと Day 1 が始まります。日没後に起動した場合、その夜は襲撃が来ません。</p></div></li>
         <li><div><strong>参加者を集める</strong>
@@ -423,6 +427,7 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
       <div class="table-wrap"><table>
         <thead><tr><th>コマンド</th><th>内容</th></tr></thead>
         <tbody>
+          <tr><td><code>/invasion setup</code></td><td>ゲームを始める前の確認。難易度・ゲームルール・ネクサスの状態などを一覧表示し、直すコマンドをクリックで入力欄に入れられる</td></tr>
           <tr><td><code>/invasion give &lt;アイテム&gt; [数]</code></td><td>nexus / hammer / shard / kit / turret_arrow / turret_flame / turret_frost / turret_heal / spike / mine / flash / medkit / barrier</td></tr>
           <tr><td><code>/invasion admin activate</code></td><td>Shard なしで起動する。崩壊したネクサスも復旧できる</td></tr>
           <tr><td><code>/invasion admin setday &lt;日&gt;</code></td><td>経過日数を変える。<code>7</code> にして夜にすると、すぐ血の月を試せる</td></tr>
@@ -450,7 +455,7 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
           <tr><td>敵が多すぎて配信が止まりそう</td><td><code>/invasion admin despawn</code> で全員消す</td></tr>
           <tr><td>ネクサスを片付けたい</td><td><code>/invasion stop</code> で止めてから壊す（稼働中は OP しか壊せない）</td></tr>
           <tr><td>ブロックが置けない</td><td>スポーン保護を確認する（<code>spawn-protection=0</code>）</td></tr>
-          <tr><td>侵略者がすぐ消える</td><td>難易度がピースフルになっていないか確認する</td></tr>
+          <tr><td>侵略者がすぐ消える・血の月が止まっている</td><td>難易度がピースフルになっていないか確認する。<code>/invasion setup</code> で一覧確認できる。ピースフルの間は血の月が止まり、ノーマルに戻すと再開する</td></tr>
         </tbody>
       </table></div>
     </section>

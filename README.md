@@ -221,6 +221,7 @@ GameStage が上がると下位種別の出現率が段階的に落ち、上位�
 | `/invasion perks` | パーク画面 |
 | `/invasion top` | 血の月踏破ランキング |
 | `/invasion stop` | 侵攻の停止（所有者・管理者） |
+| `/invasion setup` | ゲーム開始前の確認（要 `invasioncore.admin`）。難易度・ゲームルール・ネクサスの状態などを ✔ / ⚠ / ✘ で表示し、直すコマンドをクリックで入力欄に入れられる |
 | `/invasion give <item> [数]` | アイテム配布（要 `invasioncore.admin`）<br>`nexus` `hammer` `shard` `kit` `turret_*` `spike` `mine` `flash` `medkit` `barrier` |
 | `/invasion admin <sub>` | 下記の管理サブコマンド |
 

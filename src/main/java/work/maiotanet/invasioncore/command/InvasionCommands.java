@@ -18,6 +18,7 @@ import work.maiotanet.invasioncore.mob.MutationTier;
 import work.maiotanet.invasioncore.nexus.Nexus;
 import work.maiotanet.invasioncore.nexus.NexusManager;
 import work.maiotanet.invasioncore.perk.PerkService;
+import work.maiotanet.invasioncore.setup.SetupChecklist;
 import work.maiotanet.invasioncore.stage.GameStageService;
 import work.maiotanet.invasioncore.ui.NexusGui;
 import work.maiotanet.invasioncore.util.Text;
@@ -42,7 +43,7 @@ public final class InvasionCommands implements BasicCommand {
     private static final String ADMIN_PERMISSION = "invasioncore.admin";
 
     private static final List<String> ROOT = List.of(
-            "status", "join", "leave", "stop", "perks", "top", "give", "admin", "help");
+            "status", "join", "leave", "stop", "perks", "top", "setup", "give", "admin", "help");
     private static final List<String> ITEMS = List.of(
             "nexus", "hammer", "shard", "kit",
             "turret_arrow", "turret_flame", "turret_frost", "turret_heal",
@@ -62,11 +63,12 @@ public final class InvasionCommands implements BasicCommand {
     private final InvaderSpawner spawner;
     private final WorldEventService worldEvents;
     private final BreachLog breachLog;
+    private final SetupChecklist setup;
 
     public InvasionCommands(InvasionCore plugin, NexusManager nexuses, GameStageService stages,
                             ShardService shards, PerkService perks, NexusGui gui,
                             WaveEngine waves, InvaderRegistry registry, InvaderSpawner spawner,
-                            WorldEventService worldEvents, BreachLog breachLog) {
+                            WorldEventService worldEvents, BreachLog breachLog, SetupChecklist setup) {
         this.plugin = plugin;
         this.nexuses = nexuses;
         this.stages = stages;
@@ -78,6 +80,7 @@ public final class InvasionCommands implements BasicCommand {
         this.spawner = spawner;
         this.worldEvents = worldEvents;
         this.breachLog = breachLog;
+        this.setup = setup;
     }
 
     @Override
@@ -94,6 +97,7 @@ public final class InvasionCommands implements BasicCommand {
             case "stop" -> stop(sender);
             case "perks" -> openPerks(sender);
             case "top" -> top(sender);
+            case "setup" -> setup(sender);
             case "give" -> give(sender, args);
             case "admin" -> admin(sender, args);
             default -> sendHelp(sender);
@@ -236,6 +240,25 @@ public final class InvasionCommands implements BasicCommand {
             sender.sendMessage(Text.prefixed(Text.of("  " + (i + 1) + ". " + name
                     + " — 踏破 " + p.bloodMoonsSurvived() + " 回 / 最高 Wave " + p.bestWave()
                     + " / 撃破 " + p.totalKills(), Text.MUTED)));
+        }
+    }
+
+    /**
+     * ゲーム開始前の確認項目を表示する。
+     * 直すコマンドを実行できるのは管理者だけなので、表示も管理者に限る。
+     */
+    private void setup(CommandSender sender) {
+        if (!sender.hasPermission(ADMIN_PERMISSION)) {
+            sender.sendMessage(Text.error("権限がない。"));
+            return;
+        }
+        Location origin = sender instanceof Player player ? player.getLocation() : null;
+        List<SetupChecklist.Check> checks = setup.run(origin);
+        Nexus nexus = origin != null
+                ? nexuses.nearest(origin)
+                : nexuses.all().stream().findFirst().orElse(null);
+        for (var line : setup.render(checks, nexus)) {
+            sender.sendMessage(line);
         }
     }
 
@@ -585,6 +608,7 @@ public final class InvasionCommands implements BasicCommand {
         sender.sendMessage(Text.prefixed(Text.of("/invasion top — ランキング", Text.MUTED)));
         sender.sendMessage(Text.prefixed(Text.of("/invasion stop — 侵攻の停止（所有者）", Text.MUTED)));
         if (sender.hasPermission(ADMIN_PERMISSION)) {
+            sender.sendMessage(Text.prefixed(Text.of("/invasion setup — ゲーム開始前の確認", Text.MUTED)));
             sender.sendMessage(Text.prefixed(Text.of("/invasion give <item> [数] — アイテム配布", Text.MUTED)));
             sender.sendMessage(Text.prefixed(Text.of("/invasion admin <sub> — 管理コマンド", Text.MUTED)));
         }

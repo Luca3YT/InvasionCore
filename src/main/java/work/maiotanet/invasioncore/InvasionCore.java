@@ -28,6 +28,7 @@ import work.maiotanet.invasioncore.mob.InvaderSpawner;
 import work.maiotanet.invasioncore.nexus.NexusManager;
 import work.maiotanet.invasioncore.perk.PerkEffectService;
 import work.maiotanet.invasioncore.perk.PerkService;
+import work.maiotanet.invasioncore.setup.SetupChecklist;
 import work.maiotanet.invasioncore.stage.GameStageService;
 import work.maiotanet.invasioncore.ui.HudService;
 import work.maiotanet.invasioncore.ui.NexusGui;
@@ -134,7 +135,7 @@ public final class InvasionCore extends JavaPlugin {
 
         InvasionCommands commands = new InvasionCommands(
                 this, nexuses, stages, shards, perks, gui, waves, registry, spawner,
-                worldEvents, breachLog);
+                worldEvents, breachLog, new SetupChecklist(config, nexuses, stages));
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event ->
                 event.registrar().register("invasion",
                         "InvasionCore の操作", List.of("inv"), commands));
