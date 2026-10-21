@@ -16,6 +16,8 @@ import org.bukkit.entity.Snowball;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
@@ -35,7 +37,9 @@ import work.maiotanet.invasioncore.util.Keys;
 import work.maiotanet.invasioncore.util.Text;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 消耗ガジェット（閃光弾・救急キット・緊急バリア）。
@@ -54,6 +58,14 @@ public final class GadgetListener implements Listener {
     private final InvaderRegistry registry;
     private final PerkService perks;
     private final FortifyService fortify;
+
+    /**
+     * 展開中の緊急バリアのブロック位置。
+     *
+     * <p>追跡しないと、展開した鉄ブロックを掘るだけで鉄ブロックが手に入る（素材の複製）うえ、
+     * 45秒以内にサーバーを止めると消去タスクが走らずに壁が恒久的に残ってしまう。</p>
+     */
+    private final Set<Location> barrierBlocks = new HashSet<>();
 
     public GadgetListener(Plugin plugin, NexusManager nexuses, InvaderRegistry registry,
                           PerkService perks, FortifyService fortify) {
@@ -189,6 +201,7 @@ public final class GadgetListener implements Listener {
                 fortify.register(target, BlockTier.STEEL,
                         perks.fortifyHealthMultiplier(player.getUniqueId()));
                 placed.add(target);
+                barrierBlocks.add(target.getLocation());
             }
         }
         if (placed.isEmpty()) {
@@ -204,16 +217,54 @@ public final class GadgetListener implements Listener {
 
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
             for (Block block : placed) {
-                // プレイヤーが上から別の物を置いていたら触らない
-                if (block.getType() == Material.IRON_BLOCK) {
-                    block.setType(Material.AIR);
+                if (removeBarrierBlock(block)) {
                     block.getWorld().spawnParticle(Particle.CLOUD,
                             block.getLocation().add(0.5, 0.5, 0.5), 6, 0.2, 0.2, 0.2, 0.01);
                 }
-                // 消滅時に耐久記録も必ず消す。残すと同座標の別ブロックが鋼鉄扱いになる。
-                fortify.forget(block);
             }
         }, BARRIER_LIFETIME_TICKS);
+    }
+
+    /**
+     * バリアの1ブロックを消す。既に掘られた／置き換えられた位置は触らない。
+     *
+     * @return 鉄ブロックを実際に消したら true
+     */
+    private boolean removeBarrierBlock(Block block) {
+        if (!barrierBlocks.remove(block.getLocation())) {
+            return false;
+        }
+        // 消滅時に耐久記録も必ず消す。残すと同座標の別ブロックが鋼鉄扱いになる。
+        fortify.forget(block);
+        if (block.getType() != Material.IRON_BLOCK) {
+            return false;
+        }
+        block.setType(Material.AIR);
+        return true;
+    }
+
+    /** 一時的な壁なので、掘っても鉄ブロックは手に入らない。 */
+    @EventHandler(ignoreCancelled = true)
+    public void onBarrierBreak(BlockBreakEvent event) {
+        if (barrierBlocks.remove(event.getBlock().getLocation())) {
+            event.setDropItems(false);
+        }
+    }
+
+    /** 侵略者に壊された跡へプレイヤーが置いた物は、もうバリアではない。 */
+    @EventHandler(ignoreCancelled = true)
+    public void onPlaceOverBarrier(BlockPlaceEvent event) {
+        barrierBlocks.remove(event.getBlockPlaced().getLocation());
+    }
+
+    /** サーバー停止時に展開中のバリアを全て消す。消去タスクはスケジューラごと破棄されるため。 */
+    public void shutdown() {
+        for (Location loc : new ArrayList<>(barrierBlocks)) {
+            if (loc.getWorld() != null) {
+                removeBarrierBlock(loc.getBlock());
+            }
+        }
+        barrierBlocks.clear();
     }
 
     // ---------- 共通 ----------

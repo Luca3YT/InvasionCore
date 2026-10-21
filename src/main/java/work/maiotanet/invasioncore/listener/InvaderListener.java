@@ -1,5 +1,6 @@
 package work.maiotanet.invasioncore.listener;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
@@ -17,6 +18,7 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.EntityTargetLivingEntityEvent;
+import org.bukkit.event.world.EntitiesLoadEvent;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import work.maiotanet.invasioncore.config.InvasionConfig;
@@ -220,6 +222,52 @@ public final class InvaderListener implements Listener {
         if (nexus != null && nexus.isActive()) {
             event.setCancelled(true);
         }
+    }
+
+    // ---------- 残留個体の掃除 ----------
+
+    /**
+     * 読み込まれたチャンクに、制御を失った侵略Mobが残っていれば消す。
+     *
+     * <p>侵略Mobは勝手に消えないよう永続化しているため、チャンクごとアンロードされたり
+     * サーバーが異常終了したりすると、登録簿から外れた個体がワールドに保存されて残る。
+     * 放置するとネクサスと無関係に湧き続ける名前付きの強化Mobになり、ウェーブの集計にも乗らない。</p>
+     */
+    @EventHandler
+    public void onEntitiesLoad(EntitiesLoadEvent event) {
+        int removed = sweepOrphans(event.getEntities());
+        if (removed > 0) {
+            // 異常終了の後にしか起きないので、何が起きたか追えるよう記録しておく
+            Bukkit.getLogger().info("[InvasionCore] 制御を失った侵略Mobを "
+                    + removed + " 体撤去しました（チャンク " + event.getChunk().getX()
+                    + ", " + event.getChunk().getZ() + "）。");
+        }
+    }
+
+    /**
+     * PDC に侵略Mobの印があるのに、登録簿の個体と一致しないものを消す。
+     *
+     * @return 消した数
+     */
+    public int sweepOrphans(Iterable<? extends Entity> entities) {
+        int removed = 0;
+        for (Entity entity : entities) {
+            if (!entity.getPersistentDataContainer().has(Keys.INVADER_NEXUS, PersistentDataType.STRING)) {
+                continue;
+            }
+            Invader tracked = registry.get(entity.getUniqueId());
+            if (tracked != null && tracked.entity() == entity) {
+                continue;
+            }
+            if (tracked != null) {
+                // アンロード前の古い参照が残っている。足場も含めて片付ける。
+                registry.unregister(entity.getUniqueId());
+                ai.removePlaced(tracked);
+            }
+            entity.remove();
+            removed++;
+        }
+        return removed;
     }
 
     // ---------- 撃破 ----------

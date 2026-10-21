@@ -79,8 +79,16 @@ public final class PlayerListener implements Listener {
         }
     }
 
+    /**
+     * 稼働中ネクサスの防衛範囲内にいるか。
+     * 距離を問わない nearestActive だと、同じワールドのどこで採掘しても熱が溜まってしまう。
+     */
     private boolean isNearActiveNexus(Player player) {
-        return config.heatEnabled() && nexuses.nearestActive(player.getLocation()) != null;
+        if (!config.heatEnabled()) {
+            return false;
+        }
+        Nexus nexus = nexuses.nearest(player.getLocation());
+        return nexus != null && nexus.isActive();
     }
 
     // ---------- 死亡 ----------
@@ -96,8 +104,11 @@ public final class PlayerListener implements Listener {
             return;
         }
         List<ItemStack> drops = new ArrayList<>(event.getDrops());
-        if (worldEvents.placeBackpack(player, drops)) {
+        List<ItemStack> overflow = worldEvents.placeBackpack(player, drops);
+        if (overflow != null) {
+            // バックパックに入り切らなかった分だけを通常ドロップとして残す
             event.getDrops().clear();
+            event.getDrops().addAll(overflow);
         }
     }
 

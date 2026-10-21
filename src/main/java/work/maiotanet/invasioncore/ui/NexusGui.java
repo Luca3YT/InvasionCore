@@ -133,7 +133,8 @@ public final class NexusGui {
             NexusUpgrade up = all[i];
             int level = nexus.upgradeLevel(up);
             int cost = up.costFor(level);
-            cost = cost < 0 ? -1 : nexuses.discounted(nexus, cost);
+            // 表示と実際の請求額がずれないよう、購入時と同じ計算（パーク割引込み）を使う
+            cost = cost < 0 ? -1 : upgradeCost(player, nexus, cost);
 
             List<String> lore = new ArrayList<>();
             lore.add(up.description());
@@ -237,9 +238,7 @@ public final class NexusGui {
                 player.sendMessage(Text.warn(up.displayName() + " は上限に達している。"));
                 return true;
             }
-            int actual = (int) Math.round(nexuses.discounted(nexus, cost)
-                    * perks.costMultiplier(player.getUniqueId()));
-            actual = Math.max(1, actual);
+            int actual = upgradeCost(player, nexus, cost);
             if (!shards.take(player, actual)) {
                 player.sendMessage(Text.error("Shard が足りない（必要 " + actual
                         + " / 所持 " + shards.count(player) + "）"));
@@ -282,6 +281,12 @@ public final class NexusGui {
             return true;
         }
         return true;
+    }
+
+    /** アップグレードの実請求額。整備術式の割引と、本人の「建築士」パークの両方を掛ける。 */
+    private int upgradeCost(Player player, Nexus nexus, int base) {
+        return Math.max(1, (int) Math.round(nexuses.discounted(nexus, base)
+                * perks.costMultiplier(player.getUniqueId())));
     }
 
     private void collectRewards(Player player, Nexus nexus) {

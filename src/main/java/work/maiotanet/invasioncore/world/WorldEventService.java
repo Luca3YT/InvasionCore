@@ -170,11 +170,15 @@ public final class WorldEventService {
             return null;
         }
         int stage = stages.computeCurrent(nexus);
-        if (!placeContainer(spot, Material.BARREL, rewards.airDropLoot(stage),
-                15 * 60 * 1000L, false)) {
+        List<ItemStack> overflow = placeContainer(spot, Material.BARREL, rewards.airDropLoot(stage),
+                15 * 60 * 1000L, false);
+        if (overflow == null) {
             return null;
         }
         World world = spot.getWorld();
+        for (ItemStack stack : overflow) {
+            world.dropItemNaturally(spot.clone().add(0.5, 1.0, 0.5), stack);
+        }
         world.playSound(spot, Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 2.0f, 0.8f);
         nextAirDrop.put(nexus.id(), System.currentTimeMillis()
                 + config.airDropIntervalSeconds() * 1000L);
@@ -236,24 +240,29 @@ public final class WorldEventService {
     /**
      * 死亡地点に所持品をまとめたバックパックを置く。
      *
-     * @return 置けたら true。置けなければ通常ドロップに任せる。
+     * <p>樽は27スロットしかなく、防具・オフハンドを含む所持品（最大41スタック）は入り切らないことがある。
+     * 溢れた分は呼び出し元へ返し、通常ドロップとして落とさせる。</p>
+     *
+     * @return 置けたら入り切らなかったアイテム（空のこともある）。置けなければ null で、通常ドロップに任せる。
      */
-    public boolean placeBackpack(Player player, List<ItemStack> drops) {
+    public List<ItemStack> placeBackpack(Player player, List<ItemStack> drops) {
         if (!config.backpackEnabled() || drops.isEmpty()) {
-            return false;
+            return null;
         }
         Block block = findBackpackSpot(player.getLocation());
         if (block == null) {
-            return false;
+            return null;
         }
-        if (!placeContainer(block.getLocation(), Material.BARREL, drops,
-                config.backpackExpireSeconds() * 1000L, true)) {
-            // 設置に失敗したら通常ドロップに任せる。ここで true を返すと所持品が消える。
-            return false;
+        List<ItemStack> overflow = placeContainer(block.getLocation(), Material.BARREL, drops,
+                config.backpackExpireSeconds() * 1000L, true);
+        if (overflow == null) {
+            // 設置に失敗したら通常ドロップに任せる。ここで成功扱いにすると所持品が消える。
+            return null;
         }
         player.sendMessage(Text.warn("所持品は死亡地点のバックパックに残された（"
-                + block.getX() + ", " + block.getY() + ", " + block.getZ() + "）"));
-        return true;
+                + block.getX() + ", " + block.getY() + ", " + block.getZ() + "）"
+                + (overflow.isEmpty() ? "" : " 入り切らなかった分はその場に落ちている。")));
+        return overflow;
     }
 
     private Block findBackpackSpot(Location origin) {
@@ -280,10 +289,10 @@ public final class WorldEventService {
      * 呼び出し元がドロップを破棄した後なので所持品が丸ごと消える。
      * 格納できたかを必ず実体から読み直して確認し、失敗時は設置を取り消す。</p>
      *
-     * @return 中身の格納に成功したら true
+     * @return 格納に成功したら、容量不足で入り切らなかったアイテム（空のこともある）。失敗したら null
      */
-    private boolean placeContainer(Location loc, Material material, List<ItemStack> contents,
-                                   long lifetimeMillis, boolean backpack) {
+    private List<ItemStack> placeContainer(Location loc, Material material, List<ItemStack> contents,
+                                           long lifetimeMillis, boolean backpack) {
         Block block = loc.getBlock();
         BlockData original = block.getBlockData().clone();
         block.setType(material, false);
@@ -293,12 +302,15 @@ public final class WorldEventService {
         BlockState state = block.getState(false);
         if (!(state instanceof Container container)) {
             block.setBlockData(original, false);
-            return false;
+            return null;
         }
         int expected = 0;
+        List<ItemStack> overflow = new ArrayList<>();
         for (ItemStack stack : contents) {
             if (stack != null && !stack.getType().isAir()) {
-                container.getInventory().addItem(stack);
+                // addItem は渡したスタックの個数を書き換えることがある。失敗時に呼び出し元が
+                // 元のドロップを使えるよう、複製を渡す。
+                overflow.addAll(container.getInventory().addItem(stack.clone()).values());
                 expected++;
             }
         }
@@ -306,11 +318,11 @@ public final class WorldEventService {
         if (expected > 0 && !hasContents(block)) {
             plugin.getLogger().warning("一時容器に中身を格納できませんでした: " + loc);
             block.setBlockData(original, false);
-            return false;
+            return null;
         }
         long now = System.currentTimeMillis();
         temporary.add(new TempContainer(loc.clone(), original, now, now + lifetimeMillis, backpack));
-        return true;
+        return overflow;
     }
 
     /** 設置後の実体を読み直して、中身が入っているかを確認する。 */

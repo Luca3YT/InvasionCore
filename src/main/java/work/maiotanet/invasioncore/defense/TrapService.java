@@ -144,7 +144,9 @@ public final class TrapService {
             Map.Entry<String, Trap> entry = it.next();
             Block block = fromKey(entry.getKey());
             Trap trap = entry.getValue();
-            if (block == null) {
+            if (block == null
+                    || !block.getWorld().isChunkLoaded(block.getX() >> 4, block.getZ() >> 4)) {
+                // 未ロードのチャンクを getType() で同期ロードさせない
                 continue;
             }
             if (block.getType() != trap.type.block()) {

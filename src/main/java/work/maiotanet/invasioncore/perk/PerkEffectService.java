@@ -3,6 +3,7 @@ package work.maiotanet.invasioncore.perk;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
+import work.maiotanet.invasioncore.nexus.Nexus;
 import work.maiotanet.invasioncore.nexus.NexusManager;
 
 /**
@@ -32,7 +33,9 @@ public final class PerkEffectService {
                 continue;
             }
             // 拠点から遠く離れた通常プレイでは効かせない。侵攻用のパークなので。
-            if (nexuses.nearestActive(player.getLocation()) == null) {
+            // 距離を問わない nearestActive だと、同じワールドにいるだけで常時効いてしまう。
+            Nexus nexus = nexuses.nearest(player.getLocation());
+            if (nexus == null || !nexus.isActive()) {
                 continue;
             }
             // Lv1〜2 は速度I、Lv3〜4 は速度II。切れ目なく上書きし続ける。

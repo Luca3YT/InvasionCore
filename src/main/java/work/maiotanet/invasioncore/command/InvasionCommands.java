@@ -441,7 +441,7 @@ public final class InvasionCommands implements BasicCommand {
 
     /** 指定種別の侵略Mobを湧かせる。バランス確認とトラブルシュートに使う。 */
     private void spawnInvaders(CommandSender sender, Nexus nexus, String[] args) {
-        if (!requireNexus(sender, nexus)) {
+        if (!requireActiveNexus(sender, nexus)) {
             return;
         }
         if (args.length < 3) {
@@ -481,7 +481,7 @@ public final class InvasionCommands implements BasicCommand {
     }
 
     private void spawnBoss(CommandSender sender, Nexus nexus, String[] args) {
-        if (!requireNexus(sender, nexus)) {
+        if (!requireActiveNexus(sender, nexus)) {
             return;
         }
         if (args.length < 3) {
@@ -543,6 +543,21 @@ public final class InvasionCommands implements BasicCommand {
     private boolean requireNexus(CommandSender sender, Nexus nexus) {
         if (nexus == null) {
             sender.sendMessage(Text.error("近くにネクサスがない。"));
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * 稼働中のネクサスを要求する。
+     * 侵略Mobの AI は非稼働ネクサスの個体を即座に撤収させるので、湧かせても一瞬で消えてしまう。
+     */
+    private boolean requireActiveNexus(CommandSender sender, Nexus nexus) {
+        if (!requireNexus(sender, nexus)) {
+            return false;
+        }
+        if (!nexus.isActive()) {
+            sender.sendMessage(Text.error("ネクサスが稼働していない。先に /invasion admin activate を実行すること。"));
             return false;
         }
         return true;

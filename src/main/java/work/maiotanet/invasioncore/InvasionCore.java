@@ -3,6 +3,7 @@ package work.maiotanet.invasioncore;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import work.maiotanet.invasioncore.command.InvasionCommands;
@@ -58,6 +59,7 @@ public final class InvasionCore extends JavaPlugin {
     private HudService hud;
     private WorldEventService worldEvents;
     private WaveEngine waves;
+    private GadgetListener gadgets;
 
     @Override
     public void onEnable() {
@@ -113,11 +115,20 @@ public final class InvasionCore extends JavaPlugin {
                 new NexusListener(config, nexuses, gui, waves), this);
         getServer().getPluginManager().registerEvents(
                 new DefenseListener(config, nexuses, fortify, turrets, traps, shards, perks, contributions), this);
-        getServer().getPluginManager().registerEvents(
-                new GadgetListener(this, nexuses, registry, perks, fortify), this);
-        getServer().getPluginManager().registerEvents(
-                new InvaderListener(config, nexuses, registry, spawner, ai, fortify, breachLog,
-                        shards, perks, contributions, stages, heat, waves), this);
+        this.gadgets = new GadgetListener(this, nexuses, registry, perks, fortify);
+        getServer().getPluginManager().registerEvents(gadgets, this);
+        InvaderListener invaderListener = new InvaderListener(config, nexuses, registry, spawner, ai,
+                fortify, breachLog, shards, perks, contributions, stages, heat, waves);
+        getServer().getPluginManager().registerEvents(invaderListener, this);
+        // 有効化より前に読み込まれていたチャンク（スポーン周辺など）には読み込みイベントが来ないので、
+        // 前回の異常終了で残った侵略Mobをここで一掃する。
+        int orphans = 0;
+        for (World world : getServer().getWorlds()) {
+            orphans += invaderListener.sweepOrphans(world.getEntities());
+        }
+        if (orphans > 0) {
+            getLogger().info("前回から残っていた侵略Mobを " + orphans + " 体撤去しました。");
+        }
         getServer().getPluginManager().registerEvents(
                 new PlayerListener(config, nexuses, heat, perks, hud, worldEvents), this);
 
@@ -155,6 +166,10 @@ public final class InvasionCore extends JavaPlugin {
         }
         if (worldEvents != null) {
             worldEvents.shutdown();
+        }
+        if (gadgets != null) {
+            // 保存より前に消す。残すと鋼鉄級の耐久記録ごと恒久的な壁になる。
+            gadgets.shutdown();
         }
         if (hud != null) {
             hud.shutdown();

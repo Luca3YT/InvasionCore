@@ -6,8 +6,12 @@ import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.Chest;
+import org.bukkit.block.Container;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 
 import java.io.File;
@@ -195,6 +199,7 @@ public final class FortifyService {
             Location center = block.getLocation().add(0.5, 0.5, 0.5);
             w.spawnParticle(Particle.BLOCK, center, 24, 0.3, 0.3, 0.3, 0.0, block.getBlockData());
             w.playSound(center, Sound.BLOCK_STONE_BREAK, 1.0f, 0.7f);
+            dropContainerContents(block, center);
             block.setType(Material.AIR);
             return true;
         }
@@ -203,6 +208,28 @@ public final class FortifyService {
         w.spawnParticle(Particle.BLOCK, block.getLocation().add(0.5, 0.5, 0.5), 4,
                 0.25, 0.25, 0.25, 0.0, block.getBlockData());
         return false;
+    }
+
+    /**
+     * 容器の中身をその場に落とす。
+     *
+     * <p>setType(AIR) で消すと中身ごと消滅し、BreachLog の復元でも空の容器しか戻らない。
+     * 拠点のチェストが侵略者に壊されるたびに保管物が失われるので、必ず先に吐き出させる。
+     * ラージチェストは片側だけを対象にする（もう片方は残るので、その中身まで落とすと散らかる）。</p>
+     */
+    private void dropContainerContents(Block block, Location at) {
+        if (!(block.getState(false) instanceof Container container)) {
+            return;
+        }
+        Inventory inventory = container instanceof Chest chest
+                ? chest.getBlockInventory()
+                : container.getInventory();
+        for (ItemStack stack : inventory.getContents()) {
+            if (stack != null && !stack.getType().isAir()) {
+                block.getWorld().dropItemNaturally(at, stack);
+            }
+        }
+        inventory.clear();
     }
 
     /** プレイヤーが自分で壊した／置き換えたときに記録を消す。 */
@@ -251,8 +278,9 @@ public final class FortifyService {
         while (it.hasNext()) {
             Map.Entry<String, Fortified> e = it.next();
             Block block = fromKey(e.getKey());
-            if (block == null) {
-                // ワールドが読み込まれていないだけの可能性があるので残す
+            if (block == null || !isChunkLoaded(block)) {
+                // ワールド／チャンクが読み込まれていないだけの可能性があるので残す。
+                // 確認のためにチャンクを同期ロードすると、5分ごとに全記録分の読み込みが走る。
                 continue;
             }
             Fortified f = e.getValue();
@@ -266,6 +294,10 @@ public final class FortifyService {
                 it.remove();
             }
         }
+    }
+
+    private static boolean isChunkLoaded(Block block) {
+        return block.getWorld().isChunkLoaded(block.getX() >> 4, block.getZ() >> 4);
     }
 
     // ---------- 永続化 ----------

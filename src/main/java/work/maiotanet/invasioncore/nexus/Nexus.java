@@ -319,6 +319,13 @@ public final class Nexus {
         } catch (IllegalArgumentException ex) {
             nexus.phase = Phase.DORMANT;
         }
+        // ウェーブの進行状況は永続化していないので、血の月を途中から再開することはできない。
+        // BLOOD_MOON のまま読み込むと「全ウェーブ消化済み・残敵0」と判定されて即勝利になり、
+        // 再起動するだけで Lv・報酬・パークポイントが手に入ってしまう。準備フェーズに戻しておけば、
+        // 夜のうちに再起動した場合は日没処理が未済扱いになり、血の月が最初からやり直しになる。
+        if (nexus.phase == Phase.BLOOD_MOON) {
+            nexus.phase = Phase.PREPARATION;
+        }
 
         ConfigurationSection up = sec.getConfigurationSection("upgrades");
         if (up != null) {
