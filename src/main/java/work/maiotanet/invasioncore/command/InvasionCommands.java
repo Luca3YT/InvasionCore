@@ -485,13 +485,19 @@ public final class InvasionCommands implements BasicCommand {
             sender.sendMessage(Text.error("Web 機能が動いていない。config.yml の web.enabled と web.port を確認すること。"));
             return;
         }
-        sender.sendMessage(Text.info("━━ 管理画面（同じ Wi-Fi のスマホ・PC から開ける） ━━"));
+        sender.sendMessage(Text.info("━━ 管理画面 ━━"));
         for (String url : web.adminUrls()) {
             sender.sendMessage(link(url));
         }
         sender.sendMessage(Text.info("━━ OBS オーバーレイ（ブラウザソースに入れる） ━━"));
-        sender.sendMessage(link(web.overlayUrl()));
+        for (String url : web.overlayUrls()) {
+            sender.sendMessage(link(url));
+        }
         sender.sendMessage(Text.prefixed(Text.of("管理画面の URL にはパスワードが入っている。配信画面に映さないこと。", Text.WARN)));
+        if (!web.hasPublicUrl()) {
+            sender.sendMessage(Text.prefixed(Text.of("外部のサーバー（VPS など）なら、config.yml の web.public-url を設定すると"
+                    + "外から開ける URL が表示される。", Text.MUTED)));
+        }
     }
 
     private Component link(String url) {

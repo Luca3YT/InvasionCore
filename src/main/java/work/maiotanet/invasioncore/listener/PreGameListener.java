@@ -23,12 +23,6 @@ import org.bukkit.inventory.BlockInventoryHolder;
 import org.bukkit.block.DoubleChest;
 import org.bukkit.inventory.InventoryHolder;
 import work.maiotanet.invasioncore.pregame.PreGameService;
-import work.maiotanet.invasioncore.util.Sounds;
-import work.maiotanet.invasioncore.util.Text;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
 
 /**
  * ゲーム開始前の行動制限。
@@ -39,11 +33,7 @@ import java.util.UUID;
  */
 public final class PreGameListener implements Listener {
 
-    /** 同じ人に注意を出す間隔（ミリ秒）。押し続けたときにチャットが流れないようにする。 */
-    private static final long NOTICE_INTERVAL_MILLIS = 5000L;
-
     private final PreGameService pregame;
-    private final Map<UUID, Long> lastNotice = new HashMap<>();
 
     public PreGameListener(PreGameService pregame) {
         this.pregame = pregame;
@@ -182,13 +172,6 @@ public final class PreGameListener implements Listener {
     }
 
     private void notice(Player player, String message) {
-        long now = System.currentTimeMillis();
-        Long last = lastNotice.get(player.getUniqueId());
-        if (last != null && now - last < NOTICE_INTERVAL_MILLIS) {
-            return;
-        }
-        lastNotice.put(player.getUniqueId(), now);
-        player.sendMessage(Text.warn(message));
-        Sounds.fail(player);
+        pregame.notice(player, message);
     }
 }

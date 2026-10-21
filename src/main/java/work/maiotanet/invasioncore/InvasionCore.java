@@ -124,11 +124,14 @@ public final class InvasionCore extends JavaPlugin {
         // ---- 登録 ----
         new RecipeRegistrar(this).registerAll();
 
+        PreGameService pregame = new PreGameService(config, nexuses);
+        getServer().getPluginManager().registerEvents(new PreGameListener(pregame), this);
         getServer().getPluginManager().registerEvents(
                 new NexusListener(config, nexuses, gui, waves, shards), this);
         getServer().getPluginManager().registerEvents(
-                new DefenseListener(config, nexuses, fortify, turrets, traps, shards, perks, contributions), this);
-        this.gadgets = new GadgetListener(this, nexuses, registry, perks, fortify);
+                new DefenseListener(config, nexuses, fortify, turrets, traps, shards, perks, contributions, pregame),
+                this);
+        this.gadgets = new GadgetListener(this, nexuses, registry, perks, fortify, pregame);
         getServer().getPluginManager().registerEvents(gadgets, this);
         InvaderListener invaderListener = new InvaderListener(config, nexuses, registry, spawner, ai,
                 fortify, breachLog, shards, perks, contributions, stages, heat, waves);
@@ -144,22 +147,30 @@ public final class InvasionCore extends JavaPlugin {
         }
         getServer().getPluginManager().registerEvents(
                 new PlayerListener(config, nexuses, heat, perks, hud, worldEvents, shardSound, shards), this);
-        PreGameService pregame = new PreGameService(config, nexuses);
-        getServer().getPluginManager().registerEvents(new PreGameListener(pregame), this);
 
+        SetupChecklist setupChecklist = new SetupChecklist(config, nexuses, stages);
         InvasionCommands commands = new InvasionCommands(
                 this, nexuses, stages, shards, perks, gui, waves, registry, spawner,
-                worldEvents, breachLog, new SetupChecklist(config, nexuses, stages));
+                worldEvents, breachLog, setupChecklist);
 
         // ---- Web（管理画面・OBS オーバーレイ） ----
         FaceService faces = new FaceService(this);
         WebState webState = new WebState(config, nexuses, registry, shards, perks, contributions, faces);
         getServer().getScheduler().runTaskTimer(this, webState::tick, 20L, 20L);
         if (config.webEnabled()) {
-            this.web = new WebServer(this, config, webState, shardFeed, faces);
-            web.start();
+            try {
+                this.web = new WebServer(this, config, webState, shardFeed, faces);
+                web.start();
+            } catch (LinkageError ex) {
+                // JDK 同梱の HTTP サーバー（jdk.httpserver）を省いた Java だと、クラスが見つからず落ちる。
+                // ゲーム本体まで止めないよう、Web 機能だけを諦める。
+                this.web = null;
+                getLogger().warning("この Java には Web サーバーの機能（jdk.httpserver）が無いため、"
+                        + "管理画面と OBS オーバーレイは使えません。JDK 版の Java で起動してください。");
+            }
         }
         commands.web(web);
+        setupChecklist.web(config.webEnabled(), web);
         RuleCommand rule = new RuleCommand(config);
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
             event.registrar().register("invasion", "InvasionCore の操作", List.of("inv"), commands);

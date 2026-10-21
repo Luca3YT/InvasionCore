@@ -38,6 +38,10 @@ public final class FaceService {
     private final File dir;
     private final Map<UUID, byte[]> cache = new ConcurrentHashMap<>();
     private final Set<UUID> pending = ConcurrentHashMap.newKeySet();
+
+    /** 取得に失敗した人は、しばらく取りに行かない（毎秒 Mojang に問い合わせ続けないため）。 */
+    private static final long RETRY_AFTER_MILLIS = 5 * 60 * 1000L;
+    private final Map<UUID, Long> retryAt = new ConcurrentHashMap<>();
     private final HttpClient http = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))
             .followRedirects(HttpClient.Redirect.NORMAL)
@@ -56,11 +60,14 @@ public final class FaceService {
      */
     public void prefetch(Player player) {
         UUID id = player.getUniqueId();
-        if (cache.containsKey(id) || !pending.add(id)) {
+        Long wait = retryAt.get(id);
+        if (cache.containsKey(id) || (wait != null && System.currentTimeMillis() < wait) || !pending.add(id)) {
             return;
         }
         URL skin = player.getPlayerProfile().getTextures().getSkin();
         if (skin == null || !SKIN_HOST.equals(skin.getHost())) {
+            // スキンの無いアカウント（オフラインモードなど）。既定の顔のままにして、しばらく見に行かない
+            retryAt.put(id, System.currentTimeMillis() + RETRY_AFTER_MILLIS);
             pending.remove(id);
             return;
         }
@@ -73,16 +80,21 @@ public final class FaceService {
         }
         http.sendAsync(request, HttpResponse.BodyHandlers.ofByteArray())
                 .thenAccept(response -> {
-                    if (response.statusCode() != 200) {
-                        return;
-                    }
-                    byte[] png = cropFace(response.body());
+                    byte[] png = response.statusCode() == 200 ? cropFace(response.body()) : null;
                     if (png != null) {
                         cache.put(id, png);
                         writeToDisk(id, png);
+                        retryAt.remove(id);
+                    } else {
+                        retryAt.put(id, System.currentTimeMillis() + RETRY_AFTER_MILLIS);
                     }
                 })
-                .whenComplete((ok, error) -> pending.remove(id));
+                .whenComplete((ok, error) -> {
+                    if (error != null) {
+                        retryAt.put(id, System.currentTimeMillis() + RETRY_AFTER_MILLIS);
+                    }
+                    pending.remove(id);
+                });
     }
 
     /** 顔の PNG。まだ無ければディスクを見て、それも無ければ既定の顔を返す。 */

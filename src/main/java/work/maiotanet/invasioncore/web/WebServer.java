@@ -55,6 +55,11 @@ public final class WebServer {
     private ExecutorService executor;
     private String token;
 
+    // 起動時に読んだ設定。Web 用のスレッドから設定を直接読まないよう、ここに写しておく（変更は再起動で反映）
+    private int port;
+    private String publicUrl;
+    private boolean overlayToken;
+
     public WebServer(Plugin plugin, InvasionConfig config, WebState state, ShardFeed feed, FaceService faces) {
         this.plugin = plugin;
         this.config = config;
@@ -67,11 +72,15 @@ public final class WebServer {
 
     public void start() {
         token = loadOrCreateToken();
+        port = config.webPort();
+        publicUrl = config.webPublicUrl();
+        overlayToken = config.webOverlayToken();
         try {
-            server = HttpServer.create(new InetSocketAddress(config.webBind(), config.webPort()), 0);
-        } catch (IOException ex) {
-            plugin.getLogger().warning("Web サーバーを起動できませんでした（ポート " + config.webPort()
-                    + " が使用中の可能性）。config.yml の web.port を変えてください: " + ex.getMessage());
+            server = HttpServer.create(new InetSocketAddress(config.webBind(), port), 0);
+        } catch (IOException | IllegalArgumentException ex) {
+            plugin.getLogger().warning("Web サーバーを起動できませんでした（ポート " + port
+                    + " が使用中か、web.bind のアドレスが正しくない可能性）。config.yml の web.port / web.bind を確認してください: "
+                    + ex.getMessage());
             server = null;
             return;
         }
@@ -105,27 +114,58 @@ public final class WebServer {
 
     // ---------- URL ----------
 
-    /** 管理画面の URL（同じ Wi-Fi の端末から開ける IP ごと）。 */
+    /** 外部から開くための public-url が設定されているか。 */
+    public boolean hasPublicUrl() {
+        return !publicUrl.isEmpty();
+    }
+
+    /**
+     * 管理画面の URL。public-url があればそれを使い（VPS など）、
+     * 無ければこのマシンの LAN の IP ごとに作る（自宅で動かすとき）。
+     */
     public List<String> adminUrls() {
         List<String> out = new ArrayList<>();
-        for (String host : lanHosts()) {
-            out.add("http://" + host + ":" + config.webPort() + "/admin?token=" + token);
+        for (String base : bases()) {
+            out.add(base + "/admin?token=" + token);
         }
         return out;
     }
 
-    /** OBS のブラウザソースに入れる URL。OBS は配信 PC で動くので localhost でよい。 */
-    public String overlayUrl() {
-        return "http://localhost:" + config.webPort() + "/overlay";
+    /** OBS のブラウザソースに入れる URL。 */
+    public List<String> overlayUrls() {
+        List<String> out = new ArrayList<>();
+        for (String base : bases()) {
+            out.add(base + "/overlay" + (overlayToken ? "?token=" + token : ""));
+        }
+        return out;
+    }
+
+    private List<String> bases() {
+        if (hasPublicUrl()) {
+            return List.of(publicUrl);
+        }
+        List<String> out = new ArrayList<>();
+        for (String host : lanHosts()) {
+            out.add("http://" + host + ":" + port);
+        }
+        return out;
     }
 
     public List<String> describeUrls() {
         List<String> lines = new ArrayList<>();
-        lines.add("管理画面（同じ Wi-Fi のスマホ・PC から）:");
+        lines.add("Web サーバーをポート " + port + " で起動しました。");
+        lines.add("管理画面:");
         for (String url : adminUrls()) {
             lines.add("  " + url);
         }
-        lines.add("OBS オーバーレイ（ブラウザソース）: " + overlayUrl());
+        lines.add("OBS オーバーレイ（ブラウザソース）:");
+        for (String url : overlayUrls()) {
+            lines.add("  " + url);
+        }
+        if (!hasPublicUrl()) {
+            lines.add("外部のサーバー（VPS など）で動かしている場合は、config.yml の web.public-url に"
+                    + " http://<サーバーのIPかドメイン>:" + port + " を書いてください。");
+        }
         return lines;
     }
 
@@ -155,7 +195,12 @@ public final class WebServer {
         try {
             String path = ex.getRequestURI().getPath();
             Map<String, String> query = query(ex.getRequestURI().getRawQuery());
-            if (path.equals("/overlay")) {
+            boolean overlayPath = path.equals("/overlay") || path.equals("/api/overlay/events");
+            if (overlayPath && overlayToken && !authorized(query.get("token"))) {
+                send(ex, 403, "text/plain; charset=utf-8",
+                        "パスワードが違います。/invasion admin web で表示される URL を使ってください。"
+                                .getBytes(StandardCharsets.UTF_8));
+            } else if (path.equals("/overlay")) {
                 sendResource(ex, "web/overlay.html");
             } else if (path.equals("/api/overlay/events")) {
                 sendJson(ex, 200, overlayEvents(query.get("since")));
@@ -233,7 +278,7 @@ public final class WebServer {
             send(ex, 400, "text/plain", new byte[0]);
             return;
         }
-        plugin.getServer().getScheduler().runTask(plugin, () -> config.overlayStyle(style));
+        plugin.getServer().getScheduler().runTask(plugin, () -> state.changeStyle(style));
         send(ex, 204, "text/plain", null);
     }
 

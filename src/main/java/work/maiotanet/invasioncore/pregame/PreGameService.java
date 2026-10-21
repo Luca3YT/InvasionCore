@@ -10,7 +10,12 @@ import org.bukkit.potion.PotionEffectType;
 import work.maiotanet.invasioncore.config.InvasionConfig;
 import work.maiotanet.invasioncore.nexus.Nexus;
 import work.maiotanet.invasioncore.nexus.NexusManager;
+import work.maiotanet.invasioncore.util.Sounds;
 import work.maiotanet.invasioncore.util.Text;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * ゲーム開始（ネクサスの起動）前の待機状態。
@@ -30,8 +35,12 @@ public final class PreGameService {
     /** 効果の持続時間（tick）。毎秒かけ直すので、開始後は自然に切れる。 */
     private static final int EFFECT_TICKS = 60;
 
+    /** 同じ人に注意を出す間隔（ミリ秒）。押し続けたときにチャットが流れないようにする。 */
+    private static final long NOTICE_INTERVAL_MILLIS = 5000L;
+
     private final InvasionConfig config;
     private final NexusManager nexuses;
+    private final Map<UUID, Long> lastNotice = new HashMap<>();
 
     /** 前回の tick で開始前だったか。null は起動直後でまだ判定していない。 */
     private Boolean wasPreGame;
@@ -52,6 +61,21 @@ public final class PreGameService {
     /** 開始前の制限を受けるか。管理者は準備のために自由に動ける。 */
     public boolean isRestricted(Player player) {
         return isPreGame() && !player.hasPermission(EXEMPT_PERMISSION);
+    }
+
+    /**
+     * 開始前に止めた理由を伝える（チャットと失敗音）。同じ人には5秒に1回まで。
+     * 移動・破壊などの制限だけでなく、ハンマーや緊急バリアでブロックを変えようとしたときにも使う。
+     */
+    public void notice(Player player, String message) {
+        long now = System.currentTimeMillis();
+        Long last = lastNotice.get(player.getUniqueId());
+        if (last != null && now - last < NOTICE_INTERVAL_MILLIS) {
+            return;
+        }
+        lastNotice.put(player.getUniqueId(), now);
+        player.sendMessage(Text.warn(message));
+        Sounds.fail(player);
     }
 
     /** 移動制限の中心。メインワールドのスポーン地点。 */

@@ -25,6 +25,7 @@ import work.maiotanet.invasioncore.item.InvasionItems;
 import work.maiotanet.invasioncore.nexus.Nexus;
 import work.maiotanet.invasioncore.nexus.NexusManager;
 import work.maiotanet.invasioncore.perk.PerkService;
+import work.maiotanet.invasioncore.pregame.PreGameService;
 import work.maiotanet.invasioncore.util.Sounds;
 import work.maiotanet.invasioncore.util.Text;
 
@@ -41,10 +42,12 @@ public final class DefenseListener implements Listener {
     private final ShardService shards;
     private final PerkService perks;
     private final ContributionTracker contributions;
+    private final PreGameService pregame;
 
     public DefenseListener(InvasionConfig config, NexusManager nexuses, FortifyService fortify,
                            TurretService turrets, TrapService traps, ShardService shards,
-                           PerkService perks, ContributionTracker contributions) {
+                           PerkService perks, ContributionTracker contributions, PreGameService pregame) {
+        this.pregame = pregame;
         this.config = config;
         this.nexuses = nexuses;
         this.fortify = fortify;
@@ -78,7 +81,14 @@ public final class DefenseListener implements Listener {
             return;
         }
 
-        if (InvasionItems.is(held, InvasionItems.HAMMER)) {
+        boolean hammer = InvasionItems.is(held, InvasionItems.HAMMER);
+        if ((hammer || InvasionItems.is(held, InvasionItems.REPAIR_KIT)) && pregame.isRestricted(player)) {
+            // 強化・修理はブロックを置き換えるので、開始前の「壊す・置く」の禁止と揃える
+            event.setCancelled(true);
+            pregame.notice(player, "ゲーム開始まではブロックを強化・修理できません。");
+            return;
+        }
+        if (hammer) {
             event.setCancelled(true);
             handleHammer(player, block);
             return;

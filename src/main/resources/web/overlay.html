@@ -120,6 +120,8 @@ html, body { margin: 0; background: transparent; overflow: hidden; font-family: 
   var overlay = document.getElementById("overlay");
   var style = null;
   var since = null;
+  // config.yml の web.overlay-token が true のときは、URL に付いたパスワードをそのまま使う
+  var token = new URLSearchParams(location.search).get("token");
   var rows = {}; // uuid -> { el, delta, born, timer }
 
   function span(cls, text) { var s = document.createElement("span"); s.className = cls; if (text != null) s.textContent = text; return s; }
@@ -228,7 +230,10 @@ html, body { margin: 0; background: transparent; overflow: hidden; font-family: 
   }
 
   function poll() {
-    var url = "/api/overlay/events" + (since === null ? "" : "?since=" + since);
+    var params = [];
+    if (since !== null) params.push("since=" + since);
+    if (token) params.push("token=" + encodeURIComponent(token));
+    var url = "/api/overlay/events" + (params.length ? "?" + params.join("&") : "");
     fetch(url, { cache: "no-store" })
       .then(function (r) { return r.json(); })
       .then(function (d) {

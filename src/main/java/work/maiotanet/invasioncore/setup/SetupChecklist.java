@@ -61,10 +61,19 @@ public final class SetupChecklist {
     private final NexusManager nexuses;
     private final GameStageService stages;
 
+    /** Web 機能の状態。config で有効でも、ポートが使えないなどで動いていないことがある。 */
+    private boolean webEnabled;
+    private work.maiotanet.invasioncore.web.WebServer web;
+
     public SetupChecklist(InvasionConfig config, NexusManager nexuses, GameStageService stages) {
         this.config = config;
         this.nexuses = nexuses;
         this.stages = stages;
+    }
+
+    public void web(boolean enabled, work.maiotanet.invasioncore.web.WebServer web) {
+        this.webEnabled = enabled;
+        this.web = web;
     }
 
     // ---------- 確認 ----------
@@ -94,6 +103,9 @@ public final class SetupChecklist {
         checks.add(checkSimulationDistance(nexus, world));
         if (nexus != null) {
             checks.add(checkParticipants(nexus));
+        }
+        if (webEnabled) {
+            checks.add(checkWeb());
         }
         return checks;
     }
@@ -210,6 +222,20 @@ public final class SetupChecklist {
                             + required + " 以上にして再起動してください。", null);
         }
         return Check.ok("シミュレーション距離は " + actual + " チャンクです。");
+    }
+
+    /** 管理画面と OBS オーバーレイ。VPS ではポートの開放と public-url の設定が要る。 */
+    private Check checkWeb() {
+        if (web == null || !web.isRunning()) {
+            return new Check(Status.WARN, "管理画面・OBS オーバーレイの Web サーバーが動いていません。",
+                    "起動時のログを確認してください。ポートが使用中なら config.yml の web.port を変えて再起動します。", null);
+        }
+        if (!web.hasPublicUrl()) {
+            return new Check(Status.WARN, "web.public-url が未設定です。表示される URL はこのマシンの LAN 用です。",
+                    "外部のサーバー（VPS など）なら、config.yml に http://<サーバーのIPかドメイン>:<web.port> を書いて再起動してください。",
+                    "/invasion admin web");
+        }
+        return Check.ok("管理画面・OBS オーバーレイを外から開ける設定です（/invasion admin web で URL を表示）。");
     }
 
     private Check checkParticipants(Nexus nexus) {

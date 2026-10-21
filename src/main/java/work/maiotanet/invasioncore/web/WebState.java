@@ -38,6 +38,12 @@ public final class WebState {
 
     private volatile String adminJson = "{}";
 
+    /**
+     * オーバーレイの表示パターン。Web 用のスレッドから設定（YAML）を直接読むと、
+     * メインスレッドの書き換えと重なったときに壊れうるので、メインスレッドで写しておく。
+     */
+    private volatile String style = "b";
+
     public WebState(InvasionConfig config, NexusManager nexuses, InvaderRegistry registry, ShardService shards,
                     PerkService perks, ContributionTracker contributions, FaceService faces) {
         this.config = config;
@@ -53,13 +59,20 @@ public final class WebState {
         return adminJson;
     }
 
-    /** オーバーレイの表示パターン（b / c / e / f）。 */
+    /** オーバーレイの表示パターン（b / c / e / f）。どのスレッドから呼んでもよい。 */
     public String overlayStyle() {
-        return config.overlayStyle();
+        return style;
+    }
+
+    /** 管理画面から表示パターンを変えたとき（メインスレッド）。次の tick を待たずに反映する。 */
+    public void changeStyle(String next) {
+        config.overlayStyle(next);
+        style = next;
     }
 
     /** 1秒ごと（メインスレッド）。 */
     public void tick() {
+        style = config.overlayStyle();
         for (Player player : Bukkit.getOnlinePlayers()) {
             faces.prefetch(player);
         }
@@ -69,7 +82,7 @@ public final class WebState {
     private JsonObject build() {
         JsonObject root = new JsonObject();
         root.addProperty("updatedAt", System.currentTimeMillis());
-        root.addProperty("style", config.overlayStyle());
+        root.addProperty("style", style);
         root.addProperty("online", Bukkit.getOnlinePlayers().size());
 
         Nexus nexus = nexuses.all().stream().findFirst().orElse(null);

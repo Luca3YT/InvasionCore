@@ -291,15 +291,43 @@ public final class InvasionConfig {
         return cfg.getString("web.bind", "0.0.0.0");
     }
 
+    /** 外から見たアドレス（末尾の / なし）。空なら LAN の IP で URL を作る。 */
+    public String webPublicUrl() {
+        String url = cfg.getString("web.public-url", "");
+        url = url == null ? "" : url.trim();
+        while (url.endsWith("/")) {
+            url = url.substring(0, url.length() - 1);
+        }
+        return url;
+    }
+
+    /** OBS オーバーレイにもパスワードを要求するか。 */
+    public boolean webOverlayToken() {
+        return cfg.getBoolean("web.overlay-token", false);
+    }
+
     public String overlayStyle() {
         String style = cfg.getString("web.overlay-style", "b");
         return style == null ? "b" : style.toLowerCase(java.util.Locale.ROOT);
     }
 
-    /** 管理画面から表示パターンを変えたとき。config.yml にも書き戻す（コメントは残る）。 */
+    /**
+     * 管理画面から表示パターンを変えたとき。config.yml のこの項目だけを書き換える。
+     *
+     * <p>メモリ上の設定ごと保存すると、サーバー稼働中に config.yml を手で編集していた場合
+     * その編集が古い内容で上書きされて消える。ファイルを読み直して1項目だけ変えて書き戻す。</p>
+     */
     public void overlayStyle(String style) {
+        java.io.File file = new java.io.File(plugin.getDataFolder(), "config.yml");
+        org.bukkit.configuration.file.YamlConfiguration disk =
+                org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(file);
+        disk.set("web.overlay-style", style);
+        try {
+            disk.save(file);
+        } catch (java.io.IOException ex) {
+            plugin.getLogger().warning("config.yml に表示パターンを保存できませんでした: " + ex.getMessage());
+        }
         cfg.set("web.overlay-style", style);
-        plugin.saveConfig();
     }
 
     public FileConfiguration raw() {

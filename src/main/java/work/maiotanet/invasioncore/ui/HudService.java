@@ -23,8 +23,8 @@ import java.util.logging.Level;
 /**
  * BossBar とサイドバーの管理。
  *
- * <p>サイドバーは「エントリ文字列は一意でなければならない」というスコアボードの制約があるため、
- * 不可視のカラーコードをエントリに使い、実際の表示は Team の prefix で行う定石で実装している。</p>
+ * <p>サイドバーは行ごとに一意なエントリ名（line0〜）を使い、表示する文字は Score#customName で差し替える。
+ * 古い「不可視のカラーコード＋Team の prefix」の方式は、このバージョンの API では表示が崩れるため使わない。</p>
  */
 public final class HudService {
 
