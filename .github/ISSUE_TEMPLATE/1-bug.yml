@@ -1,0 +1,65 @@
+name: バグ報告
+description: 思った通りに動かない・おかしな動きをしたときはこちら
+title: "[バグ] "
+labels: ["バグ", "状態: 確認待ち"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        報告ありがとうございます。わかる範囲で大丈夫なので、気軽に書いてください。
+        **ここに書いた内容は誰でも見られます。** 本名や住所などの個人情報は書かないでください。
+  - type: textarea
+    id: what
+    attributes:
+      label: 何が起きましたか？
+      description: 見たままを書いてください。
+      placeholder: 例）血の月の最中にタレットに矢を入れたのに、敵を撃たなくなった
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: どうしたら起きましたか？
+      description: 同じことをもう一度起こせる手順がわかれば書いてください。わからなければ空欄で大丈夫です。
+      placeholder: |
+        1. ネクサスの近くに射撃タレットを置いた
+        2. 矢を 64 本入れた
+        3. 血の月が始まったら撃たなくなった
+  - type: textarea
+    id: expected
+    attributes:
+      label: 本当はどうなると思いましたか？
+      placeholder: 例）近くの敵を撃ち続けてほしい
+  - type: dropdown
+    id: when
+    attributes:
+      label: いつ起きましたか？
+      options:
+        - 準備期間の昼
+        - 準備期間の夜（小さな襲撃）
+        - 血の月の最中
+        - ボスとの戦闘中
+        - 死んだとき・リスポーンしたとき
+        - わからない
+    validations:
+      required: true
+  - type: dropdown
+    id: impact
+    attributes:
+      label: どのくらい困りましたか？
+      options:
+        - 少し気になる程度
+        - 遊びにくい
+        - 進めない・アイテムが消えた・サーバーが落ちた
+    validations:
+      required: true
+  - type: textarea
+    id: media
+    attributes:
+      label: スクリーンショット・動画・配信のタイムスタンプ
+      description: 画像や動画はここにドラッグして貼れます。配信のアーカイブの「何分何秒」でも助かります。
+  - type: input
+    id: mcid
+    attributes:
+      label: マイクラの名前（MCID）
+      description: 任意です。サーバーのログを調べるときに使います。

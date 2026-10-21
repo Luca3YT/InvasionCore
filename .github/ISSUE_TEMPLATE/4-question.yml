@@ -1,0 +1,23 @@
+name: 質問
+description: 遊び方やルールがわからないときはこちら
+title: "[質問] "
+labels: ["質問", "状態: 確認待ち"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        先に [参加者ガイド](https://luca3yt.github.io/InvasionCore/) と [遊び方ガイド](https://luca3yt.github.io/InvasionCore/usage.html) を見ると、すぐ解決するかもしれません。
+        それでもわからなければ、気軽に聞いてください。
+        **ここに書いた内容は誰でも見られます。** 個人情報は書かないでください。
+  - type: textarea
+    id: question
+    attributes:
+      label: 何がわかりませんか？
+      placeholder: 例）強化ハンマーで右クリックしても何も起きない。どうすれば壁を強化できる？
+    validations:
+      required: true
+  - type: textarea
+    id: tried
+    attributes:
+      label: 試したこと
+      description: 試したことがあれば書いてください。

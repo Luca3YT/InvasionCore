@@ -1,0 +1,9 @@
+# 視聴者が迷わないよう、空の Issue は作れないようにしてフォームだけを並べる
+blank_issues_enabled: false
+contact_links:
+  - name: 参加者ガイド
+    url: https://luca3yt.github.io/InvasionCore/
+    about: 参加のしかた・遊び方の基本・よくある質問
+  - name: 遊び方ガイド
+    url: https://luca3yt.github.io/InvasionCore/usage.html
+    about: 敵とボス・強化・パーク・クラフトレシピなどの詳しいルール
