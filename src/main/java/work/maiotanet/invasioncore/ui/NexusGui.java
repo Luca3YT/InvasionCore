@@ -17,6 +17,7 @@ import work.maiotanet.invasioncore.nexus.NexusUpgrade;
 import work.maiotanet.invasioncore.perk.Perk;
 import work.maiotanet.invasioncore.perk.PerkService;
 import work.maiotanet.invasioncore.stage.GameStageService;
+import work.maiotanet.invasioncore.util.Sounds;
 import work.maiotanet.invasioncore.util.Text;
 import work.maiotanet.invasioncore.wave.WaveEngine;
 import work.maiotanet.invasioncore.wave.WaveModifier;
@@ -225,9 +226,12 @@ public final class NexusGui {
                 if (waves.activate(nexus, player)) {
                     player.playSound(player.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 1.0f);
                     player.closeInventory();
-                } else if (!wasBroken) {
-                    // 崩壊時は activate 側が Shard 不足の理由を通知済み
-                    player.sendMessage(Text.warn("すでに稼働している。"));
+                } else {
+                    Sounds.fail(player);
+                    if (!wasBroken) {
+                        // 崩壊時は activate 側が Shard 不足の理由を通知済み
+                        player.sendMessage(Text.warn("すでに稼働している。"));
+                    }
                 }
                 return true;
             }
@@ -237,10 +241,12 @@ public final class NexusGui {
                 return true;
             }
             case SLOT_UPGRADE -> {
+                Sounds.click(player);
                 openUpgrades(player, nexus);
                 return true;
             }
             case SLOT_PERK -> {
+                Sounds.click(player);
                 openPerks(player, nexus);
                 return true;
             }
@@ -251,6 +257,7 @@ public final class NexusGui {
             }
             case SLOT_POOL -> {
                 if (player.hasPermission(WITHDRAW_PERMISSION)) {
+                    Sounds.click(player);
                     openShard(player, nexus);
                 }
                 return true;
@@ -263,6 +270,7 @@ public final class NexusGui {
 
     public boolean handleUpgrade(Player player, Nexus nexus, int slot) {
         if (slot == 26) {
+            Sounds.click(player);
             openMain(player, nexus);
             return true;
         }
@@ -277,13 +285,14 @@ public final class NexusGui {
             int cost = up.costFor(level);
             if (cost < 0) {
                 player.sendMessage(Text.warn(up.displayName() + " は上限に達している。"));
+                Sounds.fail(player);
                 return true;
             }
             int actual = upgradeCost(player, nexus, cost);
             if (!shards.takeWithPool(player, nexus, actual)) {
                 player.sendMessage(Text.error("Shard が足りない（必要 " + actual
                         + " / 所持 " + shards.count(player) + " / ネクサス内 " + nexus.sharedShards() + "）"));
-                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+                Sounds.fail(player);
                 return true;
             }
             nexus.upgradeLevel(up, level + 1);
@@ -301,6 +310,7 @@ public final class NexusGui {
 
     public boolean handlePerk(Player player, Nexus nexus, int slot) {
         if (slot == PERK_BACK_SLOT && nexus != null) {
+            Sounds.click(player);
             openMain(player, nexus);
             return true;
         }
@@ -316,7 +326,7 @@ public final class NexusGui {
                 player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.4f);
             } else {
                 player.sendMessage(Text.error("ポイントが足りないか、上限に達している。"));
-                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+                Sounds.fail(player);
             }
             openPerks(player, nexus);
             return true;
@@ -336,6 +346,7 @@ public final class NexusGui {
     public void deposit(Player player, Nexus nexus, int amount) {
         if (amount <= 0) {
             Text.actionBarWarn(player, "預けられる Shard を持っていない。");
+            Sounds.fail(player);
             return;
         }
         nexuses.save();
@@ -366,6 +377,7 @@ public final class NexusGui {
 
     public boolean handleShard(Player player, Nexus nexus, int slot) {
         if (slot == SHARD_BACK_SLOT) {
+            Sounds.click(player);
             openMain(player, nexus);
             return true;
         }
@@ -383,8 +395,10 @@ public final class NexusGui {
                 nexuses.save();
                 Text.actionBarGood(player, "Shard を " + taken + " 個引き出した。（ネクサス内 "
                         + nexus.sharedShards() + "）");
+                Sounds.success(player);
             } else {
                 Text.actionBarWarn(player, "ネクサス内に Shard が無い。");
+                Sounds.fail(player);
             }
             openShard(player, nexus);
             return true;
@@ -395,6 +409,7 @@ public final class NexusGui {
     private void collectRewards(Player player, Nexus nexus) {
         if (nexus.rewardBuffer().isEmpty()) {
             player.sendMessage(Text.warn("受け取れる報酬はない。"));
+            Sounds.fail(player);
             return;
         }
         int handed = 0;

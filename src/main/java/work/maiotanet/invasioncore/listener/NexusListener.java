@@ -24,6 +24,7 @@ import work.maiotanet.invasioncore.nexus.Nexus;
 import work.maiotanet.invasioncore.nexus.NexusManager;
 import work.maiotanet.invasioncore.ui.InvasionHolder;
 import work.maiotanet.invasioncore.ui.NexusGui;
+import work.maiotanet.invasioncore.util.Sounds;
 import work.maiotanet.invasioncore.util.Text;
 import work.maiotanet.invasioncore.wave.WaveEngine;
 
@@ -63,6 +64,7 @@ public final class NexusListener implements Listener {
         // ネクサスはサーバーに1基だけ。自動参加や開始前の制限は、ネクサスが1基である前提で動く。
         if (!nexuses.all().isEmpty()) {
             event.setCancelled(true);
+            Sounds.fail(player);
             player.sendMessage(Text.error("ネクサスはサーバーに1基だけ置ける。"
                     + "今のネクサスを撤去するか、/invasion admin end で終了してから置くこと。"));
             return;
@@ -77,6 +79,7 @@ public final class NexusListener implements Listener {
             }
             if (c.distance(block.getLocation().add(0.5, 0.5, 0.5)) < minGap) {
                 event.setCancelled(true);
+                Sounds.fail(player);
                 player.sendMessage(Text.error("他のネクサスに近すぎる（最低 "
                         + (int) minGap + " ブロック離すこと）"));
                 return;
@@ -102,6 +105,7 @@ public final class NexusListener implements Listener {
         if (nexus.isActive() && !player.isOp()) {
             event.setCancelled(true);
             player.sendMessage(Text.error("稼働中のネクサスは破壊できない。先に /invasion stop で停止すること。"));
+            Sounds.fail(player);
             return;
         }
         waves.deactivate(nexus, false);
@@ -156,6 +160,7 @@ public final class NexusListener implements Listener {
             gui.deposit(player, nexus, shards.depositHeld(player, nexus));
             return;
         }
+        Sounds.click(player);
         gui.openMain(player, nexus);
     }
 

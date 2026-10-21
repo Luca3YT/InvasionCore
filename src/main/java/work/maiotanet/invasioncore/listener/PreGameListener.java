@@ -23,6 +23,7 @@ import org.bukkit.inventory.BlockInventoryHolder;
 import org.bukkit.block.DoubleChest;
 import org.bukkit.inventory.InventoryHolder;
 import work.maiotanet.invasioncore.pregame.PreGameService;
+import work.maiotanet.invasioncore.util.Sounds;
 import work.maiotanet.invasioncore.util.Text;
 
 import java.util.HashMap;
@@ -188,5 +189,6 @@ public final class PreGameListener implements Listener {
         }
         lastNotice.put(player.getUniqueId(), now);
         player.sendMessage(Text.warn(message));
+        Sounds.fail(player);
     }
 }
