@@ -3,6 +3,7 @@ package work.maiotanet.invasioncore.wave;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
+import org.bukkit.Difficulty;
 import org.bukkit.Location;
 import org.bukkit.Sound;
 import org.bukkit.World;
@@ -72,6 +73,12 @@ public final class WaveEngine implements NexusCombatSink {
 
     /** 直前に出したボス。同じ血の月で連続させないために覚えておく。 */
     private final Map<UUID, BossType> lastBoss = new HashMap<>();
+
+    /** ピースフルで血の月を止めている間、最後に警告を出した時刻（tick）。 */
+    private final Map<UUID, Long> peacefulWarnedAt = new HashMap<>();
+
+    /** ピースフルの警告を繰り返す間隔（tick）。毎秒出すとチャットが埋まる。 */
+    private static final long PEACEFUL_WARN_INTERVAL = 1200L;
 
     /** 事前告知を出す時刻（tick）と文言。日没 13000 に向けて段階的に煽る。 */
     private static final long[] WARN_TIMES = {6000L, 10000L, 12200L};
@@ -340,6 +347,14 @@ public final class WaveEngine implements NexusCombatSink {
             return;
         }
 
+        World world = nexus.world();
+        if (world != null && world.getDifficulty() == Difficulty.PEACEFUL) {
+            // ピースフルでは侵略者を生成できない。ウェーブを進めると0体のまま全ウェーブを消化して
+            // 防衛成功になってしまうので、難易度が戻るまで血の月を止めておく。
+            warnPeaceful(nexus, fullTime);
+            return;
+        }
+
         int alive = registry.aliveCount(nexus.id());
 
         if (nexus.currentWave() >= nexus.totalWaves()) {
@@ -463,10 +478,16 @@ public final class WaveEngine implements NexusCombatSink {
         int count = Math.max(2, (int) Math.round(
                 (config.waveBaseMobs() + stage * config.waveMobsPerStage()) * config.nightSkirmishScale()));
 
+        int spawned = 0;
         for (int i = 0; i < count; i++) {
-            spawner.spawn(nexus, rollType(stage), MutationTier.roll(stage), stage, 0);
+            if (spawner.spawn(nexus, rollType(stage), MutationTier.roll(stage), stage, 0) != null) {
+                spawned++;
+            }
         }
-        broadcast(nexus, Text.info("夜の徘徊者が近づいている（" + count + " 体）"));
+        // ピースフルなどで1体も出せなかったときに「近づいている」と告げると嘘になる
+        if (spawned > 0) {
+            broadcast(nexus, Text.info("夜の徘徊者が近づいている（" + spawned + " 体）"));
+        }
     }
 
     /**
@@ -499,7 +520,27 @@ public final class WaveEngine implements NexusCombatSink {
 
     // ---------- 勝敗 ----------
 
+    private void warnPeaceful(Nexus nexus, long fullTime) {
+        Long last = peacefulWarnedAt.get(nexus.id());
+        if (last != null && fullTime - last < PEACEFUL_WARN_INTERVAL) {
+            return;
+        }
+        peacefulWarnedAt.put(nexus.id(), fullTime);
+        broadcast(nexus, Text.error("難易度がピースフルのため、血の月を止めています。"
+                + "管理者が /difficulty normal を実行すると再開します。"));
+        Location loc = nexus.location();
+        String where = loc == null ? nexus.worldName()
+                : nexus.worldName() + " " + loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ();
+        plugin.getLogger().warning("難易度がピースフルのため、ネクサス（" + where
+                + "）の血の月を止めています。/difficulty normal で再開します。");
+    }
+
     private void resolveVictory(Nexus nexus) {
+        if (nexus.currentWave() == 0) {
+            // 一度もウェーブを出せないまま夜が明けた（ピースフルで止めていた等）。戦っていないので報酬は出さない。
+            endWithoutBattle(nexus);
+            return;
+        }
         int wavesCleared = nexus.currentWave();
         List<Player> participants = stages.participants(nexus);
         int stage = stages.compute(nexus, participants);
@@ -550,6 +591,19 @@ public final class WaveEngine implements NexusCombatSink {
                     Title.Times.times(Duration.ofMillis(300), Duration.ofSeconds(3), Duration.ofMillis(700))));
             p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
         }
+    }
+
+    private void endWithoutBattle(Nexus nexus) {
+        ai.cleanupPlacedBlocks(nexus.id());
+        registry.despawnAll(nexus.id());
+        hud.hideBar(nexus.id());
+        nexus.phase(Nexus.Phase.PREPARATION);
+        nexus.currentWave(0);
+        nexus.totalWaves(0);
+        nexus.activeModifier(null);
+        peacefulWarnedAt.remove(nexus.id());
+        contributions.reset(nexus.id());
+        broadcast(nexus, Text.warn("侵略者が一度も来ないまま夜が明けた。今回の血の月は無効で、報酬もない。"));
     }
 
     private void resolveDefeat(Nexus nexus) {

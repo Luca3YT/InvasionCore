@@ -89,7 +89,14 @@ public final class InvaderSpawner {
             return null;
         }
         EntityType entityType = boss != null ? boss.entityType() : type.entityType();
-        Entity spawned = world.spawnEntity(spot, entityType);
+        Entity spawned;
+        try {
+            spawned = world.spawnEntity(spot, entityType);
+        } catch (IllegalStateException ex) {
+            // ピースフルでは敵対Mobの生成そのものが拒否されて例外になる。
+            // 投げっぱなしにすると呼び出し元のウェーブ処理が途中で止まり、毎秒同じ失敗を繰り返す。
+            return null;
+        }
         if (!(spawned instanceof Mob mob)) {
             spawned.remove();
             return null;
