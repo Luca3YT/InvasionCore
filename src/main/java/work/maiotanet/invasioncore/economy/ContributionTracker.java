@@ -71,6 +71,19 @@ public final class ContributionTracker {
         return total;
     }
 
+    /** 種別ごとの重み付け後スコア。管理画面の内訳表示に使う。記録が無い種別は含まない。 */
+    public Map<Kind, Double> breakdown(UUID nexusId, UUID playerId) {
+        Map<Kind, Double> out = new java.util.EnumMap<>(Kind.class);
+        Map<UUID, Map<Kind, Double>> perNexus = data.get(nexusId);
+        Map<Kind, Double> perPlayer = perNexus == null ? null : perNexus.get(playerId);
+        if (perPlayer != null) {
+            for (Map.Entry<Kind, Double> e : perPlayer.entrySet()) {
+                out.put(e.getKey(), e.getKey().weight() * e.getValue());
+            }
+        }
+        return out;
+    }
+
     /** スコア降順のランキング。 */
     public List<Map.Entry<UUID, Double>> ranking(UUID nexusId) {
         Map<UUID, Map<Kind, Double>> perNexus = data.get(nexusId);

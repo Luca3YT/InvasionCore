@@ -131,7 +131,7 @@ public final class WaveEngine implements NexusCombatSink {
             if (by == null) {
                 return false;
             }
-            if (!shards.takeWithPool(by, nexus, cost)) {
+            if (!shards.takeWithPool(by, nexus, cost, "再建した")) {
                 by.sendMessage(Text.error("再建には " + cost + " Shard が必要だ（所持 "
                         + shards.count(by) + " / ネクサス内 " + nexus.sharedShards() + "）"));
                 return false;
@@ -573,7 +573,7 @@ public final class WaveEngine implements NexusCombatSink {
         for (Player p : participants) {
             int amount = split.getOrDefault(p.getUniqueId(), 0);
             if (amount > 0) {
-                shards.give(p, amount);
+                shards.give(p, amount, "血の月の報酬");
             }
             // 踏破実績とパークポイントを付与する
             perks.recordVictory(p.getUniqueId(), wavesCleared);

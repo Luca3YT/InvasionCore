@@ -2,6 +2,10 @@ package work.maiotanet.invasioncore.command;
 
 import io.papermc.paper.command.brigadier.BasicCommand;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -24,6 +28,7 @@ import work.maiotanet.invasioncore.ui.NexusGui;
 import work.maiotanet.invasioncore.util.Text;
 import work.maiotanet.invasioncore.wave.WaveEngine;
 import work.maiotanet.invasioncore.wave.WaveModifier;
+import work.maiotanet.invasioncore.web.WebServer;
 import work.maiotanet.invasioncore.world.BreachLog;
 import work.maiotanet.invasioncore.world.WorldEventService;
 
@@ -50,7 +55,7 @@ public final class InvasionCommands implements BasicCommand {
             "spike", "mine", "flash", "medkit", "barrier");
     private static final List<String> ADMIN = List.of(
             "forcewave", "setlevel", "setday", "restore", "despawn", "reload", "info",
-            "list", "create", "activate", "spawn", "boss", "points", "airdrop", "end");
+            "list", "create", "activate", "spawn", "boss", "points", "airdrop", "end", "web");
 
     private final InvasionCore plugin;
     private final NexusManager nexuses;
@@ -64,6 +69,8 @@ public final class InvasionCommands implements BasicCommand {
     private final WorldEventService worldEvents;
     private final BreachLog breachLog;
     private final SetupChecklist setup;
+    /** Web 機能が無効なら null。 */
+    private WebServer web;
 
     public InvasionCommands(InvasionCore plugin, NexusManager nexuses, GameStageService stages,
                             ShardService shards, PerkService perks, NexusGui gui,
@@ -81,6 +88,10 @@ public final class InvasionCommands implements BasicCommand {
         this.worldEvents = worldEvents;
         this.breachLog = breachLog;
         this.setup = setup;
+    }
+
+    public void web(WebServer web) {
+        this.web = web;
     }
 
     @Override
@@ -336,6 +347,7 @@ public final class InvasionCommands implements BasicCommand {
             case "list" -> listNexuses(sender);
             case "create" -> createNexus(sender, args);
             case "end" -> endGame(sender);
+            case "web" -> showWebUrls(sender);
             case "activate" -> {
                 if (requireNexus(sender, nexus)) {
                     // 管理コマンドなので Shard コストは取らず、崩壊状態からも復旧させる
@@ -462,6 +474,31 @@ public final class InvasionCommands implements BasicCommand {
         nexuses.save();
         sender.sendMessage(Text.good("ネクサスを設置した: " + world.getName()
                 + " " + x + "," + y + "," + z + "（HP " + (int) nexus.health() + "）"));
+    }
+
+    /**
+     * 管理画面と OBS オーバーレイの URL を表示する。
+     * 管理画面の URL にはパスワードが入っているので、管理者にだけ見せる（admin サブコマンドなので権限は確認済み）。
+     */
+    private void showWebUrls(CommandSender sender) {
+        if (web == null || !web.isRunning()) {
+            sender.sendMessage(Text.error("Web 機能が動いていない。config.yml の web.enabled と web.port を確認すること。"));
+            return;
+        }
+        sender.sendMessage(Text.info("━━ 管理画面（同じ Wi-Fi のスマホ・PC から開ける） ━━"));
+        for (String url : web.adminUrls()) {
+            sender.sendMessage(link(url));
+        }
+        sender.sendMessage(Text.info("━━ OBS オーバーレイ（ブラウザソースに入れる） ━━"));
+        sender.sendMessage(link(web.overlayUrl()));
+        sender.sendMessage(Text.prefixed(Text.of("管理画面の URL にはパスワードが入っている。配信画面に映さないこと。", Text.WARN)));
+    }
+
+    private Component link(String url) {
+        return Text.prefixed(Text.of(url, Text.INFO)
+                .decorate(TextDecoration.UNDERLINED)
+                .clickEvent(ClickEvent.openUrl(url))
+                .hoverEvent(HoverEvent.showText(Text.of("クリックでブラウザを開く", Text.MUTED))));
     }
 
     /**

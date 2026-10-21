@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>InvasionCore 管理画面</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: nexus summary strip, overlay pattern switch, then one row per player (table on wide screens, cards on phones). */
+:root {
+  --bg: #eef0f4;
+  --surface: #ffffff;
+  --sunk: #e4e7ee;
+  --fg: #1b1f2a;
+  --muted: #5a6172;
+  --line: #d3d8e1;
+  --accent: #b3261e;
+  --amethyst: #6d4bb5;
+  --hp: #d6453b;
+  --food: #c98a2b;
+  --ok: #2f7d4f;
+  --c-kill: #b3261e; --c-damage: #e07a5f; --c-repair: #2f7d4f; --c-fortify: #3d6fb5; --c-turret: #6d4bb5; --c-tank: #8a8f9c;
+  --font-display: "DotGothic16", "Noto Sans JP", system-ui, sans-serif;
+  --font-body: "Noto Sans JP", "Hiragino Sans", system-ui, sans-serif;
+  --font-num: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12141c; --surface: #1b1e29; --sunk: #252a38; --fg: #e6e8ef; --muted: #9aa1b4; --line: #2e3344;
+    --accent: #ff6b5e; --amethyst: #b79cf2; --hp: #ff6b5e; --food: #e8b45a; --ok: #6cc790;
+    --c-kill: #ff6b5e; --c-damage: #f2a07d; --c-repair: #6cc790; --c-fortify: #7da7ec; --c-turret: #b79cf2; --c-tank: #9aa1b4;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 14px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+main { max-width: 1180px; margin: 0 auto; padding-block: 24px 56px; }
+header.top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+.eyebrow { font-family: var(--font-display); color: var(--accent); letter-spacing: .12em; font-size: 12px; margin: 0; }
+h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(22px, 4vw, 30px); margin: 2px 0 0; }
+.live { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12.5px; }
+.live i { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+.live.down i { background: var(--hp); }
+.error { margin-top: 12px; padding: 10px 14px; border-radius: 8px; background: var(--sunk); border-left: 3px solid var(--hp); }
+
+.summary { margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.cell { background: var(--surface); padding: 12px 14px; min-width: 0; }
+.cell .k { display: block; color: var(--muted); font-size: 11.5px; letter-spacing: .04em; }
+.cell .v { display: block; font-family: var(--font-num); font-weight: 700; font-size: 20px; font-variant-numeric: tabular-nums; }
+.cell .v small { font-family: var(--font-body); font-weight: 400; font-size: 12px; color: var(--muted); }
+.phase { display: inline-block; font-family: var(--font-body); font-weight: 700; font-size: 13px; padding: 2px 10px; border-radius: 999px; background: var(--sunk); }
+.phase.moon { background: var(--accent); color: #fff; }
+.meter { height: 6px; border-radius: 3px; background: var(--sunk); overflow: hidden; margin-top: 6px; }
+.meter i { display: block; height: 100%; transition: width .5s ease; }
+
+.overlay-switch { margin-top: 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.overlay-switch span { color: var(--muted); font-size: 12.5px; margin-right: 4px; }
+.overlay-switch button { font: 500 13px var(--font-body); padding: 5px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; }
+.overlay-switch button[aria-pressed="true"] { background: var(--amethyst); border-color: var(--amethyst); color: #fff; }
+.overlay-switch button:focus-visible { outline: 2px solid var(--amethyst); outline-offset: 2px; }
+
+.toolbar { margin-top: 22px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.toolbar h2 { font-size: 15px; margin: 0; }
+.toolbar label { color: var(--muted); font-size: 12.5px; display: flex; gap: 6px; align-items: center; }
+select { font: 13px var(--font-body); padding: 4px 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); }
+.table-wrap { margin-top: 8px; overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 900px; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th { font-size: 11.5px; font-weight: 500; color: var(--muted); background: var(--sunk); white-space: nowrap; letter-spacing: .03em; }
+tr:last-child td { border-bottom: none; }
+tr.offline td { opacity: .55; }
+.who { display: flex; align-items: center; gap: 8px; font-weight: 700; white-space: nowrap; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none; }
+.dot.off { background: var(--muted); }
+.face { width: 28px; height: 28px; border-radius: 4px; image-rendering: pixelated; flex: none; box-shadow: 0 0 0 1px var(--line); }
+tr.offline .face, .card.offline .face { filter: grayscale(1); }
+.dead { font-size: 11px; font-weight: 500; color: var(--hp); border: 1px solid var(--hp); border-radius: 4px; padding: 0 5px; }
+.num { font-family: var(--font-num); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.shard { color: var(--amethyst); }
+.na { color: var(--muted); }
+.gauge { display: grid; grid-template-columns: 46px 70px; align-items: center; gap: 6px; }
+.gauge .num { font-size: 12.5px; font-weight: 500; }
+.contrib { display: grid; gap: 4px; min-width: 170px; }
+.stack { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--sunk); }
+.stack i { height: 100%; }
+.legend { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--muted); font-size: 12px; }
+.legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; background: var(--c); }
+.career { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+.career b { color: var(--fg); font-family: var(--font-num); }
+.perks { display: flex; flex-wrap: wrap; gap: 4px; max-width: 260px; }
+.chip { font-size: 11.5px; padding: 1px 7px; border-radius: 999px; background: var(--sunk); white-space: nowrap; }
+.chip.pts { background: transparent; border: 1px dashed var(--amethyst); color: var(--amethyst); }
+.flash { animation: flash .8s ease-out; }
+@keyframes flash { from { background: rgba(109,75,181,.18); } to { background: transparent; } }
+@media (prefers-reduced-motion: reduce) { .flash { animation: none; } .meter i { transition: none; } }
+.cards { display: none; margin-top: 8px; gap: 10px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 8px; }
+.card.offline { opacity: .6; }
+.card .line { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.empty { margin-top: 8px; padding: 24px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 10px; }
+@media (max-width: 760px) {
+  .table-wrap { display: none; }
+  .cards { display: grid; }
+}
+</style>
+</head>
+<body>
+<main>
+  <header class="top">
+    <div>
+      <p class="eyebrow">INVASIONCORE</p>
+      <h1>管理画面</h1>
+    </div>
+    <span class="live" id="live"><i aria-hidden="true"></i><span id="updated">接続中…</span></span>
+  </header>
+  <div class="error" id="error" hidden></div>
+
+  <section class="summary" aria-label="ネクサスの状態" id="summary"></section>
+
+  <div class="overlay-switch" role="group" aria-label="OBS オーバーレイの表示パターン">
+    <span>OBS オーバーレイ</span>
+    <button type="button" data-style="b">B ポートレート</button>
+    <button type="button" data-style="c">C トースト</button>
+    <button type="button" data-style="e">E ビッグナンバー</button>
+    <button type="button" data-style="f">F バナー</button>
+  </div>
+
+  <div class="toolbar">
+    <h2>参加プレイヤー</h2>
+    <label for="sort">並び順
+      <select id="sort">
+        <option value="contrib">今回の貢献度</option>
+        <option value="shard">Shard</option>
+        <option value="name">名前</option>
+      </select>
+    </label>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th>プレイヤー</th><th>体力</th><th>満腹度</th><th>Shard</th><th>今回の貢献度</th><th>累計</th><th>パーク</th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+  <div class="cards" id="cards"></div>
+  <div class="empty" id="empty" hidden>まだ参加プレイヤーがいません。</div>
+
+  <div class="legend" aria-label="貢献度の内訳">
+    <span style="--c:var(--c-kill)">撃破</span><span style="--c:var(--c-damage)">与ダメージ</span>
+    <span style="--c:var(--c-repair)">修理</span><span style="--c:var(--c-fortify)">強化</span>
+    <span style="--c:var(--c-turret)">設置</span><span style="--c:var(--c-tank)">被ダメージ</span>
+  </div>
+</main>
+
+<script>
+(function () {
+  var TOKEN = new URLSearchParams(location.search).get("token") || "";
+  var KINDS = [
+    ["kill", "撃破", "var(--c-kill)"], ["damage", "与ダメージ", "var(--c-damage)"], ["repair", "修理", "var(--c-repair)"],
+    ["fortify", "強化", "var(--c-fortify)"], ["turret", "設置", "var(--c-turret)"], ["tanked", "被ダメージ", "var(--c-tank)"]
+  ];
+  var data = null;
+  var prevShard = {};
+
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function total(p) { return KINDS.reduce(function (s, k) { return s + (p.contrib[k[0]] || 0); }, 0); }
+
+  function cell(key, valueNode, extra) {
+    var c = el("div", "cell");
+    c.appendChild(el("span", "k", key));
+    var v = el("span", "v");
+    v.appendChild(valueNode);
+    c.appendChild(v);
+    if (extra) c.appendChild(extra);
+    return c;
+  }
+  function vText(main, small) {
+    var f = document.createDocumentFragment();
+    f.appendChild(document.createTextNode(main + " "));
+    if (small) f.appendChild(el("small", null, small));
+    return f;
+  }
+
+  function renderSummary() {
+    var s = document.getElementById("summary");
+    s.textContent = "";
+    var n = data.nexus;
+    if (!n) {
+      s.appendChild(cell("ネクサス", vText("未設置")));
+      s.appendChild(cell("オンライン", vText(String(data.online), "人")));
+      return;
+    }
+    var phase = el("span", "phase" + (n.phase === "BLOOD_MOON" ? " moon" : ""), n.phaseLabel);
+    s.appendChild(cell("フェーズ", phase));
+    s.appendChild(cell("Day", vText(String(n.day), n.untilBloodMoon === 0 ? "今夜が血の月" : "血の月まで " + n.untilBloodMoon + " 日")));
+    s.appendChild(cell("ウェーブ", n.phase === "BLOOD_MOON" ? vText(n.wave + " / " + n.totalWaves, "残敵 " + n.alive) : vText("—")));
+    var meter = el("div", "meter");
+    var bar = el("i");
+    bar.style.width = (n.maxHealth ? n.health / n.maxHealth * 100 : 0) + "%";
+    bar.style.background = "var(--hp)";
+    meter.appendChild(bar);
+    s.appendChild(cell("ネクサス Lv." + n.level, vText(String(n.health), "/ " + n.maxHealth), meter));
+    var pool = el("span", "shard", String(n.pool));
+    s.appendChild(cell("ネクサス内の Shard", pool));
+    s.appendChild(cell("オンライン", vText(String(data.online), "/ " + data.players.length + " 人")));
+  }
+
+  function gauge(value, max, color) {
+    var g = el("div", "gauge");
+    if (value == null) { g.appendChild(el("span", "num na", "—")); return g; }
+    g.appendChild(el("span", "num", value + "/" + max));
+    var m = el("div", "meter");
+    var i = el("i");
+    i.style.width = (max ? value / max * 100 : 0) + "%";
+    i.style.background = color;
+    m.appendChild(i);
+    g.appendChild(m);
+    return g;
+  }
+  function contrib(p) {
+    var box = el("div", "contrib");
+    var t = total(p);
+    box.appendChild(el("span", "num", t.toLocaleString()));
+    var s = el("div", "stack");
+    s.setAttribute("aria-label", KINDS.map(function (k) { return k[1] + " " + (p.contrib[k[0]] || 0); }).join("、"));
+    KINDS.forEach(function (k) {
+      var v = p.contrib[k[0]] || 0;
+      if (!v) return;
+      var i = el("i");
+      i.style.width = (v / Math.max(1, t) * 100) + "%";
+      i.style.background = k[2];
+      s.appendChild(i);
+    });
+    box.appendChild(s);
+    return box;
+  }
+  function career(p) {
+    var c = el("div", "career");
+    c.appendChild(document.createTextNode("撃破 ")); c.appendChild(el("b", null, String(p.kills)));
+    c.appendChild(document.createTextNode(" ・ 踏破 ")); c.appendChild(el("b", null, String(p.moons)));
+    c.appendChild(document.createTextNode(" 回 ・ 最高 W")); c.appendChild(el("b", null, String(p.best)));
+    return c;
+  }
+  function perks(p) {
+    var box = el("div", "perks");
+    p.perks.forEach(function (pk) { box.appendChild(el("span", "chip", pk.name + " Lv" + pk.level)); });
+    if (p.points) box.appendChild(el("span", "chip pts", "残り " + p.points + " pt"));
+    if (!p.perks.length && !p.points) box.appendChild(el("span", "chip", "なし"));
+    return box;
+  }
+  function face(p) {
+    var img = el("img", "face");
+    img.alt = "";
+    img.src = "/face/" + p.uuid + ".png";
+    return img;
+  }
+  function who(p) {
+    var w = el("div", "who");
+    w.appendChild(el("span", "dot" + (p.online ? "" : " off")));
+    w.appendChild(face(p));
+    w.appendChild(el("span", null, p.name));
+    if (!p.online) w.appendChild(el("span", "chip", "オフライン"));
+    else if (!p.alive) w.appendChild(el("span", "dead", "死亡中"));
+    return w;
+  }
+  function shardNode(p) {
+    return p.shard == null ? el("span", "num na", "—") : el("span", "num shard", String(p.shard));
+  }
+
+  function renderPlayers() {
+    var key = document.getElementById("sort").value;
+    var list = data.players.slice().sort(function (a, b) {
+      if (a.online !== b.online) return a.online ? -1 : 1;
+      if (key === "name") return a.name.localeCompare(b.name);
+      if (key === "shard") return (b.shard || 0) - (a.shard || 0);
+      return total(b) - total(a);
+    });
+    var tbody = document.getElementById("rows");
+    var cards = document.getElementById("cards");
+    tbody.textContent = "";
+    cards.textContent = "";
+    document.getElementById("empty").hidden = list.length > 0;
+    list.forEach(function (p) {
+      var changed = prevShard[p.uuid] !== undefined && prevShard[p.uuid] !== p.shard;
+      var tr = el("tr", p.online ? "" : "offline");
+      [who(p), gauge(p.health, p.maxHealth, "var(--hp)"), gauge(p.food, 20, "var(--food)"),
+        shardNode(p), contrib(p), career(p), perks(p)].forEach(function (c, idx) {
+        var td = el("td");
+        td.appendChild(c);
+        if (idx === 3 && changed) td.classList.add("flash");
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+
+      var card = el("div", "card" + (p.online ? "" : " offline"));
+      var l1 = el("div", "line"); l1.appendChild(who(p)); l1.appendChild(shardNode(p)); card.appendChild(l1);
+      var l2 = el("div", "line"); l2.appendChild(gauge(p.health, p.maxHealth, "var(--hp)")); l2.appendChild(gauge(p.food, 20, "var(--food)")); card.appendChild(l2);
+      card.appendChild(contrib(p));
+      card.appendChild(career(p));
+      card.appendChild(perks(p));
+      cards.appendChild(card);
+      prevShard[p.uuid] = p.shard;
+    });
+  }
+
+  function renderStyle() {
+    document.querySelectorAll("[data-style]").forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.getAttribute("data-style") === data.style));
+    });
+  }
+
+  function setStatus(ok, text) {
+    document.getElementById("live").classList.toggle("down", !ok);
+    document.getElementById("updated").textContent = text;
+  }
+  function showError(text) {
+    var e = document.getElementById("error");
+    e.textContent = text || "";
+    e.hidden = !text;
+  }
+
+  function refresh() {
+    fetch("/api/admin/state?token=" + encodeURIComponent(TOKEN), { cache: "no-store" })
+      .then(function (r) {
+        if (r.status === 403) throw new Error("auth");
+        return r.json();
+      })
+      .then(function (d) {
+        data = d;
+        showError("");
+        renderSummary();
+        renderStyle();
+        renderPlayers();
+        setStatus(true, "ライブ更新 " + new Date(d.updatedAt).toLocaleTimeString("ja-JP"));
+      })
+      .catch(function (err) {
+        if (err.message === "auth") {
+          showError("パスワードが違います。ゲーム内かコンソールで /invasion admin web を実行し、表示された URL から開いてください。");
+          setStatus(false, "接続できません");
+          return;
+        }
+        showError("サーバーに接続できません。Minecraft サーバーが起動しているか確認してください。自動で再接続します。");
+        setStatus(false, "再接続を待っています");
+      })
+      .then(function () { setTimeout(refresh, 2000); });
+  }
+
+  document.getElementById("sort").addEventListener("change", function () { if (data) renderPlayers(); });
+  document.querySelectorAll("[data-style]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var style = b.getAttribute("data-style");
+      fetch("/api/admin/style?token=" + encodeURIComponent(TOKEN) + "&style=" + style, { method: "POST" })
+        .then(function (r) {
+          if (!r.ok) throw new Error();
+          if (data) { data.style = style; renderStyle(); }
+        })
+        .catch(function () { showError("表示パターンを変えられませんでした。もう一度押してください。"); });
+    });
+  });
+  refresh();
+})();
+</script>
+</body>
+</html>

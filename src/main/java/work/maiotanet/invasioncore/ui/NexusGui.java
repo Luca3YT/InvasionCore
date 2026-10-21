@@ -289,7 +289,7 @@ public final class NexusGui {
                 return true;
             }
             int actual = upgradeCost(player, nexus, cost);
-            if (!shards.takeWithPool(player, nexus, actual)) {
+            if (!shards.takeWithPool(player, nexus, actual, "アップグレード")) {
                 player.sendMessage(Text.error("Shard が足りない（必要 " + actual
                         + " / 所持 " + shards.count(player) + " / ネクサス内 " + nexus.sharedShards() + "）"));
                 Sounds.fail(player);

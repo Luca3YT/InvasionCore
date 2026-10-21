@@ -39,6 +39,10 @@ import work.maiotanet.invasioncore.ui.NexusGui;
 import work.maiotanet.invasioncore.ui.SidebarUpdater;
 import work.maiotanet.invasioncore.util.Keys;
 import work.maiotanet.invasioncore.wave.WaveEngine;
+import work.maiotanet.invasioncore.web.FaceService;
+import work.maiotanet.invasioncore.web.ShardFeed;
+import work.maiotanet.invasioncore.web.WebServer;
+import work.maiotanet.invasioncore.web.WebState;
 import work.maiotanet.invasioncore.world.BreachLog;
 import work.maiotanet.invasioncore.world.WorldEventService;
 
@@ -65,6 +69,7 @@ public final class InvasionCore extends JavaPlugin {
     private WorldEventService worldEvents;
     private WaveEngine waves;
     private GadgetListener gadgets;
+    private WebServer web;
 
     @Override
     public void onEnable() {
@@ -84,6 +89,8 @@ public final class InvasionCore extends JavaPlugin {
         ShardService shards = new ShardService();
         ShardPickupSound shardSound = new ShardPickupSound();
         ContributionTracker contributions = new ContributionTracker();
+        ShardFeed shardFeed = new ShardFeed();
+        shards.feed(shardFeed);
         RewardService rewards = new RewardService();
         BreachLog breachLog = new BreachLog();
 
@@ -136,13 +143,23 @@ public final class InvasionCore extends JavaPlugin {
             getLogger().info("前回から残っていた侵略Mobを " + orphans + " 体撤去しました。");
         }
         getServer().getPluginManager().registerEvents(
-                new PlayerListener(config, nexuses, heat, perks, hud, worldEvents, shardSound), this);
+                new PlayerListener(config, nexuses, heat, perks, hud, worldEvents, shardSound, shards), this);
         PreGameService pregame = new PreGameService(config, nexuses);
         getServer().getPluginManager().registerEvents(new PreGameListener(pregame), this);
 
         InvasionCommands commands = new InvasionCommands(
                 this, nexuses, stages, shards, perks, gui, waves, registry, spawner,
                 worldEvents, breachLog, new SetupChecklist(config, nexuses, stages));
+
+        // ---- Web（管理画面・OBS オーバーレイ） ----
+        FaceService faces = new FaceService(this);
+        WebState webState = new WebState(config, nexuses, registry, shards, perks, contributions, faces);
+        getServer().getScheduler().runTaskTimer(this, webState::tick, 20L, 20L);
+        if (config.webEnabled()) {
+            this.web = new WebServer(this, config, webState, shardFeed, faces);
+            web.start();
+        }
+        commands.web(web);
         RuleCommand rule = new RuleCommand(config);
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
             event.registrar().register("invasion", "InvasionCore の操作", List.of("inv"), commands);
@@ -178,6 +195,9 @@ public final class InvasionCore extends JavaPlugin {
         }
         if (worldEvents != null) {
             worldEvents.shutdown();
+        }
+        if (web != null) {
+            web.stop();
         }
         if (gadgets != null) {
             // 保存より前に消す。残すと鋼鉄級の耐久記録ごと恒久的な壁になる。

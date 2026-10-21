@@ -15,6 +15,7 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.inventory.ItemStack;
 import work.maiotanet.invasioncore.config.InvasionConfig;
 import work.maiotanet.invasioncore.economy.ShardPickupSound;
+import work.maiotanet.invasioncore.economy.ShardService;
 import work.maiotanet.invasioncore.heat.HeatService;
 import work.maiotanet.invasioncore.item.InvasionItems;
 import work.maiotanet.invasioncore.nexus.Nexus;
@@ -39,11 +40,13 @@ public final class PlayerListener implements Listener {
     private final HudService hud;
     private final WorldEventService worldEvents;
     private final ShardPickupSound shardSound;
+    private final ShardService shards;
 
     public PlayerListener(InvasionConfig config, NexusManager nexuses, HeatService heat,
                           PerkService perks, HudService hud, WorldEventService worldEvents,
-                          ShardPickupSound shardSound) {
+                          ShardPickupSound shardSound, ShardService shards) {
         this.shardSound = shardSound;
+        this.shards = shards;
         this.config = config;
         this.nexuses = nexuses;
         this.heat = heat;
@@ -72,6 +75,7 @@ public final class PlayerListener implements Listener {
         // インベントリが一杯に近いと一部しか拾えないので、拾えた分だけ数える
         int picked = event.getItem().getItemStack().getAmount() - event.getRemaining();
         shardSound.queue(player, picked);
+        shards.notePickup(player, picked);
     }
 
     @EventHandler

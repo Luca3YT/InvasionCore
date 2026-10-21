@@ -21,6 +21,8 @@ Paper 26.2 用のネクサス防衛プラグイン。ゲーム仕様は [README.
 - 定期処理は全てメインスレッドの `runTaskTimer`。AI は毎tick呼ばれるが内部でバケット分割。
 - `WaveEngine` がフェーズ遷移（DORMANT → PREPARATION ⇄ BLOOD_MOON → BROKEN）の唯一の持ち主。
   AI 層は `NexusCombatSink` 越しにしかネクサスへダメージを入れない。
+- `web/` は管理画面と OBS オーバーレイ。JDK 同梱の HttpServer を Web 用スレッドで動かすので、ハンドラから Bukkit API を触らない
+  （`WebState` が 1 秒ごとにメインスレッドで JSON を作り、`ShardFeed` に増減を積む）。HTML は `src/main/resources/web/`（Maven の置き換え対象外）。
 - 永続化は `plugins/InvasionCore/*.yml`。各サービスが自分のファイルを load/save し、5分ごとと無効化時に保存。
   `Nexus` の `transient` フィールド（現在ウェーブ等）は永続化しない。
 

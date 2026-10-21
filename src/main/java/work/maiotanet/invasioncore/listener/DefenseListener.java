@@ -117,7 +117,7 @@ public final class DefenseListener implements Listener {
                 return;
             }
             int cost = adjustedCost(player, nexus, BlockTier.first().upgradeCost());
-            if (!shards.takeWithPool(player, nexus, cost)) {
+            if (!shards.takeWithPool(player, nexus, cost, "強化した")) {
                 sendInsufficient(player, nexus, cost);
                 return;
             }
@@ -133,7 +133,7 @@ public final class DefenseListener implements Listener {
             if (cost <= 0) {
                 return;
             }
-            if (!shards.takeWithPool(player, nexus, cost)) {
+            if (!shards.takeWithPool(player, nexus, cost, "修理した")) {
                 sendInsufficient(player, nexus, cost);
                 return;
             }
@@ -153,7 +153,7 @@ public final class DefenseListener implements Listener {
             return;
         }
         int cost = adjustedCost(player, nexus, next.upgradeCost());
-        if (!shards.takeWithPool(player, nexus, cost)) {
+        if (!shards.takeWithPool(player, nexus, cost, "強化した")) {
             sendInsufficient(player, nexus, cost);
             return;
         }

@@ -132,6 +132,16 @@ rules:
   # /rule で表示するルール説明の URL。配信ごとに差し替えてよい
   url: "https://luca3yt.github.io/InvasionCore/"
 
+web:
+  # 管理画面と OBS オーバーレイを配信する Web サーバー
+  enabled: true
+  port: 8765
+  # 待ち受けるアドレス。0.0.0.0 で同じ Wi-Fi のスマホからも開ける。この PC だけにするなら 127.0.0.1
+  bind: "0.0.0.0"
+  # オーバーレイの表示パターン（b: ポートレート / c: トースト / e: ビッグナンバー / f: バナー）。
+  # 管理画面からも切り替えられる
+  overlay-style: "b"
+
 performance:
   # 侵略MobのAIを何tickに分散させるか。大きいほど軽いが反応が鈍る
   ai-buckets: 4

@@ -278,6 +278,30 @@ public final class InvasionConfig {
         return cfg.getString("rules.url", "https://luca3yt.github.io/InvasionCore/");
     }
 
+    // ---- Web（管理画面・OBS オーバーレイ） ----
+    public boolean webEnabled() {
+        return cfg.getBoolean("web.enabled", true);
+    }
+
+    public int webPort() {
+        return cfg.getInt("web.port", 8765);
+    }
+
+    public String webBind() {
+        return cfg.getString("web.bind", "0.0.0.0");
+    }
+
+    public String overlayStyle() {
+        String style = cfg.getString("web.overlay-style", "b");
+        return style == null ? "b" : style.toLowerCase(java.util.Locale.ROOT);
+    }
+
+    /** 管理画面から表示パターンを変えたとき。config.yml にも書き戻す（コメントは残る）。 */
+    public void overlayStyle(String style) {
+        cfg.set("web.overlay-style", style);
+        plugin.saveConfig();
+    }
+
     public FileConfiguration raw() {
         return cfg;
     }
