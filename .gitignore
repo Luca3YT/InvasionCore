@@ -24,3 +24,6 @@ desktop.ini
 
 # ローカル専用のツールチェーン指定（build.cmd が読む）
 build.local.cmd
+
+# ローカルのテストサーバー（scripts/setup-server.cmd で作る）
+/server/

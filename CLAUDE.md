@@ -9,8 +9,10 @@ Paper 26.2 用のネクサス防衛プラグイン。ゲーム仕様は [README.
   - JDK 25 以上と Maven を自動検出する（`~/.jdks`、`C:\tools`、Adoptium、PATH、IntelliJ 同梱 Maven）。
   - 検出できない環境では、リポジトリ直下に `build.local.cmd`（gitignore 済み）を置いて
     `set "JAVA_HOME=..."` / `set "MVN=..."` を書く。
-- 検証サーバー: `run/`（gitignore 済み・各自ローカル）。jar を `run/plugins/` にコピーして `run/start.cmd`。
-  - サーバーポートは 25599。コンソールから `invasion admin ...` が打てる。
+- テストサーバー: `scripts\setup-server.cmd` で `server/`（gitignore 済み）を作り、`server\start.cmd` で起動。
+  - `start.cmd` が起動のたびに `target/` の最新 jar を `plugins/` へコピーするので、`build.cmd package` → `start.cmd` で回せる。
+  - ポート 25565（`localhost` で接続）。コンソールから `invasion admin ...` が打てる。
+  - `run/` は前任者の検証環境（ポート 25599・検証データ入り）。自動テストで使う場合はこちら。
 - テストコードは無い。動作確認は実サーバーで行う。
 
 ## アーキテクチャの要点

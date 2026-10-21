@@ -41,8 +41,8 @@ IntelliJ IDEA 同梱の Maven の順。PATH は変更しない）。見つから
 "<JDK 25 以上>\bin\java.exe" -Xms1G -Xmx2G -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -jar paper-26.2-92.jar nogui
 ```
 
-検証用サーバー（`run/`、git 管理外）には `run/start.cmd` を用意してあるので、通常はそれを実行すればよい。
-`run/` の用意の仕方は [docs/handoff.md](docs/handoff.md) を参照。
+テスト用のローカルサーバーは `scripts\setup-server.cmd` で `server/`（git 管理外）に作れる。
+`server\start.cmd` が最新のプラグイン jar をコピーしてから起動する。詳しくは [docs/handoff.md](docs/handoff.md) を参照。
 
 > **`-Dstdout.encoding=UTF-8` は Windows では必須。** Java 18 以降、`System.out` は
 > `file.encoding` ではなくコンソールのコードページを使うため、指定しないと
