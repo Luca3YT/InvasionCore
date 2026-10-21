@@ -1,3 +1,8 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>InvasionCore 遊び方ガイド</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -38,6 +43,7 @@
 html { scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 body {
+  margin: 0;
   background: var(--bg); color: var(--fg);
   font-family: var(--font-body); font-size: 15.5px; line-height: 1.8;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
@@ -138,10 +144,14 @@ td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .gui .on { background: var(--surface); border: 1px solid var(--accent); color: var(--fg); font-weight: 500; }
 
 footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
 </style>
+</head>
+<body>
 
 <div class="wrap">
   <nav class="toc" aria-label="目次">
+    <a class="home" href="index.html">← 参加者ガイド</a>
     <p>CONTENTS</p>
     <ol>
       <li><a href="#overview">どんなゲーム？</a></li>
@@ -527,3 +537,5 @@ footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line);
   });
 })();
 </script>
+</body>
+</html>
