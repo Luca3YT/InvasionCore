@@ -82,6 +82,12 @@ code { font-family: var(--font-mono); font-size: .9em; background: var(--sunk); 
 .day.moon b, .day.moon span { color: #fff; }
 @media (max-width: 520px) { .cycle { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 
+.recipes { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin: 14px 0; }
+.recipe { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px; min-width: 0; }
+.recipe figcaption { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 8px; font-size: 14.5px; }
+.recipe figcaption span { color: var(--muted); font-variant-numeric: tabular-nums; }
+.recipe img { display: block; width: 100%; height: auto; image-rendering: pixelated; border-radius: 4px; }
+.recipe p { margin: 8px 0 0; font-size: 12.5px; color: var(--muted); }
 .table-wrap { overflow-x: auto; margin: 12px 0; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
 table { border-collapse: collapse; width: 100%; font-size: 14px; }
 th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
@@ -197,6 +203,26 @@ footer .inner { display: flex; flex-wrap: wrap; gap: 8px 20px; }
       <p>置いたあと、<strong>弾薬を手に持って右クリック</strong> で装填します。射撃は矢、火炎はブレイズパウダー、凍結は雪玉、修復はレッドストーンです。素手で右クリックすると残弾が見られます。</p>
     </section>
 
+    <section id="craft">
+      <h2>作れるもの</h2>
+      <p>このゲームの道具は作業台で作れます。左の 3×3 に材料を置くと、右に完成品が出ます。数字は 1 回で作れる数です。</p>
+      <div class="recipes">
+        <figure class="recipe"><figcaption><b>ネクサス</b><span>×1</span></figcaption><img src="images/recipes/nexus.png" width="512" height="256" loading="lazy" alt="ネクサスの作り方。材料: 黒曜石×4、ダイヤ×3、ネザースター×1、エンダーアイ×1"><p>黒曜石×4、ダイヤ×3、ネザースター×1、エンダーアイ×1</p></figure>
+        <figure class="recipe"><figcaption><b>強化ハンマー</b><span>×1</span></figcaption><img src="images/recipes/hammer.png" width="512" height="256" loading="lazy" alt="強化ハンマーの作り方。材料: 鉄インゴット×5、棒×2"><p>鉄インゴット×5、棒×2</p></figure>
+        <figure class="recipe"><figcaption><b>応急補修キット</b><span>×2</span></figcaption><img src="images/recipes/repair_kit.png" width="512" height="256" loading="lazy" alt="応急補修キットの作り方。材料: 糸×4、鉄ナゲット×4、ハニカム×1"><p>糸×4、鉄ナゲット×4、ハニカム×1</p></figure>
+        <figure class="recipe"><figcaption><b>射撃タレット</b><span>×1</span></figcaption><img src="images/recipes/turret_arrow.png" width="512" height="256" loading="lazy" alt="射撃タレットの作り方。材料: 鉄インゴット×7、ディスペンサー×1、レッドストーンブロック×1"><p>鉄インゴット×7、ディスペンサー×1、レッドストーンブロック×1</p></figure>
+        <figure class="recipe"><figcaption><b>火炎タレット</b><span>×1</span></figcaption><img src="images/recipes/turret_flame.png" width="512" height="256" loading="lazy" alt="火炎タレットの作り方。材料: 鉄インゴット×4、ブレイズロッド×3、ディスペンサー×1、レッドストーンブロック×1"><p>鉄インゴット×4、ブレイズロッド×3、ディスペンサー×1、レッドストーンブロック×1</p></figure>
+        <figure class="recipe"><figcaption><b>凍結タレット</b><span>×1</span></figcaption><img src="images/recipes/turret_frost.png" width="512" height="256" loading="lazy" alt="凍結タレットの作り方。材料: 鉄インゴット×4、青氷×3、ディスペンサー×1、レッドストーンブロック×1"><p>鉄インゴット×4、青氷×3、ディスペンサー×1、レッドストーンブロック×1</p></figure>
+        <figure class="recipe"><figcaption><b>修復タレット</b><span>×1</span></figcaption><img src="images/recipes/turret_heal.png" width="512" height="256" loading="lazy" alt="修復タレットの作り方。材料: 鉄インゴット×4、金ブロック×3、ディスペンサー×1、レッドストーンブロック×1"><p>鉄インゴット×4、金ブロック×3、ディスペンサー×1、レッドストーンブロック×1</p></figure>
+        <figure class="recipe"><figcaption><b>スパイクトラップ</b><span>×4</span></figcaption><img src="images/recipes/trap_spike.png" width="512" height="256" loading="lazy" alt="スパイクトラップの作り方。材料: 鉄インゴット×4、石×3"><p>鉄インゴット×4、石×3</p></figure>
+        <figure class="recipe"><figcaption><b>爆裂地雷</b><span>×2</span></figcaption><img src="images/recipes/trap_mine.png" width="512" height="256" loading="lazy" alt="爆裂地雷の作り方。材料: 鉄インゴット×7、TNT×1、レッドストーン×1"><p>鉄インゴット×7、TNT×1、レッドストーン×1</p></figure>
+        <figure class="recipe"><figcaption><b>閃光弾</b><span>×4</span></figcaption><img src="images/recipes/flash_charge.png" width="512" height="256" loading="lazy" alt="閃光弾の作り方。材料: グロウストーンダスト×4、火薬×1"><p>グロウストーンダスト×4、火薬×1</p></figure>
+        <figure class="recipe"><figcaption><b>救急キット</b><span>×2</span></figcaption><img src="images/recipes/medkit.png" width="512" height="256" loading="lazy" alt="救急キットの作り方。材料: 糸×4、輝くスイカの薄切り×4、金のニンジン×1"><p>糸×4、輝くスイカの薄切り×4、金のニンジン×1</p></figure>
+        <figure class="recipe"><figcaption><b>緊急バリア</b><span>×2</span></figcaption><img src="images/recipes/barrier.png" width="512" height="256" loading="lazy" alt="緊急バリアの作り方。材料: 鉄ブロック×4、レッドストーンブロック×4、ダイヤ×1"><p>鉄ブロック×4、レッドストーンブロック×4、ダイヤ×1</p></figure>
+        <figure class="recipe"><figcaption><b>帰還の羅針盤（並べ方は自由）</b><span>×1</span></figcaption><img src="images/recipes/recall.png" width="512" height="256" loading="lazy" alt="帰還の羅針盤（並べ方は自由）の作り方。材料: 鉄インゴット×5、紙×3"><p>鉄インゴット×5、紙×3</p></figure>
+      </div>
+    </section>
+
     <section id="bloodmoon">
       <h2>血の月の戦い方</h2>
       <p>7日目は昼過ぎ・夕方・日没直前の3回、警告が出ます。日没までに持ち場についてください。画面上のボスバーに、ウェーブ数・残りの敵・ネクサスの HP が出ます。</p>
@@ -244,6 +270,8 @@ footer .inner { display: flex; flex-wrap: wrap; gap: 8px 20px; }
         <tbody>
           <tr><td><code>/invasion status</code></td><td>近くのネクサスの状態と、自分の Shard 所持数</td></tr>
           <tr><td><code>/rule</code></td><td>ルール説明の URL を表示する</td></tr>
+          <tr><td><code>/bug</code></td><td>バグ報告・意見のフォームを開く（<code>/issues</code> でも同じ）</td></tr>
+          <tr><td><code>/patchnote</code></td><td>最新のパッチノート（更新情報）を開く</td></tr>
           <tr><td><code>/invasion join</code></td><td>防衛に参加する（サーバーに入った時点で自動で参加しているので、普段は不要）</td></tr>
           <tr><td><code>/invasion leave</code></td><td>防衛から抜ける</td></tr>
           <tr><td><code>/invasion perks</code></td><td>パーク画面を開く</td></tr>

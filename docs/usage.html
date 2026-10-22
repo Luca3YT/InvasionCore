@@ -125,13 +125,12 @@ td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 @media (max-width: 560px) { .ladder { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* Crafting grids */
-.recipes { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 14px; margin-top: 14px; }
+.recipes { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin-top: 14px; }
+.recipe img { display: block; width: 100%; height: auto; image-rendering: pixelated; border-radius: 4px; }
+.recipe .mats { margin: 8px 0 0; font-size: 12.5px; color: var(--muted); }
 .recipe { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px; min-width: 0; }
 .recipe h4 { margin: 0 0 10px; font-size: 14.5px; display: flex; justify-content: space-between; gap: 8px; }
 .recipe h4 span { color: var(--muted); font-weight: 400; font-variant-numeric: tabular-nums; }
-.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; width: 100%; max-width: 210px; }
-.cell { aspect-ratio: 1; background: var(--sunk); border: 1px solid var(--line); border-radius: 3px; display: grid; place-items: center; font-size: 10.5px; line-height: 1.25; text-align: center; padding: 2px; color: var(--fg); overflow: hidden; max-width: 100%; }
-.cell.empty { background: transparent; border-style: dashed; }
 
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-top: 12px; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px; min-width: 0; }
@@ -427,6 +426,8 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
           <tr><td><code>/invasion perks</code></td><td>パーク画面を開く</td></tr>
           <tr><td><code>/invasion top</code></td><td>血の月の踏破ランキング</td></tr>
           <tr><td><code>/rule</code></td><td>ルール説明の URL を表示する</td></tr>
+          <tr><td><code>/bug</code>（<code>/issues</code>）</td><td>バグ報告・意見のフォームと、送られた報告の一覧の URL を表示する</td></tr>
+          <tr><td><code>/patchnote</code></td><td>最新のパッチノートの URL を表示する</td></tr>
           <tr><td><code>/invasion stop</code></td><td>侵攻を止める（ネクサスの所有者と管理者のみ）</td></tr>
         </tbody>
       </table></div>
@@ -470,7 +471,7 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
       </table></div>
     </section>
 
-    <footer>InvasionCore 0.3.0 / Paper 26.2 build 92。数値は既定の config.yml の値です。サーバーの設定を変えている場合は異なります。</footer>
+    <footer>InvasionCore 0.3.1 / Paper 26.2 build 92。数値は既定の config.yml の値です。サーバーの設定を変えている場合は異なります。</footer>
   </main>
 </div>
 
@@ -478,19 +479,19 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
 (function () {
   // 3x3 crafting grids. Rows are 3-character strings; a space is an empty slot.
   var recipes = [
-    { name: "ネクサス", out: 1, rows: ["ODO", "DNP", "ODO"], key: { O: "黒曜石", D: "ダイヤ", N: "ネザースター", P: "エンダーアイ" } },
-    { name: "強化ハンマー", out: 1, rows: ["III", "ISI", " S "], key: { I: "鉄インゴット", S: "棒" } },
-    { name: "応急補修キット", out: 2, rows: ["SIS", "IHI", "SIS"], key: { S: "糸", I: "鉄ナゲット", H: "ハニカム" } },
-    { name: "射撃タレット", out: 1, rows: ["III", "IDI", "IRI"], key: { I: "鉄インゴット", D: "ディスペンサー", R: "レッドストーンブロック" } },
-    { name: "火炎タレット", out: 1, rows: ["IBI", "BDB", "IRI"], key: { I: "鉄インゴット", B: "ブレイズロッド", D: "ディスペンサー", R: "レッドストーンブロック" } },
-    { name: "凍結タレット", out: 1, rows: ["IBI", "BDB", "IRI"], key: { I: "鉄インゴット", B: "青氷", D: "ディスペンサー", R: "レッドストーンブロック" } },
-    { name: "修復タレット", out: 1, rows: ["IGI", "GDG", "IRI"], key: { I: "鉄インゴット", G: "金ブロック", D: "ディスペンサー", R: "レッドストーンブロック" } },
-    { name: "スパイクトラップ", out: 4, rows: [" I ", "III", "SSS"], key: { I: "鉄インゴット", S: "石" } },
-    { name: "爆裂地雷", out: 2, rows: ["III", "ITI", "IRI"], key: { I: "鉄インゴット", T: "TNT", R: "レッドストーン" } },
-    { name: "閃光弾", out: 4, rows: [" G ", "GBG", " G "], key: { G: "グロウストーンダスト", B: "火薬" } },
-    { name: "救急キット", out: 2, rows: ["SPS", "PGP", "SPS"], key: { S: "糸", P: "輝くスイカの薄切り", G: "金のニンジン" } },
-    { name: "緊急バリア", out: 2, rows: ["IRI", "RDR", "IRI"], key: { I: "鉄ブロック", R: "レッドストーンブロック", D: "ダイヤ" } },
-    { name: "帰還の羅針盤（並べ方は自由）", out: 1, rows: ["PPP", "III", "II "], key: { P: "紙", I: "鉄インゴット" } }
+    { name: "ネクサス", img: "nexus", out: 1, rows: ["ODO", "DNP", "ODO"], key: { O: "黒曜石", D: "ダイヤ", N: "ネザースター", P: "エンダーアイ" } },
+    { name: "強化ハンマー", img: "hammer", out: 1, rows: ["III", "ISI", " S "], key: { I: "鉄インゴット", S: "棒" } },
+    { name: "応急補修キット", img: "repair_kit", out: 2, rows: ["SIS", "IHI", "SIS"], key: { S: "糸", I: "鉄ナゲット", H: "ハニカム" } },
+    { name: "射撃タレット", img: "turret_arrow", out: 1, rows: ["III", "IDI", "IRI"], key: { I: "鉄インゴット", D: "ディスペンサー", R: "レッドストーンブロック" } },
+    { name: "火炎タレット", img: "turret_flame", out: 1, rows: ["IBI", "BDB", "IRI"], key: { I: "鉄インゴット", B: "ブレイズロッド", D: "ディスペンサー", R: "レッドストーンブロック" } },
+    { name: "凍結タレット", img: "turret_frost", out: 1, rows: ["IBI", "BDB", "IRI"], key: { I: "鉄インゴット", B: "青氷", D: "ディスペンサー", R: "レッドストーンブロック" } },
+    { name: "修復タレット", img: "turret_heal", out: 1, rows: ["IGI", "GDG", "IRI"], key: { I: "鉄インゴット", G: "金ブロック", D: "ディスペンサー", R: "レッドストーンブロック" } },
+    { name: "スパイクトラップ", img: "trap_spike", out: 4, rows: [" I ", "III", "SSS"], key: { I: "鉄インゴット", S: "石" } },
+    { name: "爆裂地雷", img: "trap_mine", out: 2, rows: ["III", "ITI", "IRI"], key: { I: "鉄インゴット", T: "TNT", R: "レッドストーン" } },
+    { name: "閃光弾", img: "flash_charge", out: 4, rows: [" G ", "GBG", " G "], key: { G: "グロウストーンダスト", B: "火薬" } },
+    { name: "救急キット", img: "medkit", out: 2, rows: ["SPS", "PGP", "SPS"], key: { S: "糸", P: "輝くスイカの薄切り", G: "金のニンジン" } },
+    { name: "緊急バリア", img: "barrier", out: 2, rows: ["IRI", "RDR", "IRI"], key: { I: "鉄ブロック", R: "レッドストーンブロック", D: "ダイヤ" } },
+    { name: "帰還の羅針盤（並べ方は自由）", img: "recall", out: 1, rows: ["PPP", "III", "II "], key: { P: "紙", I: "鉄インゴット" } }
   ];
   var list = document.getElementById("recipe-list");
   recipes.forEach(function (r) {
@@ -502,29 +503,23 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
     count.textContent = "×" + r.out;
     h.appendChild(count);
     card.appendChild(h);
-    var grid = document.createElement("div");
-    grid.className = "grid3";
-    grid.setAttribute("role", "img");
     var label = [];
-    r.rows.forEach(function (row) {
-      for (var i = 0; i < 3; i++) {
-        var ch = row.charAt(i);
-        var cell = document.createElement("div");
-        if (ch === " " || !ch) {
-          cell.className = "cell empty";
-        } else {
-          cell.className = "cell";
-          cell.textContent = r.key[ch];
-        }
-        grid.appendChild(cell);
-      }
-    });
     Object.keys(r.key).forEach(function (k) {
       var n = r.rows.join("").split(k).length - 1;
       label.push(r.key[k] + "×" + n);
     });
-    grid.setAttribute("aria-label", r.name + "の材料: " + label.join("、"));
-    card.appendChild(grid);
+    // 作業台の画面にアイテムの絵を並べた画像（scripts/recipe-images/RecipeImages.java で作る）
+    var img = document.createElement("img");
+    img.src = "images/recipes/" + r.img + ".png";
+    img.width = 512;
+    img.height = 256;
+    img.loading = "lazy";
+    img.alt = r.name + "の作り方。材料: " + label.join("、");
+    card.appendChild(img);
+    var mats = document.createElement("p");
+    mats.className = "mats";
+    mats.textContent = "材料: " + label.join("、");
+    card.appendChild(mats);
     list.appendChild(card);
   });
 

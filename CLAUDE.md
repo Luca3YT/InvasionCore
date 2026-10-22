@@ -5,7 +5,7 @@ Paper 26.2 用のネクサス防衛プラグイン。ゲーム仕様は [README.
 
 ## ビルドと実行
 
-- ビルド: `.\build.cmd package` → `target/InvasionCore-0.3.0.jar`
+- ビルド: `.\build.cmd package` → `target/InvasionCore-0.3.1.jar`
   - JDK 25 以上と Maven を自動検出する（`~/.jdks`、`C:\tools`、Adoptium、PATH、IntelliJ 同梱 Maven）。
   - 検出できない環境では、リポジトリ直下に `build.local.cmd`（gitignore 済み）を置いて
     `set "JAVA_HOME=..."` / `set "MVN=..."` を書く。

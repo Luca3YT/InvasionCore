@@ -42,7 +42,7 @@ IntelliJ IDEA 同梱の Maven の順。PATH は変更しない）。見つから
 `build.local.cmd`（git 管理外）を作り、`set "JAVA_HOME=..."` と `set "MVN=..."` を書く。
 詳しくは [docs/handoff.md](docs/handoff.md) を参照。
 
-成果物: `target/InvasionCore-0.3.0.jar`
+成果物: `target/InvasionCore-0.3.1.jar`
 
 ## サーバーの起動
 
@@ -293,7 +293,9 @@ GameStage が上がると下位種別の出現率が段階的に落ち、上位�
 | `/invasion join` / `leave` | 防衛への参加・離脱 |
 | `/invasion perks` | パーク画面 |
 | `/invasion top` | 血の月踏破ランキング |
-| `/rule` | ルール説明の URL を表示（`rules.url`） |
+| `/rule`（`/rules`） | ルール説明の URL を表示（`rules.url`） |
+| `/bug`（`/issues`） | バグ報告・意見のフォームと、送られた報告の一覧の URL を表示（`links.*`） |
+| `/patchnote`（`/patchnotes`） | 最新のパッチノートの URL を表示（`links.patch-notes-url`） |
 | `/invasion stop` | 侵攻の停止（所有者・管理者） |
 | `/invasion setup` | ゲーム開始前の確認（要 `invasioncore.admin`）。難易度・ゲームルール・ネクサスの状態などを ✔ / ⚠ / ✘ で表示し、直すコマンドをクリックで入力欄に入れられる |
 | `/invasion give <item> [数]` | アイテム配布（要 `invasioncore.admin`）<br>`nexus` `hammer` `shard` `kit` `turret_*` `spike` `mine` `flash` `medkit` `barrier` `recall` |
@@ -329,8 +331,26 @@ GameStage が上がると下位種別の出現率が段階的に落ち、上位�
 
 ## クラフト
 
-| アイテム | 材料 |
-|---|---|
+作業台で作る。画像は `scripts/recipe-images/RecipeImages.java` で手元の Minecraft クライアントの絵から合成している
+（レシピを変えたら `RecipeRegistrar` とこのツールの両方を直して実行し直す）。
+
+| アイテム | 材料 | 作り方 |
+|---|---|---|
+| ネクサス | 黒曜石×4・ダイヤ×3・ネザースター・エンダーアイ | <img src="docs/images/recipes/nexus.png" width="256" alt="ネクサスの作り方"> |
+| 強化ハンマー | 鉄インゴット×5・棒×2 | <img src="docs/images/recipes/hammer.png" width="256" alt="強化ハンマーの作り方"> |
+| 応急補修キット×2 | 糸×4・鉄ナゲット×4・ハニカム | <img src="docs/images/recipes/repair_kit.png" width="256" alt="応急補修キットの作り方"> |
+| 射撃タレット | 鉄インゴット×7・ディスペンサー・レッドストーンブロック | <img src="docs/images/recipes/turret_arrow.png" width="256" alt="射撃タレットの作り方"> |
+| 火炎タレット | 鉄インゴット×4・ブレイズロッド×3・ディスペンサー・レッドストーンブロック | <img src="docs/images/recipes/turret_flame.png" width="256" alt="火炎タレットの作り方"> |
+| 凍結タレット | 鉄インゴット×4・青氷×3・ディスペンサー・レッドストーンブロック | <img src="docs/images/recipes/turret_frost.png" width="256" alt="凍結タレットの作り方"> |
+| 修復タレット | 鉄インゴット×4・金ブロック×3・ディスペンサー・レッドストーンブロック | <img src="docs/images/recipes/turret_heal.png" width="256" alt="修復タレットの作り方"> |
+| スパイクトラップ×4 | 鉄インゴット×4・石×3 | <img src="docs/images/recipes/trap_spike.png" width="256" alt="スパイクトラップの作り方"> |
+| 爆裂地雷×2 | 鉄インゴット×7・TNT・レッドストーン | <img src="docs/images/recipes/trap_mine.png" width="256" alt="爆裂地雷の作り方"> |
+| 閃光弾×4 | グロウストーンダスト×4・火薬 | <img src="docs/images/recipes/flash_charge.png" width="256" alt="閃光弾の作り方"> |
+| 救急キット×2 | 糸×4・輝くスイカ×4・金のニンジン | <img src="docs/images/recipes/medkit.png" width="256" alt="救急キットの作り方"> |
+| 緊急バリア×2 | 鉄ブロック×4・レッドストーンブロック×4・ダイヤ | <img src="docs/images/recipes/barrier.png" width="256" alt="緊急バリアの作り方"> |
+| 帰還の羅針盤 | 鉄インゴット×5・紙×3（並べ方は自由） | <img src="docs/images/recipes/recall.png" width="256" alt="帰還の羅針盤の作り方"> |
+
+---|---|
 | ネクサス | 黒曜石×4・ダイヤ×3・ネザースター・エンダーアイ |
 | 強化ハンマー | 鉄インゴット×4・棒×2 |
 | 応急補修キット×2 | 糸×4・鉄ナゲット×4・ハニカム |
@@ -361,6 +381,7 @@ GameStage が上がると下位種別の出現率が段階的に落ち、上位�
 - `grave.*` — 墓（本人だけが回収できる時間、許可の返事を待つ時間）
 - `guide.*` — ネクサスの発光・方向表示・境目のパーティクル
 - `rules.url` — `/rule` で表示するルール説明の URL
+- `links.*` — `/bug` と `/patchnote` で表示する URL
 - `web.enabled` / `web.port` / `web.bind` — 管理画面・オーバーレイの Web サーバー（`bind` を `127.0.0.1` にするとこの PC からだけ開ける）
 - `web.public-url` — 外から見たアドレス。表示する URL に使う（VPS では必須）
 - `web.overlay-token` — オーバーレイにもパスワードを要求するか

@@ -7,7 +7,7 @@ import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import work.maiotanet.invasioncore.command.InvasionCommands;
-import work.maiotanet.invasioncore.command.RuleCommand;
+import work.maiotanet.invasioncore.command.LinkCommand;
 import work.maiotanet.invasioncore.config.InvasionConfig;
 import work.maiotanet.invasioncore.defense.FortifyService;
 import work.maiotanet.invasioncore.defense.TrapService;
@@ -189,10 +189,18 @@ public final class InvasionCore extends JavaPlugin {
         }
         commands.web(web);
         setupChecklist.web(config.webEnabled(), web);
-        RuleCommand rule = new RuleCommand(config);
+        LinkCommand rule = new LinkCommand(List.of(
+                new LinkCommand.Link("ルール説明はこちら: ", config::rulesUrl)));
+        LinkCommand bug = new LinkCommand(List.of(
+                new LinkCommand.Link("バグ報告・意見を送る: ", config::issuesUrl),
+                new LinkCommand.Link("送られた報告の一覧: ", config::issuesListUrl)));
+        LinkCommand patchNote = new LinkCommand(List.of(
+                new LinkCommand.Link("最新のパッチノート: ", config::patchNotesUrl)));
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
             event.registrar().register("invasion", "InvasionCore の操作", List.of("inv"), commands);
             event.registrar().register("rule", "ルール説明の URL を表示する", List.of("rules"), rule);
+            event.registrar().register("bug", "バグ報告・意見のフォームの URL を表示する", List.of("issues"), bug);
+            event.registrar().register("patchnote", "最新のパッチノートの URL を表示する", List.of("patchnotes"), patchNote);
         });
 
         // ---- 定期処理 ----

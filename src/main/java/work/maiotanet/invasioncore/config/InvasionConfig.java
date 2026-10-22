@@ -344,6 +344,21 @@ public final class InvasionConfig {
         return cfg.getString("rules.url", "https://luca3yt.github.io/InvasionCore/");
     }
 
+    /** /bug・/issues で表示する、報告フォームの URL。 */
+    public String issuesUrl() {
+        return cfg.getString("links.issues-url", "https://github.com/Luca3YT/InvasionCore/issues/new/choose");
+    }
+
+    /** /bug・/issues で一緒に表示する、送られた報告の一覧の URL。 */
+    public String issuesListUrl() {
+        return cfg.getString("links.issues-list-url", "https://github.com/Luca3YT/InvasionCore/issues");
+    }
+
+    /** /patchnote で表示する、最新のパッチノートの URL。 */
+    public String patchNotesUrl() {
+        return cfg.getString("links.patch-notes-url", "https://github.com/Luca3YT/InvasionCore/releases/latest");
+    }
+
     // ---- Web（管理画面・OBS オーバーレイ） ----
     public boolean webEnabled() {
         return cfg.getBoolean("web.enabled", true);
