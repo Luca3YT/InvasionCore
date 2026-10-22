@@ -2,6 +2,7 @@ package work.maiotanet.invasioncore.item;
 
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
+import work.maiotanet.invasioncore.config.YamlCheck;
 
 import java.io.File;
 import java.util.LinkedHashMap;
@@ -18,11 +19,20 @@ public final class ItemModelFile {
     private ItemModelFile() {
     }
 
-    /** 読み込んで、InvasionItems に反映する。 */
-    public static void load(Plugin plugin) {
+    /**
+     * 読み込んで、InvasionItems に反映する。
+     *
+     * @return 書き間違いで読めなかったときはその説明（前の値のまま変えない）。読めたら null
+     */
+    public static String load(Plugin plugin) {
         File file = new File(plugin.getDataFolder(), "item_model.yml");
         if (!file.exists()) {
             plugin.saveResource("item_model.yml", false);
+        }
+        String problem = YamlCheck.problem(file);
+        if (problem != null) {
+            // 読めないまま進めると全品が空白扱いになり、付けたはずの値が黙って消える
+            return problem;
         }
         YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
         Map<String, Object> values = new LinkedHashMap<>();
@@ -31,5 +41,6 @@ public final class ItemModelFile {
             values.put(key, yaml.get(key));
         }
         InvasionItems.modelData(values);
+        return null;
     }
 }

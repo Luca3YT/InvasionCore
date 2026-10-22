@@ -5,6 +5,8 @@ import org.bukkit.plugin.Plugin;
 import work.maiotanet.invasioncore.item.ItemModelFile;
 import work.maiotanet.invasioncore.nexus.NexusUpgrade;
 
+import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -22,15 +24,37 @@ public final class InvasionConfig {
         reload();
     }
 
-    public void reload() {
-        plugin.reloadConfig();
-        this.cfg = plugin.getConfig();
+    /**
+     * config.yml と item_model.yml を読み直す。
+     *
+     * <p>書き間違いのあるファイルは読まず、前の設定のまま動かす（全部が初期値に戻るよりよい）。
+     * 起動時に config.yml が読めないときだけは、ほかに使える設定が無いので初期値で動かす。</p>
+     *
+     * @return 読めなかったファイルと理由（空なら全部読めた）
+     */
+    public List<String> reload() {
+        List<String> problems = new ArrayList<>();
+        String configProblem = YamlCheck.problem(new File(plugin.getDataFolder(), "config.yml"));
+        if (configProblem != null) {
+            problems.add("config.yml の " + configProblem);
+        }
+        if (configProblem == null || cfg == null) {
+            plugin.reloadConfig();
+            this.cfg = plugin.getConfig();
+        }
         // 砲台増設の段数は上限まで届く数にする（例: 5 から 2 ずつで 30 まで → 13 段）
         int perLevel = turretLimitPerLevel();
         NexusUpgrade.turretSlotLevels(perLevel <= 0 ? 0
                 : (int) Math.ceil((turretLimitMax() - turretLimitBase()) / (double) perLevel));
         // アイテムの作り方は static なので、設定を読み直すたびに item_model.yml も読み直す
-        ItemModelFile.load(plugin);
+        String modelProblem = ItemModelFile.load(plugin);
+        if (modelProblem != null) {
+            problems.add("item_model.yml の " + modelProblem);
+        }
+        for (String problem : problems) {
+            plugin.getLogger().warning(problem + " このファイルは前の設定のまま（起動時なら初期値）で動いています。");
+        }
+        return problems;
     }
 
     // ---- ネクサス ----

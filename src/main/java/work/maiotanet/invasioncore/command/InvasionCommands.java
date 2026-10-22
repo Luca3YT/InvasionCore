@@ -438,8 +438,18 @@ public final class InvasionCommands implements BasicCommand {
                 }
             }
             case "reload" -> {
-                plugin.config().reload();
-                sender.sendMessage(Text.good("config.yml を再読み込みした。"));
+                List<String> problems = plugin.config().reload();
+                if (problems.isEmpty()) {
+                    sender.sendMessage(Text.good("config.yml と item_model.yml を再読み込みした。"));
+                } else {
+                    for (String problem : problems) {
+                        sender.sendMessage(Text.error(problem));
+                    }
+                    sender.sendMessage(Text.warn("読めなかったファイルは前の設定のまま。直してからもう一度 /invasion admin reload すること。"));
+                    if (sender instanceof Player p) {
+                        Sounds.fail(p);
+                    }
+                }
             }
             case "info" -> sender.sendMessage(Text.info("ネクサス " + nexuses.all().size()
                     + " 基 / 稼働 " + nexuses.active().size()
