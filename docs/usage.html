@@ -203,9 +203,10 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
           <div class="cmd"><span>/invasion setup</span><button type="button">コピー</button></div>
           <p>直し方のある項目は、文字をクリックするとコマンドが入力欄に入るので、Enter を押すだけで直せます（例: 難易度がピースフルなら <code>/difficulty normal</code>）。すべて ✔ になったら次へ。</p></div></li>
         <li><div><strong>右クリックして「侵攻を起動する」</strong>
-          <p>ネクサスの画面が開きます。緑の染料のボタンを押すと Day 1 が始まり、待機中の制限が解除されます。日没後に起動した場合、その夜は襲撃が来ません。</p></div></li>
+          <p>ネクサスの画面が開きます。緑の染料のボタンを押すと Day 1 が始まり、待機中の制限が解除されます。日没後に起動した場合、その夜は襲撃が来ません。起動できるのは OP（<code>invasioncore.admin</code>）だけで、参加者が押しても動きません。</p></div></li>
         <li><div><strong>参加者を集める</strong>
-          <p>サーバーに入った人は自動で参加者になります。起動するまでは「待機中」で、OP 以外はスポーン地点から 60 ブロックより先に進めず、ブロックの破壊・設置、アイテムを拾う・落とす、チェストや作業台を開ける、ボタン・レバー・感圧板などのレッドストーン部品を使う、Mob への攻撃ができません。体力と満腹度が常に回復するので死にません。画面下には参加人数とルールの案内が出ます。</p>
+          <p>サーバーに入った人は自動で参加者になります（どのディメンションにいても参加者として数えます）。起動するまでは「待機中」で、OP 以外はブロックの破壊・設置、アイテムを拾う・落とす、チェストや作業台を開ける、ボタン・レバー・感圧板などのレッドストーン部品を使う、Mob への攻撃ができません。体力と満腹度が常に回復するので死にません。画面下には参加人数とルールの案内が出ます。</p>
+          <p>ネクサスを置くまでは移動を制限しません。<strong>ネクサスを置いた瞬間に OP 以外の全員がネクサスのそばへテレポート</strong>し、起動するまではネクサスから 48 ブロック（防衛範囲）より先へ進めなくなります。後から入ってきた人も、ネクサスのそばへ移されます。</p>
           <p>ルール説明の URL は <code>/rule</code> で表示できます（config.yml の <code>rules.url</code> で変更）。</p></div></li>
         <li><div><strong>壁と設備を整えて Day 7 を待つ</strong>
           <p>ここからは全員で準備です。<a href="#cycle">7日間の流れ</a>へ進んでください。</p></div></li>
@@ -217,7 +218,7 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
       <h2>7日間の流れ</h2>
       <span class="who player">参加者</span>
       <div class="cycle" role="list">
-        <div class="day" role="listitem"><b>Day 1</b><span>探索・採掘。夜も安全</span></div>
+        <div class="day" role="listitem"><b>Day 1</b><span>探索・採掘。夜の襲撃なし</span></div>
         <div class="day" role="listitem"><b>Day 2</b><span>壁を作り始める</span></div>
         <div class="day raid" role="listitem"><b>Day 3</b><span>夜に小規模襲撃が始まる</span></div>
         <div class="day raid" role="listitem"><b>Day 4</b><span>強化・タレット設置</span></div>
@@ -225,14 +226,15 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
         <div class="day raid" role="listitem"><b>Day 6</b><span>最終確認</span></div>
         <div class="day moon-day" role="listitem"><b>Day 7</b><span>日没から血の月</span></div>
       </div>
-      <p>Day 3 以降は、血の月以外の夜にも小規模な襲撃があります。準備期間中にも、次のようなイベントが起きます。</p>
+      <p>Day 3 以降は、血の月以外の夜にも小規模な襲撃があります。Day 1・Day 2 は猶予期間で、叫喚体も湧かず、徘徊ホードも弱いグラント 3〜5 体だけです。準備期間中にも、次のようなイベントが起きます。</p>
       <div class="table-wrap"><table>
         <thead><tr><th>イベント</th><th>内容</th></tr></thead>
         <tbody>
           <tr><td>徘徊ホード</td><td>10〜25 分おきに、少数の侵略者が拠点に向かってくる</td></tr>
           <tr><td>空中投下</td><td>20 分おきに、拠点から 40〜80 ブロック離れた場所へ補給物資の樽が落ちる（15 分で消える）。座標はチャットに出る</td></tr>
           <tr><td>ヒートと叫喚体</td><td>拠点での採掘・建築・撃破・射撃が「熱」として溜まり、溜まりすぎると<strong>叫喚体</strong>が現れて仲間を呼ぶ。サイドバーの「ヒート」が赤くなったら手を止める</td></tr>
-          <tr><td>死亡バックパック</td><td>拠点の近くで死ぬと、所持品が死亡地点の樽にまとめられる（30 分で中身がその場に落ちる）</td></tr>
+          <tr><td>墓</td><td>どこで死んでも、所持品が死亡地点の墓（本人の頭）にまとめられる。右クリックか左クリックで回収。最初の 10 分は本人だけ（他の人がクリックすると本人に「許可する / 断る」が届く）、その後はだれでも。回収されるまで消えない</td></tr>
+          <tr><td>攻撃の警告</td><td>ネクサスが殴られると、全員に画面中央の文字・チャット（残り HP）・警告音で知らせる（10 秒に 1 回まで）</td></tr>
         </tbody>
       </table></div>
       <p>血の月の当日は、昼過ぎ・夕方・日没直前の 3 回、チャットとサウンドで警告が出ます。</p>
@@ -273,7 +275,7 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
 
     <section id="fortify">
       <h2>拠点を固める</h2>
-      <p>通貨は <strong class="shard">Shard</strong>（アメジストの欠片の見た目）です。侵略者を倒すと落とし、防衛成功でも配られます。インベントリに入っている実物を使います。</p>
+      <p>通貨は <strong class="shard">Shard</strong>（アメジストの欠片の見た目）です。侵略者を倒すと落とし、防衛成功でも配られます。普通の敵（ゾンビ・スケルトンなど）をプレイヤーが倒しても 1 個落とします（スポナーから出た敵は対象外。<code>economy.vanilla-mob-shard</code>）。インベントリに入っている実物を使います。</p>
       <h3>強化ハンマー</h3>
       <p>強化ハンマー（鉄の斧の見た目）でブロックを右クリックすると、そのブロックの状態に応じて次のどれかが起きます。防衛範囲の中でだけ使えます。</p>
       <div class="table-wrap"><table>

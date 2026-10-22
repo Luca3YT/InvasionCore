@@ -1,6 +1,7 @@
 package work.maiotanet.invasioncore.stage;
 
-import org.bukkit.Location;
+import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
 import work.maiotanet.invasioncore.config.InvasionConfig;
 import work.maiotanet.invasioncore.nexus.Nexus;
@@ -50,29 +51,21 @@ public final class GameStageService {
         return (int) Math.max(1, Math.round((fromNexus + fromDays + fromPlayers) * partyFactor));
     }
 
-    /** 防衛半径内にいるオンラインプレイヤーを参加者として拾う。 */
+    /**
+     * 参加者。サーバーにいるメンバー全員で、どのディメンションにいても数える。
+     *
+     * <p>ネクサスはサーバーに1基だけで、サーバーに入った人は全員そのネクサスのメンバーになる。
+     * 距離で絞ると、素材集めで遠出した人のサイドバーや通知が消え、報酬ももらえなくなる。
+     * 死んでいる人と観戦モードの人（配信者の見回りなど）は数えない。
+     * /invasion leave でメンバーから抜けた人も数えない。</p>
+     */
     public List<Player> participants(Nexus nexus) {
         List<Player> out = new ArrayList<>();
-        Location center = nexus.center();
-        if (center == null || center.getWorld() == null) {
-            return out;
-        }
-        double radius = config.nexusDefenseRadius();
-        double radiusSq = radius * radius;
-        // 登録メンバーは防衛範囲の外に出ていても、この距離までは参加者として数える。
-        // 無制限にすると、一度ネクサスに触れただけの人が永久に GameStage を押し上げてしまう。
-        double memberRadiusSq = (radius * 2.5) * (radius * 2.5);
-
-        for (Player p : center.getWorld().getPlayers()) {
-            if (p.isDead() || !p.isOnline()) {
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (p.isDead() || p.getGameMode() == GameMode.SPECTATOR) {
                 continue;
             }
-            if (p.getGameMode() == org.bukkit.GameMode.SPECTATOR) {
-                continue;
-            }
-            double distSq = p.getLocation().distanceSquared(center);
-            if (distSq <= radiusSq
-                    || (nexus.isMember(p.getUniqueId()) && distSq <= memberRadiusSq)) {
+            if (nexus.isMember(p.getUniqueId())) {
                 out.add(p);
             }
         }

@@ -11,7 +11,8 @@ nexus:
   base-health: 500.0
   # レベルが1上がるごとの最大HP増加量
   health-per-level: 120.0
-  # 防衛範囲。この半径内のプレイヤーが参加者として扱われる
+  # 防衛範囲（ブロック）。強化ハンマーなどが使える範囲で、境目にパーティクルが出る。
+  # ネクサスを置いてからゲーム開始までは、運営（invasioncore.admin）以外はこの範囲から出られない
   defense-radius: 48
   # 侵略者がブロックを破壊してよい半径。範囲外の建築物は絶対に壊されない
   breach-radius: 40
@@ -20,6 +21,8 @@ nexus:
   # 6.0 だと20体が到達した時点で毎秒120ダメージとなり、防衛線が破られた瞬間に
   # 立て直す時間が一切無くなる（実機検証で確認）。反応できる余地を残す値にしている。
   damage-per-hit: 2.5
+  # ネクサスが殴られたときの警告（画面中央の文字・チャット・警告音）を、何秒に1回まで出すか
+  attack-warning-seconds: 10
   # ネクサスレベルの上限
   max-level: 30
   # 稼働中ネクサスの周囲でバニラ敵Mobの自然湧きを止める。
@@ -57,7 +60,8 @@ cycle:
   # 血の月以外の夜にも小規模襲撃を行うか
   night-skirmish: true
   # 夜間襲撃が始まる日。これより前の夜は襲撃が来ない。
-  # 拠点もShardも無い初日から削られると立ち上がりが理不尽になるため猶予を置く
+  # 拠点もShardも無い初日から削られると立ち上がりが理不尽になるため猶予を置く。
+  # この日より前は叫喚体も湧かず、徘徊ホードは弱いゾンビ（グラント）の少数だけになる
   skirmish-start-day: 3
   # 小規模襲撃の規模（血の月に対する比率）
   night-skirmish-scale: 0.22
@@ -109,6 +113,10 @@ economy:
   # 修理コスト。missing HP をこの値で割った量の Shard を要求する。
   # 鋼鉄(3200HP)の全損修理が約53 Shard になる想定。小さくすると修理が高騰する
   repair-cost-per-hp: 60
+  # 侵略者ではない普通の敵（ゾンビ・スケルトンなど）をプレイヤーが倒したときに落とす Shard の数。0 で落とさない
+  vanilla-mob-shard: 1
+  # モンスタースポナーから出た敵にも落とさせるか。true にするとトラップタワーで無限に稼げてしまう
+  vanilla-mob-shard-from-spawner: false
 
 world-events:
   wandering-horde:
@@ -118,15 +126,22 @@ world-events:
   air-drop:
     enabled: true
     interval-seconds: 1200
-  backpack:
-    # 死亡時に所持品をバックパック（樽）にまとめる
-    enabled: true
-    expire-seconds: 1800
 
-pregame:
-  # ゲーム開始（ネクサスの起動）まで、ワールドのスポーン地点からこの半径（ブロック）より先へは進めない。
-  # 管理者（invasioncore.admin）は対象外
-  radius: 60
+grave:
+  # 死んだとき、所持品を死んだ場所の墓（プレイヤーの頭）にまとめる。どこで死んでも作る
+  enabled: true
+  # 本人しか回収できない時間（秒）。過ぎるとだれでも回収できる。墓は回収されるまで消えない
+  owner-only-seconds: 600
+  # 他の人が回収しようとしたとき、本人に「許可 / 拒否」を聞いて返事を待つ時間（秒）
+  approval-timeout-seconds: 60
+
+guide:
+  # ネクサスを光らせる（壁越しにも輪郭が見える）
+  nexus-glow: true
+  # 防衛範囲（nexus.defense-radius）の外にいるとき、アクションバーにネクサスの方向と距離を出す
+  compass: true
+  # 防衛範囲の境目からこの距離（ブロック）以内にいると、境目にパーティクルを描く。0 で描かない
+  boundary-particles-within: 12
 
 rules:
   # /rule で表示するルール説明の URL。配信ごとに差し替えてよい

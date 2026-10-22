@@ -149,9 +149,10 @@ public final class InvasionCommands implements BasicCommand {
                     + " / 侵略者: " + registry.totalAlive()));
             return;
         }
-        Nexus nexus = nexuses.nearest(player.getLocation());
+        // 参加はサーバー単位なので、遠出していてもネザーにいても、その1基を対象にする
+        Nexus nexus = nexuses.primary();
         if (nexus == null) {
-            player.sendMessage(Text.warn("近くにネクサスがない。"));
+            player.sendMessage(Text.warn("ネクサスがまだ置かれていない。"));
             return;
         }
         int stage = stages.computeCurrent(nexus);
@@ -182,9 +183,10 @@ public final class InvasionCommands implements BasicCommand {
             sender.sendMessage(Text.error("プレイヤー専用のコマンドだ。"));
             return;
         }
-        Nexus nexus = nexuses.nearest(player.getLocation());
+        // 参加はサーバー単位なので、遠出していてもネザーにいても、その1基を対象にする
+        Nexus nexus = nexuses.primary();
         if (nexus == null) {
-            player.sendMessage(Text.warn("近くにネクサスがない。"));
+            player.sendMessage(Text.warn("ネクサスがまだ置かれていない。"));
             return;
         }
         nexus.members().add(player.getUniqueId());
@@ -232,7 +234,7 @@ public final class InvasionCommands implements BasicCommand {
             sender.sendMessage(Text.error("プレイヤー専用のコマンドだ。"));
             return;
         }
-        gui.openPerks(player, nexuses.nearest(player.getLocation()));
+        gui.openPerks(player, nexuses.primary());
     }
 
     private void top(CommandSender sender) {
@@ -267,7 +269,7 @@ public final class InvasionCommands implements BasicCommand {
         List<SetupChecklist.Check> checks = setup.run(origin);
         Nexus nexus = origin != null
                 ? nexuses.nearest(origin)
-                : nexuses.all().stream().findFirst().orElse(null);
+                : nexuses.primary();
         for (var line : setup.render(checks, nexus)) {
             sender.sendMessage(line);
         }
@@ -341,7 +343,7 @@ public final class InvasionCommands implements BasicCommand {
         // 複数基ある環境では /invasion admin list で並び順を確認できる。
         Nexus nexus = player != null
                 ? nexuses.nearest(player.getLocation())
-                : nexuses.all().stream().findFirst().orElse(null);
+                : nexuses.primary();
 
         switch (args[1].toLowerCase(Locale.ROOT)) {
             case "list" -> listNexuses(sender);
@@ -515,7 +517,7 @@ public final class InvasionCommands implements BasicCommand {
      * ネクサスは1基しか置けないので、距離に関係なくその1基を対象にする。</p>
      */
     private void endGame(CommandSender sender) {
-        Nexus nexus = nexuses.all().stream().findFirst().orElse(null);
+        Nexus nexus = nexuses.primary();
         if (nexus == null) {
             sender.sendMessage(Text.error("終了するゲームがない（ネクサスが無い）。"));
             return;

@@ -77,6 +77,9 @@ public final class WaveEngine implements NexusCombatSink {
     /** ピースフルで血の月を止めている間、最後に警告を出した時刻（tick）。 */
     private final Map<UUID, Long> peacefulWarnedAt = new HashMap<>();
 
+    /** ネクサスが殴られたと最後に警告した時刻（ミリ秒）。毎秒殴られるので間隔を空けて出す。 */
+    private final Map<UUID, Long> attackWarnedAt = new HashMap<>();
+
     /** ピースフルの警告を繰り返す間隔（tick）。毎秒出すとチャットが埋まる。 */
     private static final long PEACEFUL_WARN_INTERVAL = 1200L;
 
@@ -201,6 +204,7 @@ public final class WaveEngine implements NexusCombatSink {
         hud.hideBar(nexus.id());
         applyChunkTicket(nexus, false);
         duskHandled.remove(nexus.id());
+        attackWarnedAt.remove(nexus.id());
         nexus.phase(broken ? Nexus.Phase.BROKEN : Nexus.Phase.DORMANT);
         nexus.currentWave(0);
         nexus.totalWaves(0);
@@ -635,6 +639,37 @@ public final class WaveEngine implements NexusCombatSink {
         nexus.health(nexus.health() - amount);
         if (nexus.health() <= 0) {
             resolveDefeat(nexus);
+            return;
+        }
+        warnAttacked(nexus);
+    }
+
+    /**
+     * ネクサスが攻撃されていることを全員に知らせる（画面中央・チャット・警告音）。
+     *
+     * <p>小競り合いや徘徊ホードは、皆が素材集めに出ている間に拠点へ着くことが多く、
+     * 気づいたときには HP が削れ切っている。遠くにいても戻れるよう、どこにいても知らせる。</p>
+     */
+    private void warnAttacked(Nexus nexus) {
+        long now = System.currentTimeMillis();
+        Long last = attackWarnedAt.get(nexus.id());
+        if (last != null && now - last < config.nexusAttackWarningSeconds() * 1000L) {
+            return;
+        }
+        attackWarnedAt.put(nexus.id(), now);
+
+        int hp = (int) Math.ceil(nexus.health());
+        int max = (int) nexuses.maxHealth(nexus);
+        int percent = (int) Math.round(nexuses.healthRatio(nexus) * 100);
+        Title title = Title.title(
+                Text.of("ネクサスが攻撃されている！", Text.ACCENT),
+                Text.of("HP " + hp + " / " + max, Text.WARN),
+                Title.Times.times(Duration.ofMillis(100), Duration.ofMillis(1500), Duration.ofMillis(400)));
+        for (Player p : stages.participants(nexus)) {
+            p.showTitle(title);
+            p.sendMessage(Text.error("ネクサスが攻撃されている！ 残り HP " + hp + " / " + max
+                    + "（" + percent + "%）"));
+            p.playSound(p.getLocation(), Sound.BLOCK_BELL_USE, 1.0f, 0.7f);
         }
     }
 

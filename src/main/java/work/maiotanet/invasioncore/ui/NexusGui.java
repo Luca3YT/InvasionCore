@@ -40,6 +40,11 @@ public final class NexusGui {
     private static final int SLOT_DEPOSIT = 20;
     private static final int SLOT_POOL = 24;
 
+    /**
+     * 侵攻の起動・再建ができる権限。参加者が勝手に押すと、配信者の準備が終わる前にゲームが始まってしまう。
+     */
+    private static final String ACTIVATE_PERMISSION = "invasioncore.admin";
+
     /** ネクサス内の Shard を引き出せる権限。共有の財産を独り占めされないよう管理者だけにする。 */
     private static final String WITHDRAW_PERMISSION = "invasioncore.admin";
 
@@ -110,6 +115,9 @@ public final class NexusGui {
                     "ネクサス内の Shard: " + nexus.sharedShards());
         } else {
             activateLore = List.of("クリックでネクサスを起動する。", "起動すると日数が進み始める。");
+        }
+        if (canActivate && !player.hasPermission(ACTIVATE_PERMISSION)) {
+            activateLore = List.of("起動できるのは運営だけ。", "運営の合図を待ってね。");
         }
         inv.setItem(SLOT_ACTIVATE, icon(
                 canActivate ? Material.LIME_DYE : Material.GRAY_DYE,
@@ -222,6 +230,11 @@ public final class NexusGui {
     public boolean handleMain(Player player, Nexus nexus, int slot) {
         switch (slot) {
             case SLOT_ACTIVATE -> {
+                if (!nexus.isActive() && !player.hasPermission(ACTIVATE_PERMISSION)) {
+                    Sounds.fail(player);
+                    player.sendMessage(Text.warn("ネクサスを起動できるのは運営だけ。運営の合図を待ってね。"));
+                    return true;
+                }
                 boolean wasBroken = nexus.phase() == Nexus.Phase.BROKEN;
                 if (waves.activate(nexus, player)) {
                     player.playSound(player.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 1.0f);

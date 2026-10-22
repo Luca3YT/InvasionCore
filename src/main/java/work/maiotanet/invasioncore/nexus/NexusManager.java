@@ -45,6 +45,14 @@ public final class NexusManager {
         return byId.get(id);
     }
 
+    /**
+     * サーバーに1基だけのネクサス。無ければ null。
+     * 参加はサーバー単位なので、距離やディメンションに関係なく対象を決めたい処理はこれを使う。
+     */
+    public Nexus primary() {
+        return byId.values().stream().findFirst().orElse(null);
+    }
+
     /** 指定座標にネクサスブロックがあればそれを返す。 */
     public Nexus at(Location loc) {
         for (Nexus nexus : byId.values()) {

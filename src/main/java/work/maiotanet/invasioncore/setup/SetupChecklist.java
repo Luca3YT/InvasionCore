@@ -86,7 +86,7 @@ public final class SetupChecklist {
     public List<Check> run(Location origin) {
         Nexus nexus = origin != null
                 ? nexuses.nearest(origin)
-                : nexuses.all().stream().findFirst().orElse(null);
+                : nexuses.primary();
         World world = nexus != null && nexus.world() != null
                 ? nexus.world()
                 : origin != null ? origin.getWorld() : Bukkit.getWorlds().get(0);
@@ -241,9 +241,8 @@ public final class SetupChecklist {
     private Check checkParticipants(Nexus nexus) {
         int count = stages.participants(nexus).size();
         if (count == 0) {
-            return new Check(Status.WARN, "ネクサスの近く（" + config.nexusDefenseRadius()
-                    + " ブロック以内）に参加者がいません。",
-                    "参加者は範囲内に来るか、ネクサスの近くで /invasion join を実行してください。", null);
+            return new Check(Status.WARN, "参加者がいません（サーバーにいる人のうち、観戦モード以外）。",
+                    "参加者はサーバーに入ると自動で数えられます。/invasion leave で抜けた人は /invasion join で戻れます。", null);
         }
         return Check.ok("参加者は " + count + " 人です。");
     }

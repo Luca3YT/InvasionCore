@@ -85,7 +85,7 @@ public final class WebState {
         root.addProperty("style", style);
         root.addProperty("online", Bukkit.getOnlinePlayers().size());
 
-        Nexus nexus = nexuses.all().stream().findFirst().orElse(null);
+        Nexus nexus = nexuses.primary();
         root.add("nexus", nexus == null ? null : nexus(nexus));
 
         // ネクサスのメンバー（サーバーに入った人は自動で入る）と、いまオンラインの人

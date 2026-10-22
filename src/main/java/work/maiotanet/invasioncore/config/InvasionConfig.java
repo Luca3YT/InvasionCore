@@ -48,6 +48,11 @@ public final class InvasionConfig {
         return cfg.getInt("nexus.max-level", 30);
     }
 
+    /** ネクサスが殴られたときの警告を、同じネクサスについて何秒に1回まで出すか。 */
+    public int nexusAttackWarningSeconds() {
+        return Math.max(1, cfg.getInt("nexus.attack-warning-seconds", 10));
+    }
+
     /** 稼働中ネクサスの周囲でバニラ敵Mobの自然湧きを止めるか。 */
     public boolean suppressVanillaSpawns() {
         return cfg.getBoolean("nexus.suppress-vanilla-spawns", true);
@@ -120,6 +125,7 @@ public final class InvasionConfig {
     /**
      * 夜間襲撃が始まる日。これより前の夜は襲撃が来ない。
      * 拠点もShardも無い初日から削られると、立ち上がりが理不尽になる。
+     * 叫喚体もこの日までは湧かせず、徘徊ホードは弱い個体の少数だけにする（猶予期間）。
      */
     public int skirmishStartDay() {
         return cfg.getInt("cycle.skirmish-start-day", 3);
@@ -225,6 +231,16 @@ public final class InvasionConfig {
         return cfg.getInt("economy.repair-cost-per-hp", 20);
     }
 
+    /** 侵略者ではない普通の敵をプレイヤーが倒したときに落とす Shard の数。0 で落とさない。 */
+    public int vanillaMobShard() {
+        return Math.max(0, cfg.getInt("economy.vanilla-mob-shard", 1));
+    }
+
+    /** モンスタースポナーから出た敵にも Shard を落とさせるか。トラップタワーでの稼ぎを防ぐため既定は false。 */
+    public boolean vanillaMobShardFromSpawner() {
+        return cfg.getBoolean("economy.vanilla-mob-shard-from-spawner", false);
+    }
+
     // ---- ワールドイベント ----
     public boolean wanderingHordeEnabled() {
         return cfg.getBoolean("world-events.wandering-horde.enabled", true);
@@ -246,12 +262,36 @@ public final class InvasionConfig {
         return cfg.getInt("world-events.air-drop.interval-seconds", 1200);
     }
 
-    public boolean backpackEnabled() {
-        return cfg.getBoolean("world-events.backpack.enabled", true);
+    // ---- 墓 ----
+    /** 死んだときに所持品を墓（プレイヤーの頭）にまとめるか。 */
+    public boolean graveEnabled() {
+        return cfg.getBoolean("grave.enabled", true);
     }
 
-    public int backpackExpireSeconds() {
-        return cfg.getInt("world-events.backpack.expire-seconds", 1800);
+    /** 墓を本人しか回収できない時間（秒）。過ぎるとだれでも回収できる。 */
+    public int graveOwnerOnlySeconds() {
+        return Math.max(0, cfg.getInt("grave.owner-only-seconds", 600));
+    }
+
+    /** 他の人が回収したいと頼んだとき、本人の返事を待つ時間（秒）。 */
+    public int graveApprovalTimeoutSeconds() {
+        return Math.max(5, cfg.getInt("grave.approval-timeout-seconds", 60));
+    }
+
+    // ---- ネクサスの案内表示 ----
+    /** ネクサスを光らせて、壁越しにも輪郭が見えるようにするか。 */
+    public boolean guideNexusGlow() {
+        return cfg.getBoolean("guide.nexus-glow", true);
+    }
+
+    /** 防衛範囲の外にいるとき、アクションバーにネクサスの方向と距離を出すか。 */
+    public boolean guideCompass() {
+        return cfg.getBoolean("guide.compass", true);
+    }
+
+    /** 防衛範囲の境目からこの距離（ブロック）以内にいると、境目にパーティクルを描く。0 で描かない。 */
+    public int guideBoundaryWithin() {
+        return Math.max(0, cfg.getInt("guide.boundary-particles-within", 12));
     }
 
     // ---- パフォーマンス ----
@@ -268,11 +308,6 @@ public final class InvasionConfig {
     }
 
     // ---- ゲーム開始前 ----
-    /** ゲーム開始まで、ワールドのスポーン地点からこの半径より先へ進めない。 */
-    public int pregameRadius() {
-        return cfg.getInt("pregame.radius", 60);
-    }
-
     /** /rule で表示するルール説明の URL。 */
     public String rulesUrl() {
         return cfg.getString("rules.url", "https://luca3yt.github.io/InvasionCore/");

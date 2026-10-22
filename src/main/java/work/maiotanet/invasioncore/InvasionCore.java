@@ -16,10 +16,12 @@ import work.maiotanet.invasioncore.economy.ContributionTracker;
 import work.maiotanet.invasioncore.economy.RewardService;
 import work.maiotanet.invasioncore.economy.ShardPickupSound;
 import work.maiotanet.invasioncore.economy.ShardService;
+import work.maiotanet.invasioncore.grave.GraveService;
 import work.maiotanet.invasioncore.heat.HeatService;
 import work.maiotanet.invasioncore.item.RecipeRegistrar;
 import work.maiotanet.invasioncore.listener.DefenseListener;
 import work.maiotanet.invasioncore.listener.GadgetListener;
+import work.maiotanet.invasioncore.listener.GraveListener;
 import work.maiotanet.invasioncore.listener.InvaderListener;
 import work.maiotanet.invasioncore.listener.NexusListener;
 import work.maiotanet.invasioncore.listener.PlayerListener;
@@ -35,6 +37,7 @@ import work.maiotanet.invasioncore.pregame.PreGameService;
 import work.maiotanet.invasioncore.setup.SetupChecklist;
 import work.maiotanet.invasioncore.stage.GameStageService;
 import work.maiotanet.invasioncore.ui.HudService;
+import work.maiotanet.invasioncore.ui.NexusGuideService;
 import work.maiotanet.invasioncore.ui.NexusGui;
 import work.maiotanet.invasioncore.ui.SidebarUpdater;
 import work.maiotanet.invasioncore.util.Keys;
@@ -70,6 +73,8 @@ public final class InvasionCore extends JavaPlugin {
     private WaveEngine waves;
     private GadgetListener gadgets;
     private WebServer web;
+    private GraveService graves;
+    private NexusGuideService guide;
 
     @Override
     public void onEnable() {
@@ -84,6 +89,9 @@ public final class InvasionCore extends JavaPlugin {
         this.heat = new HeatService(config);
         this.perks = new PerkService(this);
         this.hud = new HudService();
+        this.graves = new GraveService(this, config);
+        // 侵略者の破壊はすべて FortifyService を通るので、そこで墓を守る
+        fortify.protect(graves::isGrave);
 
         GameStageService stages = new GameStageService(config);
         ShardService shards = new ShardService();
@@ -120,11 +128,13 @@ public final class InvasionCore extends JavaPlugin {
         turrets.load();
         traps.load();
         perks.load();
+        graves.load();
 
         // ---- 登録 ----
         new RecipeRegistrar(this).registerAll();
 
         PreGameService pregame = new PreGameService(config, nexuses);
+        this.guide = new NexusGuideService(config, nexuses, pregame);
         getServer().getPluginManager().registerEvents(new PreGameListener(pregame), this);
         getServer().getPluginManager().registerEvents(
                 new NexusListener(config, nexuses, gui, waves, shards), this);
@@ -146,7 +156,8 @@ public final class InvasionCore extends JavaPlugin {
             getLogger().info("前回から残っていた侵略Mobを " + orphans + " 体撤去しました。");
         }
         getServer().getPluginManager().registerEvents(
-                new PlayerListener(config, nexuses, heat, perks, hud, worldEvents, shardSound, shards), this);
+                new PlayerListener(config, nexuses, heat, perks, hud, shardSound, shards), this);
+        getServer().getPluginManager().registerEvents(new GraveListener(graves), this);
 
         SetupChecklist setupChecklist = new SetupChecklist(config, nexuses, stages);
         InvasionCommands commands = new InvasionCommands(
@@ -184,6 +195,8 @@ public final class InvasionCore extends JavaPlugin {
         getServer().getScheduler().runTaskTimer(this, worldEvents::tick, 60L, 20L);
         getServer().getScheduler().runTaskTimer(this, sidebar::tick, 80L, 20L);
         getServer().getScheduler().runTaskTimer(this, pregame::tick, 85L, 20L);
+        getServer().getScheduler().runTaskTimer(this, guide::tick, 90L, 5L);
+        getServer().getScheduler().runTaskTimer(this, graves::tick, 95L, 20L);
         getServer().getScheduler().runTaskTimer(this, shardSound::tick, 1L, 1L);
         getServer().getScheduler().runTaskTimer(this, turrets::tick,
                 100L, config.turretTickInterval());
@@ -206,6 +219,12 @@ public final class InvasionCore extends JavaPlugin {
         }
         if (worldEvents != null) {
             worldEvents.shutdown();
+        }
+        if (graves != null) {
+            graves.shutdown();
+        }
+        if (guide != null) {
+            guide.shutdown();
         }
         if (web != null) {
             web.stop();
@@ -236,6 +255,9 @@ public final class InvasionCore extends JavaPlugin {
         }
         if (perks != null) {
             perks.save();
+        }
+        if (graves != null) {
+            graves.save();
         }
     }
 

@@ -5,6 +5,7 @@ import org.bukkit.Location;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Block;
+import org.bukkit.entity.Enemy;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Monster;
 import org.bukkit.entity.Player;
@@ -271,6 +272,34 @@ public final class InvaderListener implements Listener {
     }
 
     // ---------- 撃破 ----------
+
+    /**
+     * 侵略者ではない普通の敵（ゾンビ・スケルトンなど）も、プレイヤーが倒せば Shard を少しだけ落とす。
+     *
+     * <p>準備期間に外へ素材集めに出ても Shard が少しずつ貯まるようにして、
+     * 「侵略者が来るまで拠点で待つ」以外の稼ぎ方を作る。
+     * スポナーの敵まで落とすとトラップタワーで無限に稼げるので、既定では対象外。
+     * 侵略者の撃破（下の onDeath）は MONITOR で登録簿から外すので、ここではまだ判別できる。</p>
+     */
+    @EventHandler(ignoreCancelled = true)
+    public void onVanillaEnemyDeath(EntityDeathEvent event) {
+        int amount = config.vanillaMobShard();
+        if (amount <= 0 || !(event.getEntity() instanceof Enemy)) {
+            return;
+        }
+        if (registry.get(event.getEntity()) != null
+                || event.getEntity().getPersistentDataContainer().has(Keys.INVADER_NEXUS, PersistentDataType.STRING)) {
+            return;
+        }
+        if (event.getEntity().getKiller() == null) {
+            return;
+        }
+        if (!config.vanillaMobShardFromSpawner()
+                && event.getEntity().getEntitySpawnReason() == SpawnReason.SPAWNER) {
+            return;
+        }
+        event.getDrops().add(InvasionItems.shard(amount));
+    }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onDeath(EntityDeathEvent event) {

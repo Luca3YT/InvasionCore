@@ -25,6 +25,7 @@ import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerBucketFillEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerPortalEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.BlockInventoryHolder;
 import org.bukkit.block.DoubleChest;
@@ -34,8 +35,9 @@ import work.maiotanet.invasioncore.pregame.PreGameService;
 /**
  * ゲーム開始前の行動制限。
  *
- * <p>開始前はスポーン地点の周りから離れられず、ブロックの破壊・設置、アイテムを拾う・落とす、
- * 容器を開く、Mob や動物を攻撃する、をすべて止める。管理者は準備のために対象外。
+ * <p>開始前は、ブロックの破壊・設置、アイテムを拾う・落とす、容器や作業台を開く、レッドストーン部品を使う、
+ * Mob や動物を攻撃する、をすべて止める。ネクサスが置かれた後は、ネクサスの防衛範囲から出ることも止める。
+ * 管理者は準備のために対象外。
  * 他のリスナーより先に取り消すため、優先度は LOW にしている（ネクサスの設置処理なども走らせない）。</p>
  */
 public final class PreGameListener implements Listener {
@@ -52,7 +54,7 @@ public final class PreGameListener implements Listener {
     public void onMove(PlayerMoveEvent event) {
         Player player = event.getPlayer();
         Location to = event.getTo();
-        if (!isLeaving(event.getFrom(), to) || !pregame.isRestricted(player)) {
+        if (!isLeaving(event.getFrom(), to) || !pregame.isMovementRestricted(player)) {
             return;
         }
         // 向きだけは変えられるよう、位置だけ元に戻す
@@ -60,7 +62,11 @@ public final class PreGameListener implements Listener {
         back.setYaw(to.getYaw());
         back.setPitch(to.getPitch());
         event.setTo(back);
-        notice(player, "ゲーム開始まで、スポーン地点から " + pregame.radius() + " ブロックより先には進めません。");
+        notice(player, leaveMessage());
+    }
+
+    private String leaveMessage() {
+        return "ゲーム開始まで、ネクサスから " + pregame.radius() + " ブロックより先には進めません。";
     }
 
     /** エンダーパールなどで範囲の外へ飛ぶのも止める。管理者の /tp などは止めない。 */
@@ -70,11 +76,21 @@ public final class PreGameListener implements Listener {
         if (!cause.equals("ENDER_PEARL") && !cause.equals("CHORUS_FRUIT") && !cause.equals("CONSUMABLE_EFFECT")) {
             return;
         }
-        if (!isLeaving(event.getFrom(), event.getTo()) || !pregame.isRestricted(event.getPlayer())) {
+        if (!isLeaving(event.getFrom(), event.getTo()) || !pregame.isMovementRestricted(event.getPlayer())) {
             return;
         }
         event.setCancelled(true);
-        notice(event.getPlayer(), "ゲーム開始まで、スポーン地点から " + pregame.radius() + " ブロックより先には進めません。");
+        notice(event.getPlayer(), leaveMessage());
+    }
+
+    /** ネザーゲートやエンドポータルで別のディメンションへ行くのも止める。 */
+    @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
+    public void onPortal(PlayerPortalEvent event) {
+        if (!pregame.isMovementRestricted(event.getPlayer())) {
+            return;
+        }
+        event.setCancelled(true);
+        notice(event.getPlayer(), leaveMessage());
     }
 
     /**

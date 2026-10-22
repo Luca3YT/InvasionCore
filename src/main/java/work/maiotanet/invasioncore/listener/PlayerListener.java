@@ -1,6 +1,5 @@
 package work.maiotanet.invasioncore.listener;
 
-import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -11,8 +10,6 @@ import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.EntityShootBowEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.event.entity.PlayerDeathEvent;
-import org.bukkit.inventory.ItemStack;
 import work.maiotanet.invasioncore.config.InvasionConfig;
 import work.maiotanet.invasioncore.economy.ShardPickupSound;
 import work.maiotanet.invasioncore.economy.ShardService;
@@ -22,14 +19,12 @@ import work.maiotanet.invasioncore.nexus.Nexus;
 import work.maiotanet.invasioncore.nexus.NexusManager;
 import work.maiotanet.invasioncore.perk.PerkService;
 import work.maiotanet.invasioncore.ui.HudService;
-import work.maiotanet.invasioncore.world.WorldEventService;
+import work.maiotanet.invasioncore.util.Text;
 
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * プレイヤー側の横断的な処理。
- * ヒートの発生源、死亡時バックパック、HUD の後始末を扱う。
+ * ヒートの発生源、Shard を拾った音、HUD の後始末を扱う（死んだときの墓は GraveListener）。
  */
 public final class PlayerListener implements Listener {
 
@@ -38,12 +33,11 @@ public final class PlayerListener implements Listener {
     private final HeatService heat;
     private final PerkService perks;
     private final HudService hud;
-    private final WorldEventService worldEvents;
     private final ShardPickupSound shardSound;
     private final ShardService shards;
 
     public PlayerListener(InvasionConfig config, NexusManager nexuses, HeatService heat,
-                          PerkService perks, HudService hud, WorldEventService worldEvents,
+                          PerkService perks, HudService hud,
                           ShardPickupSound shardSound, ShardService shards) {
         this.shardSound = shardSound;
         this.shards = shards;
@@ -52,7 +46,6 @@ public final class PlayerListener implements Listener {
         this.heat = heat;
         this.perks = perks;
         this.hud = hud;
-        this.worldEvents = worldEvents;
     }
 
     @EventHandler
@@ -81,6 +74,7 @@ public final class PlayerListener implements Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         hud.clearSidebar(event.getPlayer());
+        Text.forgetActionBar(event.getPlayer());
     }
 
     // ---------- ヒートの発生源 ----------
@@ -116,58 +110,5 @@ public final class PlayerListener implements Listener {
         }
         Nexus nexus = nexuses.nearest(player.getLocation());
         return nexus != null && nexus.isActive();
-    }
-
-    // ---------- 死亡 ----------
-
-    @EventHandler
-    public void onDeath(PlayerDeathEvent event) {
-        if (!config.backpackEnabled() || event.getKeepInventory()) {
-            return;
-        }
-        Player player = event.getEntity();
-        if (!isInsideInvasionArea(player)) {
-            // 侵攻に無関係な場所での死亡は通常どおりに任せる
-            return;
-        }
-        List<ItemStack> drops = new ArrayList<>(event.getDrops());
-        List<ItemStack> overflow = worldEvents.placeBackpack(player, drops);
-        if (overflow != null) {
-            // バックパックに入り切らなかった分だけを通常ドロップとして残す
-            event.getDrops().clear();
-            event.getDrops().addAll(overflow);
-        }
-    }
-
-    /**
-     * 侵攻の影響圏内で死んだかどうか。
-     *
-     * <p>判定を「稼働中ネクサスの有無」だけにすると、ネクサスが崩壊した瞬間に
-     * バックパックが働かなくなる。落城直後こそ死にやすい場面なので、
-     * 崩壊済みのネクサスも拠点として扱い、そのうえで距離で絞る。</p>
-     */
-    private boolean isInsideInvasionArea(Player player) {
-        Location loc = player.getLocation();
-        if (loc.getWorld() == null) {
-            return false;
-        }
-        // 防衛範囲そのものより広く取る。拠点から少し離れた交戦も対象にしたい。
-        double radius = config.nexusDefenseRadius() * 3.0;
-        double radiusSq = radius * radius;
-
-        for (Nexus nexus : nexuses.all()) {
-            if (nexus.phase() == Nexus.Phase.DORMANT) {
-                // 一度も起動していないネクサスは拠点として扱わない
-                continue;
-            }
-            Location center = nexus.center();
-            if (center == null || !center.getWorld().equals(loc.getWorld())) {
-                continue;
-            }
-            if (center.distanceSquared(loc) <= radiusSq) {
-                return true;
-            }
-        }
-        return false;
     }
 }

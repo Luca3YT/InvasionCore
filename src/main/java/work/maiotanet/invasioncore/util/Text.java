@@ -6,8 +6,13 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 
+import org.bukkit.entity.Player;
+
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 /**
  * Adventure Component の生成ヘルパ。
@@ -27,6 +32,13 @@ public final class Text {
             .append(Component.text("] ", MUTED))
             .build()
             .decoration(TextDecoration.ITALIC, false);
+
+    /**
+     * プレイヤーごとに、最後に通知をアクションバーへ出した時刻（ミリ秒）。
+     * ネクサスの方向表示は常時アクションバーを使うので、通知が出た直後は上書きしないよう見ておく。
+     * メインスレッドからしか呼ばないので同期はしない。
+     */
+    private static final Map<UUID, Long> lastActionBar = new HashMap<>();
 
     private Text() {
     }
@@ -68,6 +80,20 @@ public final class Text {
      */
     public static void actionBar(Audience audience, Component message) {
         audience.sendActionBar(message);
+        if (audience instanceof Player player) {
+            lastActionBar.put(player.getUniqueId(), System.currentTimeMillis());
+        }
+    }
+
+    /** 直近 millis ミリ秒以内に、このプレイヤーへ通知をアクションバーで出したか。 */
+    public static boolean actionBarRecentlyUsed(Player player, long millis) {
+        Long last = lastActionBar.get(player.getUniqueId());
+        return last != null && System.currentTimeMillis() - last < millis;
+    }
+
+    /** ログアウトした人の記録を消す。 */
+    public static void forgetActionBar(Player player) {
+        lastActionBar.remove(player.getUniqueId());
     }
 
     public static void actionBarGood(Audience audience, String s) {
