@@ -138,7 +138,11 @@ cd /d "%~dp0"
 REM /restart runs this file again while the old server is still exiting.
 REM INVASION_RESTARTED is inherited from the old server, so wait for it to let go of
 REM the world and the plugin jar before copying anything.
+REM Windows opens that new window with "cmd /k", which would keep it open (and pile up
+REM one more window per /restart) after the server stops, so remember how we were started.
+set "LAUNCHED_BY_RESTART="
 if defined INVASION_RESTARTED (
+    set "LAUNCHED_BY_RESTART=1"
     echo [start] restarting, waiting for the previous server to exit...
     timeout /t 5 /nobreak >nul
 )
@@ -191,7 +195,13 @@ REM -Dstdout.encoding=UTF-8 is required on Windows, otherwise Japanese logs are 
 
 REM Keep the window open only when the server crashed, so the error can be read.
 REM After a normal stop or /restart the window closes by itself.
-if errorlevel 1 pause
+if errorlevel 1 (
+    pause
+    exit /b 1
+)
+REM A window opened by /restart is a "cmd /k" window; "exit" closes it. A window the
+REM user opened themselves is left alone.
+if defined LAUNCHED_BY_RESTART exit
 "@ ([Text.Encoding]::ASCII)
 
 # ---------- spigot.yml ----------
