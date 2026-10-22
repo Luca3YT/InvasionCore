@@ -42,7 +42,7 @@ IntelliJ IDEA 同梱の Maven の順。PATH は変更しない）。見つから
 `build.local.cmd`（git 管理外）を作り、`set "JAVA_HOME=..."` と `set "MVN=..."` を書く。
 詳しくは [docs/handoff.md](docs/handoff.md) を参照。
 
-成果物: `target/InvasionCore-0.1.0-SNAPSHOT.jar`
+成果物: `target/InvasionCore-0.3.0.jar`
 
 ## サーバーの起動
 
@@ -202,6 +202,10 @@ GameStage が上がると下位種別の出現率が段階的に落ち、上位�
 | 閃光弾 | 着弾範囲の侵略者を盲目化・鈍足化し、**標的を見失わせる**（ボスにも有効） |
 | 救急キット | 自分と周囲の味方を回復 |
 | 緊急バリア | クリックした面に3x3の**鋼鉄級の壁**を45秒だけ展開。決壊時の応急処置 |
+| 帰還の羅針盤 | 右クリックで詠唱し、`recall.cast-seconds`（7）秒後にネクサスのそばへ戻る。どのディメンションからでも、血の月の最中でも使える。動くかダメージを受けると中断（減らない）。使い切り |
+
+帰還の羅針盤は、ゲーム開始時にいた全員と、開始後に初めて入ってきた人に 1 個ずつ配る（ネクサスごとに 1 人 1 回。`nexuses.yml` の `recall-given` に記録）。
+ネクサスの画面でも `recall.price`（10）Shard で買える（手持ちから払い、ネクサス内の Shard は使わない）。
 
 ### ヒートマップ
 拠点での活動（採掘・建築・撃破・発砲）が「熱」として蓄積し、閾値を超えると**叫喚体**が湧く。
@@ -292,7 +296,7 @@ GameStage が上がると下位種別の出現率が段階的に落ち、上位�
 | `/rule` | ルール説明の URL を表示（`rules.url`） |
 | `/invasion stop` | 侵攻の停止（所有者・管理者） |
 | `/invasion setup` | ゲーム開始前の確認（要 `invasioncore.admin`）。難易度・ゲームルール・ネクサスの状態などを ✔ / ⚠ / ✘ で表示し、直すコマンドをクリックで入力欄に入れられる |
-| `/invasion give <item> [数]` | アイテム配布（要 `invasioncore.admin`）<br>`nexus` `hammer` `shard` `kit` `turret_*` `spike` `mine` `flash` `medkit` `barrier` |
+| `/invasion give <item> [数]` | アイテム配布（要 `invasioncore.admin`）<br>`nexus` `hammer` `shard` `kit` `turret_*` `spike` `mine` `flash` `medkit` `barrier` `recall` |
 | `/invasion tp nexus` | ネクサスのそばへテレポート（要 `invasioncore.admin`）。別のディメンションからでも使える |
 | `/invasion admin <sub>` | 下記の管理サブコマンド |
 
@@ -336,6 +340,7 @@ GameStage が上がると下位種別の出現率が段階的に落ち、上位�
 | 閃光弾×4 | グロウストーンダスト×4・火薬 |
 | 救急キット×2 | 糸×4・輝くスイカ×4・金のニンジン |
 | 緊急バリア×2 | 鉄ブロック×4・レッドストーンブロック×4・ダイヤ |
+| 帰還の羅針盤 | 鉄インゴット×5・紙×3（並べ方は自由） |
 
 ---
 
@@ -352,6 +357,7 @@ GameStage が上がると下位種別の出現率が段階的に落ち、上位�
 - `nexus.defense-radius` — 防衛範囲。ネクサス設置後〜起動前に動ける範囲も兼ねる（既定 48）
 - `nexus.floating-damage-per-second` / `nexus.explosion-radius` / `nexus.explosion-damage` — 浮かせたネクサスへの対策
 - `mob.health-display-seconds` — ダメージを受けた侵略者の HP を出す秒数
+- `recall.*` — 帰還の羅針盤（詠唱時間・ネクサスでの値段）
 - `grave.*` — 墓（本人だけが回収できる時間、許可の返事を待つ時間）
 - `guide.*` — ネクサスの発光・方向表示・境目のパーティクル
 - `rules.url` — `/rule` で表示するルール説明の URL

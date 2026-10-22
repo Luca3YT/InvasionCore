@@ -11,6 +11,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import work.maiotanet.invasioncore.config.InvasionConfig;
 import work.maiotanet.invasioncore.economy.ShardService;
+import work.maiotanet.invasioncore.gadget.RecallService;
 import work.maiotanet.invasioncore.nexus.Nexus;
 import work.maiotanet.invasioncore.nexus.NexusManager;
 import work.maiotanet.invasioncore.nexus.NexusUpgrade;
@@ -39,6 +40,7 @@ public final class NexusGui {
     private static final int SLOT_PERK = 22;
     private static final int SLOT_DEPOSIT = 20;
     private static final int SLOT_POOL = 24;
+    private static final int SLOT_RECALL = 18;
 
     /**
      * 侵攻の起動・再建ができる権限。参加者が勝手に押すと、配信者の準備が終わる前にゲームが始まってしまう。
@@ -66,9 +68,11 @@ public final class NexusGui {
     private final ShardService shards;
     private final PerkService perks;
     private final WaveEngine waves;
+    private final RecallService recall;
 
     public NexusGui(InvasionConfig config, NexusManager nexuses, GameStageService stages,
-                    ShardService shards, PerkService perks, WaveEngine waves) {
+                    ShardService shards, PerkService perks, WaveEngine waves, RecallService recall) {
+        this.recall = recall;
         this.config = config;
         this.nexuses = nexuses;
         this.stages = stages;
@@ -152,6 +156,13 @@ public final class NexusGui {
         }
         inv.setItem(SLOT_POOL, icon(Material.AMETHYST_CLUSTER,
                 Text.of("ネクサス内の Shard", Text.INFO), poolLore));
+
+        inv.setItem(SLOT_RECALL, icon(Material.RECOVERY_COMPASS,
+                Text.of("帰還の羅針盤を買う（" + recall.price() + " Shard）", Text.INFO),
+                List.of("右クリックして動かずに待つと、",
+                        "どこからでもネクサスのそばへ戻れる。使うとなくなる。",
+                        "手持ちの Shard で払う（ネクサス内の Shard は使わない）。",
+                        "所持 Shard: " + shards.count(player))));
 
         inv.setItem(SLOT_PERK, icon(Material.EXPERIENCE_BOTTLE,
                 Text.of("パーク", Text.GOOD),
@@ -261,6 +272,12 @@ public final class NexusGui {
             case SLOT_PERK -> {
                 Sounds.click(player);
                 openPerks(player, nexus);
+                return true;
+            }
+            case SLOT_RECALL -> {
+                if (recall.buy(player)) {
+                    openMain(player, nexus);
+                }
                 return true;
             }
             case SLOT_DEPOSIT -> {

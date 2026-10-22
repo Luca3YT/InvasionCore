@@ -3,7 +3,9 @@ package work.maiotanet.invasioncore.item;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.CraftingRecipe;
 import org.bukkit.inventory.ShapedRecipe;
+import org.bukkit.inventory.ShapelessRecipe;
 import org.bukkit.plugin.Plugin;
 import work.maiotanet.invasioncore.util.Keys;
 
@@ -28,6 +30,15 @@ public final class RecipeRegistrar {
         registerRepairKit();
         registerTurrets();
         registerGadgets();
+        registerRecall();
+    }
+
+    /** 帰還の羅針盤。鉄インゴット 5 と紙 3 を、並べ方自由で。 */
+    private void registerRecall() {
+        ShapelessRecipe recipe = new ShapelessRecipe(Keys.key("recipe_recall"), InvasionItems.recall(1));
+        recipe.addIngredient(5, Material.IRON_INGOT);
+        recipe.addIngredient(3, Material.PAPER);
+        add(recipe);
     }
 
     /** 消耗ガジェット。血の月の直前に量産できる程度のコストにしてある。 */
@@ -134,7 +145,7 @@ public final class RecipeRegistrar {
         add(recipe);
     }
 
-    private void add(ShapedRecipe recipe) {
+    private void add(CraftingRecipe recipe) {
         NamespacedKey key = recipe.getKey();
         // reload 時の二重登録を避ける
         if (plugin.getServer().getRecipe(key) != null) {

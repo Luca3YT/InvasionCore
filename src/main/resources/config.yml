@@ -137,6 +137,12 @@ world-events:
     enabled: true
     interval-seconds: 1200
 
+recall:
+  # 帰還の羅針盤。右クリックしてからネクサスのそばへ戻るまでの詠唱時間（秒）。動くかダメージを受けると中断する
+  cast-seconds: 7
+  # ネクサスの画面で買うときの値段（Shard、手持ちから払う）
+  price: 10
+
 grave:
   # 死んだとき、所持品を死んだ場所の墓（プレイヤーの頭）にまとめる。どこで死んでも作る
   enabled: true

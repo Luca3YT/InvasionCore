@@ -52,7 +52,7 @@ public final class InvasionCommands implements BasicCommand {
     private static final List<String> ITEMS = List.of(
             "nexus", "hammer", "shard", "kit",
             "turret_arrow", "turret_flame", "turret_frost", "turret_heal",
-            "spike", "mine", "flash", "medkit", "barrier");
+            "spike", "mine", "flash", "medkit", "barrier", "recall");
     private static final List<String> ADMIN = List.of(
             "forcewave", "setlevel", "setday", "restore", "despawn", "reload", "info",
             "list", "create", "activate", "spawn", "boss", "points", "airdrop", "end", "web");
@@ -349,6 +349,7 @@ public final class InvasionCommands implements BasicCommand {
             case "flash" -> player.getInventory().addItem(InvasionItems.flashCharge(amount));
             case "medkit" -> player.getInventory().addItem(InvasionItems.medkit(amount));
             case "barrier" -> player.getInventory().addItem(InvasionItems.barrier(amount));
+            case "recall" -> player.getInventory().addItem(InvasionItems.recall(amount));
             default -> {
                 sender.sendMessage(Text.error("不明なアイテム: " + args[1]));
                 return;

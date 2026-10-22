@@ -327,6 +327,7 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
         <div class="card"><b>閃光弾</b><span class="meta">雪玉の見た目・投げる</span><p>着弾点から 7 ブロック以内の侵略者を盲目・鈍足にして、狙いを外させます。ボスにも効きます。</p></div>
         <div class="card"><b>救急キット</b><span class="meta">ガストの涙の見た目</span><p>自分と、周囲 6 ブロックの味方をまとめて回復します。</p></div>
         <div class="card"><b>緊急バリア</b><span class="meta">鉄のトラップドアの見た目</span><p>右クリックしたブロックの面に、鋼鉄並みに硬い 3×3 の壁を 45 秒だけ張ります。壁に穴が開いたときの応急処置に。</p></div>
+        <div class="card"><b>帰還の羅針盤</b><span class="meta">回復コンパスの見た目</span><p>右クリックして 7 秒動かずに待つと、どこからでもネクサスのそばへ戻れます。動くかダメージを受けると中断（羅針盤は減りません）。使うとなくなります。ゲーム開始時に 1 人 1 個配られ、ネクサスの画面で 10 Shard で買えるほか、作業台でも作れます。</p></div>
       </div>
     </section>
 
@@ -434,7 +435,7 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
         <thead><tr><th>コマンド</th><th>内容</th></tr></thead>
         <tbody>
           <tr><td><code>/invasion setup</code></td><td>ゲームを始める前の確認。難易度・ゲームルール・ネクサスの状態などを一覧表示し、直すコマンドをクリックで入力欄に入れられる</td></tr>
-          <tr><td><code>/invasion give &lt;アイテム&gt; [数]</code></td><td>nexus / hammer / shard / kit / turret_arrow / turret_flame / turret_frost / turret_heal / spike / mine / flash / medkit / barrier</td></tr>
+          <tr><td><code>/invasion give &lt;アイテム&gt; [数]</code></td><td>nexus / hammer / shard / kit / turret_arrow / turret_flame / turret_frost / turret_heal / spike / mine / flash / medkit / barrier / recall</td></tr>
           <tr><td><code>/invasion admin activate</code></td><td>Shard なしで起動する。崩壊したネクサスも復旧できる</td></tr>
           <tr><td><code>/invasion admin setday &lt;日&gt;</code></td><td>経過日数を変える。<code>7</code> にして夜にすると、すぐ血の月を試せる</td></tr>
           <tr><td><code>/invasion admin setlevel &lt;Lv&gt;</code></td><td>ネクサスのレベルを変える</td></tr>
@@ -469,7 +470,7 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
       </table></div>
     </section>
 
-    <footer>InvasionCore 0.1.0 / Paper 26.2 build 92。数値は既定の config.yml の値です。サーバーの設定を変えている場合は異なります。</footer>
+    <footer>InvasionCore 0.3.0 / Paper 26.2 build 92。数値は既定の config.yml の値です。サーバーの設定を変えている場合は異なります。</footer>
   </main>
 </div>
 
@@ -488,7 +489,8 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
     { name: "爆裂地雷", out: 2, rows: ["III", "ITI", "IRI"], key: { I: "鉄インゴット", T: "TNT", R: "レッドストーン" } },
     { name: "閃光弾", out: 4, rows: [" G ", "GBG", " G "], key: { G: "グロウストーンダスト", B: "火薬" } },
     { name: "救急キット", out: 2, rows: ["SPS", "PGP", "SPS"], key: { S: "糸", P: "輝くスイカの薄切り", G: "金のニンジン" } },
-    { name: "緊急バリア", out: 2, rows: ["IRI", "RDR", "IRI"], key: { I: "鉄ブロック", R: "レッドストーンブロック", D: "ダイヤ" } }
+    { name: "緊急バリア", out: 2, rows: ["IRI", "RDR", "IRI"], key: { I: "鉄ブロック", R: "レッドストーンブロック", D: "ダイヤ" } },
+    { name: "帰還の羅針盤（並べ方は自由）", out: 1, rows: ["PPP", "III", "II "], key: { P: "紙", I: "鉄インゴット" } }
   ];
   var list = document.getElementById("recipe-list");
   recipes.forEach(function (r) {

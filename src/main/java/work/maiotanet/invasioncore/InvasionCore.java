@@ -16,6 +16,7 @@ import work.maiotanet.invasioncore.economy.ContributionTracker;
 import work.maiotanet.invasioncore.economy.RewardService;
 import work.maiotanet.invasioncore.economy.ShardPickupSound;
 import work.maiotanet.invasioncore.economy.ShardService;
+import work.maiotanet.invasioncore.gadget.RecallService;
 import work.maiotanet.invasioncore.grave.GraveService;
 import work.maiotanet.invasioncore.heat.HeatService;
 import work.maiotanet.invasioncore.item.RecipeRegistrar;
@@ -120,7 +121,8 @@ public final class InvasionCore extends JavaPlugin {
                 rewards, contributions, shards, perks, hudBridge(), breachLog);
         ai.combatSink(waves);
 
-        NexusGui gui = new NexusGui(config, nexuses, stages, shards, perks, waves);
+        RecallService recall = new RecallService(config, nexuses, shards);
+        NexusGui gui = new NexusGui(config, nexuses, stages, shards, perks, waves, recall);
         SidebarUpdater sidebar = new SidebarUpdater(
                 config, nexuses, stages, registry, shards, heat, hud);
 
@@ -135,7 +137,8 @@ public final class InvasionCore extends JavaPlugin {
         // ---- 登録 ----
         new RecipeRegistrar(this).registerAll();
 
-        PreGameService pregame = new PreGameService(config, nexuses);
+        PreGameService pregame = new PreGameService(config, nexuses, recall);
+        getServer().getPluginManager().registerEvents(recall, this);
         this.guide = new NexusGuideService(config, nexuses, pregame);
         this.invaderHealth = new InvaderHealthService(config, registry, nexuses, stages);
         getServer().getPluginManager().registerEvents(invaderHealth, this);
@@ -201,6 +204,7 @@ public final class InvasionCore extends JavaPlugin {
         getServer().getScheduler().runTaskTimer(this, pregame::tick, 85L, 20L);
         getServer().getScheduler().runTaskTimer(this, guide::tick, 90L, 5L);
         getServer().getScheduler().runTaskTimer(this, invaderHealth::tick, 92L, 5L);
+        getServer().getScheduler().runTaskTimer(this, recall::tick, 94L, 2L);
         getServer().getScheduler().runTaskTimer(this, graves::tick, 95L, 20L);
         getServer().getScheduler().runTaskTimer(this, shardSound::tick, 1L, 1L);
         getServer().getScheduler().runTaskTimer(this, turrets::tick,

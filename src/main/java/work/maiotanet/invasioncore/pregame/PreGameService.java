@@ -9,6 +9,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import work.maiotanet.invasioncore.config.InvasionConfig;
+import work.maiotanet.invasioncore.gadget.RecallService;
 import work.maiotanet.invasioncore.nexus.Nexus;
 import work.maiotanet.invasioncore.nexus.NexusManager;
 import work.maiotanet.invasioncore.util.Sounds;
@@ -44,6 +45,7 @@ public final class PreGameService {
 
     private final InvasionConfig config;
     private final NexusManager nexuses;
+    private final RecallService recall;
     private final Map<UUID, Long> lastNotice = new HashMap<>();
 
     /** 前回の tick で開始前だったか。null は起動直後でまだ判定していない。 */
@@ -52,9 +54,10 @@ public final class PreGameService {
     /** 前回の tick で見えていたネクサス。新しく置かれた瞬間を見つけるために持つ。 */
     private UUID lastNexusId;
 
-    public PreGameService(InvasionConfig config, NexusManager nexuses) {
+    public PreGameService(InvasionConfig config, NexusManager nexuses, RecallService recall) {
         this.config = config;
         this.nexuses = nexuses;
+        this.recall = recall;
     }
 
     // ---------- 判定 ----------
@@ -200,6 +203,7 @@ public final class PreGameService {
             removeOwnEffect(player, PotionEffectType.SATURATION);
             player.sendMessage(Text.good("ゲーム開始！ 移動とブロックの制限を解除した。"));
         }
+        recall.onGameStart();
     }
 
     /** ポーションなどで本人が得た効果まで消さないよう、こちらが配ったレベルのものだけ外す。 */

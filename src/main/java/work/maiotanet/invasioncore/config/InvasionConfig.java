@@ -282,6 +282,17 @@ public final class InvasionConfig {
         return cfg.getInt("world-events.air-drop.interval-seconds", 1200);
     }
 
+    // ---- 帰還の羅針盤 ----
+    /** 使ってからネクサスへ戻るまでの詠唱時間（秒）。 */
+    public int recallCastSeconds() {
+        return Math.max(1, cfg.getInt("recall.cast-seconds", 7));
+    }
+
+    /** ネクサスの画面で買うときの値段（Shard）。 */
+    public int recallPrice() {
+        return Math.max(0, cfg.getInt("recall.price", 10));
+    }
+
     // ---- 墓 ----
     /** 死んだときに所持品を墓（プレイヤーの頭）にまとめるか。 */
     public boolean graveEnabled() {

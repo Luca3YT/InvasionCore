@@ -71,6 +71,12 @@ public final class Nexus {
     private final List<ItemStack> rewardBuffer = new ArrayList<>();
 
     /**
+     * 開始時の帰還の羅針盤を受け取った人。ゲーム（このネクサス）ごとに1人1個だけ配るため保存する。
+     * 入り直すたびに配ると、抜けて入るだけで何個でも手に入ってしまう。
+     */
+    private final Set<UUID> recallGiven = new HashSet<>();
+
+    /**
      * ネクサスに預けられた共有 Shard。
      * 参加者の支払いで、手持ちが足りない分に充てられる。引き出せるのは管理者だけ。
      */
@@ -230,6 +236,10 @@ public final class Nexus {
         return members.contains(uuid);
     }
 
+    public Set<UUID> recallGiven() {
+        return recallGiven;
+    }
+
     // ---------- 報酬バッファ ----------
 
     public List<ItemStack> rewardBuffer() {
@@ -306,6 +316,11 @@ public final class Nexus {
             memberList.add(uuid.toString());
         }
         sec.set("members", memberList);
+        List<String> recallList = new ArrayList<>(recallGiven.size());
+        for (UUID uuid : recallGiven) {
+            recallList.add(uuid.toString());
+        }
+        sec.set("recall-given", recallList);
         sec.set("rewards", new ArrayList<>(rewardBuffer));
         sec.set("shared-shards", sharedShards);
     }
@@ -359,6 +374,14 @@ public final class Nexus {
         for (String s : sec.getStringList("members")) {
             try {
                 nexus.members.add(UUID.fromString(s));
+            } catch (IllegalArgumentException ignored) {
+                // 同上
+            }
+        }
+
+        for (String s : sec.getStringList("recall-given")) {
+            try {
+                nexus.recallGiven.add(UUID.fromString(s));
             } catch (IllegalArgumentException ignored) {
                 // 同上
             }

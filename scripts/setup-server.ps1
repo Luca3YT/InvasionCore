@@ -166,6 +166,8 @@ if not exist "%JAVA_HOME%\bin\java.exe" (
 set "PLUGIN="
 for %%F in ("%REPO%\target\InvasionCore-*.jar") do set "PLUGIN=%%~fF"
 if defined PLUGIN (
+    REM Remove older versions first; two InvasionCore jars in plugins\ would conflict.
+    del /q "plugins\InvasionCore-*.jar" 2>nul
     copy /y "%PLUGIN%" "plugins\" >nul
     echo [start] plugin: %PLUGIN%
 ) else (
