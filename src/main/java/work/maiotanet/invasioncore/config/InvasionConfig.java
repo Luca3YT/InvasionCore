@@ -2,7 +2,7 @@ package work.maiotanet.invasioncore.config;
 
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.Plugin;
-import work.maiotanet.invasioncore.item.InvasionItems;
+import work.maiotanet.invasioncore.item.ItemModelFile;
 import work.maiotanet.invasioncore.nexus.NexusUpgrade;
 
 import java.util.List;
@@ -29,12 +29,8 @@ public final class InvasionConfig {
         int perLevel = turretLimitPerLevel();
         NexusUpgrade.turretSlotLevels(perLevel <= 0 ? 0
                 : (int) Math.ceil((turretLimitMax() - turretLimitBase()) / (double) perLevel));
-        // アイテムの作り方は static なので、設定を読み直すたびにここで入れ直す
-        // 数字で書けば数値、"" で囲めば文字列として付ける（cfg.get は書いたままの型で返す）
-        InvasionItems.modelData(
-                cfg.get("custom-model-data.shard", "shard"),
-                cfg.get("custom-model-data.recall", 1),
-                cfg.get("custom-model-data.hammer", "hammer"));
+        // アイテムの作り方は static なので、設定を読み直すたびに item_model.yml も読み直す
+        ItemModelFile.load(plugin);
     }
 
     // ---- ネクサス ----

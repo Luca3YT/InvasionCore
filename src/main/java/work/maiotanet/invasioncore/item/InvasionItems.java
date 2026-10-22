@@ -53,15 +53,26 @@ public final class InvasionItems {
     }
 
     /**
-     * config.yml の custom-model-data（shard・recall・hammer）を反映する。これより後に作るアイテムから付く。
-     * 値は Number（数値として付ける）か String（文字列として付ける）。null や空文字なら付けない。
+     * item_model.yml の値を反映する。これより後に作るアイテムから付く。
+     *
+     * @param byName /invasion give と同じ短い名前（shard・recall など）→ 値。
+     *               値は Number（数値として付ける）か String（文字列として付ける）。null や空文字なら付けない
      */
-    public static void modelData(Object shard, Object recall, Object hammer) {
+    public static void modelData(Map<String, Object> byName) {
         Map<String, Object> map = new HashMap<>();
-        putModelData(map, SHARD, shard);
-        putModelData(map, RECALL, recall);
-        putModelData(map, HAMMER, hammer);
+        for (Map.Entry<String, Object> e : byName.entrySet()) {
+            String id = idOfName(e.getKey());
+            if (id != null) {
+                putModelData(map, id, e.getValue());
+            }
+        }
         modelData = Map.copyOf(map);
+    }
+
+    /** /invasion give の短い名前から、アイテムの ID（PDC の ITEM_ID）へ。知らない名前なら null。 */
+    private static String idOfName(String name) {
+        ItemStack sample = create(name, 1);
+        return sample == null ? null : idOf(sample);
     }
 
     private static void putModelData(Map<String, Object> map, String id, Object value) {

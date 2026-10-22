@@ -18,12 +18,12 @@ import java.util.zip.ZipOutputStream;
 /**
  * resourcepack/textures/ に置いた PNG から、独自アイテムの見た目を差し替えるリソースパック（zip）を作る。
  *
- * <p>独自アイテムには config.yml の custom-model-data の文字列が付いている。パックはその文字列を見て、
+ * <p>独自アイテムには item_model.yml の CustomModelData が付いている。パックはその値を見て、
  * 独自アイテムのときだけ自分の絵を使い、普通のアイテム（バニラのアメジストの欠片など）は元の見た目のままにする。
  * 元の見た目は手元の Minecraft クライアントの jar から写すので、パックのバージョンも jar に合わせる。</p>
  *
  * <pre>
- * java scripts/resourcepack/BuildResourcePack.java &lt;リポジトリ&gt; &lt;Minecraft クライアントの jar&gt; &lt;出力 zip&gt;
+ * java scripts/resourcepack/BuildResourcePack.java &lt;リポジトリ&gt; &lt;Minecraft クライアントの jar&gt; &lt;出力 zip&gt; [item_model.yml]
  * </pre>
  */
 public final class BuildResourcePack {
@@ -32,27 +32,45 @@ public final class BuildResourcePack {
      * 差し替えられる品。
      *
      * @param texture   resourcepack/textures/ に置く PNG の名前（拡張子なし）
-     * @param configKey config.yml の custom-model-data の項目名
+     * @param configKey item_model.yml の項目名
      * @param vanilla   見た目の元にしているバニラのアイテム
      * @param handheld  手に持ったときに道具の持ち方にするか（ハンマーなど）
      */
     private record Item(String texture, String configKey, String vanilla, boolean handheld) {
     }
 
+    /** item_model.yml の項目と同じ並び。PNG の名前も項目名と同じにする。 */
     private static final List<Item> ITEMS = List.of(
+            new Item("nexus", "nexus", "lodestone", false),
+            new Item("hammer", "hammer", "iron_axe", true),
             new Item("shard", "shard", "amethyst_shard", false),
-            new Item("recall", "recall", "recovery_compass", false),
-            new Item("hammer", "hammer", "iron_axe", true)
+            new Item("kit", "kit", "honeycomb", false),
+            new Item("turret_arrow", "turret_arrow", "dispenser", false),
+            new Item("turret_flame", "turret_flame", "blast_furnace", false),
+            new Item("turret_frost", "turret_frost", "packed_ice", false),
+            new Item("turret_heal", "turret_heal", "beacon", false),
+            new Item("spike", "spike", "pointed_dripstone", false),
+            new Item("mine", "mine", "heavy_weighted_pressure_plate", false),
+            new Item("flash", "flash", "snowball", false),
+            new Item("medkit", "medkit", "ghast_tear", false),
+            new Item("barrier", "barrier", "iron_trapdoor", false),
+            new Item("recall", "recall", "recovery_compass", false)
     );
 
     public static void main(String[] args) throws IOException {
         if (args.length < 3) {
-            System.err.println("usage: java BuildResourcePack.java <repo> <minecraft client jar> <output zip>");
+            System.err.println("usage: java BuildResourcePack.java <repo> <minecraft client jar> <output zip> [item_model.yml]");
             System.exit(1);
         }
         File repo = new File(args[0]);
         File textures = new File(repo, "resourcepack/textures");
-        Map<String, String> modelData = readModelData(new File(repo, "src/main/resources/config.yml"));
+        // 値はサーバーの item_model.yml から読む。指定が無ければ手元のテストサーバーのもの、それも無ければリポジトリの雛形
+        File modelFile = args.length >= 4 ? new File(args[3]) : new File(repo, "server/plugins/InvasionCore/item_model.yml");
+        if (!modelFile.isFile()) {
+            modelFile = new File(repo, "src/main/resources/item_model.yml");
+        }
+        System.out.println("item_model: " + modelFile);
+        Map<String, String> modelData = readModelData(modelFile);
 
         try (ZipFile jar = new ZipFile(args[1])) {
             int format = packFormat(jar);
@@ -70,7 +88,7 @@ public final class BuildResourcePack {
             List<String> done = new ArrayList<>();
             for (Item item : ITEMS) {
                 File png = new File(textures, item.texture() + ".png");
-                String value = modelData.getOrDefault(item.configKey(), item.configKey());
+                String value = modelData.getOrDefault(item.configKey(), "");
                 boolean forcedString = value.startsWith("\u0000");
                 if (forcedString) {
                     value = value.substring(1);
@@ -79,7 +97,7 @@ public final class BuildResourcePack {
                     continue;
                 }
                 if (value.isEmpty()) {
-                    System.out.println("skip " + item.texture() + ": config.yml の custom-model-data." + item.configKey() + " が空");
+                    System.out.println("skip " + item.texture() + ": item_model.yml の " + item.configKey() + " が空白");
                     continue;
                 }
                 String path = "assets/invasioncore/textures/item/" + item.texture() + ".png";
@@ -127,7 +145,8 @@ public final class BuildResourcePack {
                 done.add(item.texture() + "（custom_model_data = " + (!forcedString && isNumber(value) ? value : "\"" + value + "\"") + "）");
             }
             if (done.isEmpty()) {
-                System.out.println("resourcepack/textures/ に PNG がありません。shard.png / recall.png / hammer.png を置いてから実行してください。");
+                System.out.println("差し替える絵がありません。resourcepack/textures/ に PNG（shard.png など）を置き、"
+                        + "item_model.yml のその項目に値を書いてから実行してください。");
                 System.exit(2);
             }
             File out = new File(args[2]);
@@ -180,26 +199,20 @@ public final class BuildResourcePack {
         throw new IOException("バニラのアイテム定義を読めません: " + item);
     }
 
-    /** config.yml の custom-model-data の値を読む（YAML の読み込みに依存しないよう、必要な行だけ見る）。 */
-    private static Map<String, String> readModelData(File config) throws IOException {
+    /** item_model.yml の値を読む（YAML の読み込みに依存しないよう、「項目: 値」の行だけ見る）。 */
+    private static Map<String, String> readModelData(File file) throws IOException {
         Map<String, String> out = new LinkedHashMap<>();
-        boolean inSection = false;
-        for (String line : Files.readAllLines(config.toPath(), StandardCharsets.UTF_8)) {
-            if (line.startsWith("custom-model-data:")) {
-                inSection = true;
+        Pattern line = Pattern.compile("^(\\w+):\\s*(\"[^\"]*\"|'[^']*'|[^#\\s]*)\\s*(#.*)?$");
+        for (String text : Files.readAllLines(file.toPath(), StandardCharsets.UTF_8)) {
+            Matcher m = line.matcher(text);
+            if (!m.matches()) {
                 continue;
             }
-            if (inSection && !line.isEmpty() && !Character.isWhitespace(line.charAt(0))) {
-                break;
-            }
-            Matcher m = Pattern.compile("^\\s+(\\w+):\\s*(\"[^\"]*\"|'[^']*'|[^#\\s]*)\\s*(#.*)?$").matcher(line);
-            if (inSection && m.matches()) {
-                String raw = m.group(2).trim();
-                // "" で囲んだものは文字列。囲まずに数字だけを書いたものは数値として扱う
-                boolean quoted = raw.length() >= 2 && (raw.startsWith("\"") || raw.startsWith("'"));
-                String value = quoted ? raw.substring(1, raw.length() - 1) : raw;
-                out.put(m.group(1), quoted && isNumber(value) ? "\u0000" + value : value);
-            }
+            String raw = m.group(2).trim();
+            // "" で囲んだものは文字列。囲まずに数字だけを書いたものは数値として扱う
+            boolean quoted = raw.length() >= 2 && (raw.startsWith("\"") || raw.startsWith("'"));
+            String value = quoted ? raw.substring(1, raw.length() - 1) : raw;
+            out.put(m.group(1), quoted && isNumber(value) ? "\u0000" + value : value);
         }
         return out;
     }

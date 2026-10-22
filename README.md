@@ -290,8 +290,8 @@ GameStage が上がると下位種別の出現率が段階的に落ち、上位�
 
 ## カスタムテクスチャ（リソースパック）
 
-Shard・帰還の羅針盤・強化ハンマーには CustomModelData（`config.yml` の `custom-model-data`。Shard は文字列 `"shard"`、羅針盤は数値 `1`、ハンマーは文字列 `"hammer"`）が付いている。
-`resourcepack/textures/` に `shard.png` / `recall.png` / `hammer.png` を置いて `scripts\build-resourcepack.cmd` を実行すると、
+独自アイテム（14 品）には、`plugins/InvasionCore/item_model.yml` で決めた CustomModelData が付く（初めは全部空白で、何も付かない。数字を書くと数値、`""` で囲むと文字列）。
+`resourcepack/textures/` に項目名と同じ名前の PNG（`shard.png` など）を置いて `scripts\build-resourcepack.cmd` を実行すると、
 独自アイテムだけ見た目を差し替えるリソースパックが `target\InvasionCore-resourcepack.zip` にできる。詳しくは [resourcepack/README.md](resourcepack/README.md)。
 
 ---
@@ -417,7 +417,7 @@ Shard・帰還の羅針盤・強化ハンマーには CustomModelData（`config.
 - `economy.loot-chest-shards.*` — 構造物のチェストに入れる Shard の数（ディメンションごと）
 - `daily-reward.*` — 1 日生き延びた報酬
 - `shop.items` — SHOP の品と値段
-- `custom-model-data.*` — 独自アイテムに付ける CustomModelData（リソースパック用）
+- `item_model.yml`（config.yml とは別のファイル） — 独自アイテムに付ける CustomModelData（リソースパック用）
 - `grave.*` — 墓（本人だけが回収できる時間、許可の返事を待つ時間）
 - `guide.*` — ネクサスの発光・方向表示・境目のパーティクル
 - `rules.url` — `/rule` で表示するルール説明の URL

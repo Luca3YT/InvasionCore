@@ -257,16 +257,6 @@ web:
   # 管理画面からも切り替えられる
   overlay-style: "b"
 
-custom-model-data:
-  # 独自アイテムに付ける CustomModelData。リソースパックがこの値を見て見た目を差し替える。
-  # 数字で書くと数値（/give の custom_model_data={floats:[1]} と同じ。よくあるリソースパックの形）、
-  # "" で囲むと文字列（custom_model_data={strings:["shard"]}）として付ける。
-  # 変えたら resourcepack/ のパックも作り直すこと（scripts\build-resourcepack.cmd が config.yml の値を読む）。
-  # 空（""）にするとその品には付けない。値を変える前に作った品は古い値のまま
-  shard: "shard"
-  recall: 1
-  hammer: "hammer"
-
 performance:
   # 侵略MobのAIを何tickに分散させるか。大きいほど軽いが反応が鈍る
   ai-buckets: 4

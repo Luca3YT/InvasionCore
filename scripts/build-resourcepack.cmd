@@ -1,6 +1,8 @@
 @echo off
 REM Builds the InvasionCore resource pack from the PNGs in resourcepack\textures.
 REM Output: target\InvasionCore-resourcepack.zip
+REM CustomModelData values come from server\plugins\InvasionCore\item_model.yml
+REM (or the template in src\main\resources when the test server has none).
 REM The pack copies the vanilla item definitions from the Minecraft client jar, so the
 REM client of the same version must be installed (or pass its jar as the first argument).
 REM NOTE: keep this file ASCII-only - cmd.exe reads it in the OEM codepage.
