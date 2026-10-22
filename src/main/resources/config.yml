@@ -13,9 +13,9 @@ nexus:
   health-per-level: 120.0
   # 防衛範囲（ブロック）。強化ハンマーなどが使える範囲で、境目にパーティクルが出る。
   # ネクサスを置いてからゲーム開始までは、運営（invasioncore.admin）以外はこの範囲から出られない
-  defense-radius: 48
-  # 侵略者がブロックを破壊してよい半径。範囲外の建築物は絶対に壊されない
-  breach-radius: 40
+  defense-radius: 25
+  # 侵略者がブロックを破壊してよい半径。範囲外の建築物は絶対に壊されない（防衛範囲以下にする）
+  breach-radius: 24
   # 侵略者1撃あたりのネクサスへのダメージ（種別・変異ティアで倍率がかかる）。
   # 各個体は1秒に1回殴るため、実効DPSは「到達した敵の数 x この値」になる。
   # 6.0 だと20体が到達した時点で毎秒120ダメージとなり、防衛線が破られた瞬間に
@@ -92,9 +92,10 @@ wave:
   mobs-per-stage: 0.35
   # 同時に存在できる侵略者の上限。負荷対策なので下げすぎないこと
   max-alive: 90
-  # 湧き半径（ネクサスからの距離）
-  spawn-radius-min: 26
-  spawn-radius-max: 42
+  # 湧き半径（ネクサスからの距離）。防衛範囲の外から歩いてくるよう、防衛範囲より十分大きくする。
+  # 侵攻中は、ここまでのチャンクを読み込んだままにする（湧いた敵が止まらないように）。大きくすると重くなる
+  spawn-radius-min: 60
+  spawn-radius-max: 100
 
 gamestage:
   # GameStage = (Lv係数 + 日数係数 + プレイヤーLv係数) × 人数補正
@@ -149,6 +150,12 @@ world-events:
   air-drop:
     enabled: true
     interval-seconds: 1200
+    # 補給物資を落とす場所の、ネクサスからの距離（ブロック）
+    min-distance: 40
+    max-distance: 600
+    # 中身の個数の倍率。一番近いと near、一番遠いと far で、その間は距離に比例する（遠いほど多い）
+    near-multiplier: 0.3
+    far-multiplier: 3.0
 
 daily-reward:
   # 夜明けごとに（1 日生き延びるたびに）、生きている参加者全員へ配る Shard
@@ -192,6 +199,16 @@ recall:
   cast-seconds: 7
   # ネクサスの画面で買うときの値段（Shard、手持ちから払う）
   price: 10
+
+death:
+  # 死んだあと、観戦モードで待つ秒数。終わるとネクサスのそばで生き返る。0 で今までどおりすぐ復活
+  spectate-seconds: 10
+
+turret-limit:
+  # 拠点全体に置けるタレットの数。最初は base、ネクサスの「砲台増設」1 段ごとに per-level 増え、max で止まる
+  base: 5
+  per-level: 2
+  max: 30
 
 grave:
   # 死んだとき、所持品を死んだ場所の墓（プレイヤーの頭）にまとめる。どこで死んでも作る
@@ -241,11 +258,13 @@ web:
   overlay-style: "b"
 
 custom-model-data:
-  # 独自アイテムに付ける CustomModelData（文字列）。リソースパックがこの値を見て見た目を差し替える。
+  # 独自アイテムに付ける CustomModelData。リソースパックがこの値を見て見た目を差し替える。
+  # 数字で書くと数値（/give の custom_model_data={floats:[1]} と同じ。よくあるリソースパックの形）、
+  # "" で囲むと文字列（custom_model_data={strings:["shard"]}）として付ける。
   # 変えたら resourcepack/ のパックも作り直すこと（scripts\build-resourcepack.cmd が config.yml の値を読む）。
   # 空（""）にするとその品には付けない。値を変える前に作った品は古い値のまま
   shard: "shard"
-  recall: "recall"
+  recall: 1
   hammer: "hammer"
 
 performance:

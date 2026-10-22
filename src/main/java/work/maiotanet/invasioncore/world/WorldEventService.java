@@ -229,12 +229,16 @@ public final class WorldEventService {
         nextAirDrop.put(nexus.id(), System.currentTimeMillis()
                 + config.airDropIntervalSeconds() * 1000L);
         int stage = stages.computeCurrent(nexus);
-        List<ItemStack> loot = rewards.airDropLoot(stage);
+        double distance = nexus.center().distance(spot);
+        double multiplier = distanceMultiplier(distance);
+        List<ItemStack> loot = scale(rewards.airDropLoot(stage), multiplier);
 
+        String bonus = String.format("%.1f", multiplier);
         for (Player p : stages.participants(nexus)) {
             p.sendMessage(Text.info("補給物資が投下された！（"
                     + spot.getBlockX() + ", " + spot.getBlockY() + ", " + spot.getBlockZ() + "）"
-                    + " 光の柱が目印。15 分で消える。"));
+                    + " ネクサスから " + (int) Math.round(distance) + "m・中身 " + bonus + " 倍。"
+                    + "光の柱が目印。15 分で消える。"));
             p.playSound(p.getLocation(), Sound.BLOCK_BELL_USE, 1.0f, 1.2f);
         }
         playFall(spot, loot);
@@ -330,6 +334,39 @@ public final class WorldEventService {
         world.playSound(center, Sound.BLOCK_BARREL_CLOSE, 1.5f, 0.8f);
     }
 
+    /**
+     * 遠くに落ちたほど中身を多くする倍率。取りに行く手間と危なさに見合うようにする。
+     * 一番近い距離で near、一番遠い距離で far になり、その間は距離に比例する。
+     */
+    private double distanceMultiplier(double distance) {
+        int min = config.airDropMinDistance();
+        int max = config.airDropMaxDistance();
+        double t = Math.max(0.0, Math.min(1.0, (distance - min) / (max - min)));
+        return config.airDropNearMultiplier()
+                + (config.airDropFarMultiplier() - config.airDropNearMultiplier()) * t;
+    }
+
+    /**
+     * 中身の個数に倍率を掛ける。端数は確率で 1 個足すので、平均すると倍率どおりになる。
+     * 0 個になった品は入れない。重ねられない品（エンチャントの本など）は数を増やす。
+     */
+    private static List<ItemStack> scale(List<ItemStack> loot, double multiplier) {
+        List<ItemStack> out = new ArrayList<>();
+        ThreadLocalRandom rng = ThreadLocalRandom.current();
+        for (ItemStack stack : loot) {
+            double exact = stack.getAmount() * multiplier;
+            int total = (int) Math.floor(exact) + (rng.nextDouble() < exact - Math.floor(exact) ? 1 : 0);
+            int max = Math.max(1, stack.getMaxStackSize());
+            while (total > 0) {
+                ItemStack part = stack.clone();
+                part.setAmount(Math.min(max, total));
+                out.add(part);
+                total -= part.getAmount();
+            }
+        }
+        return out;
+    }
+
     /** いま置かれている補給物資の中心。方向の案内に使う。 */
     public List<Location> activeAirDrops() {
         List<Location> out = new ArrayList<>(airDrops.size());
@@ -348,7 +385,8 @@ public final class WorldEventService {
         ThreadLocalRandom rng = ThreadLocalRandom.current();
         for (int attempt = 0; attempt < 24; attempt++) {
             double angle = rng.nextDouble() * Math.PI * 2;
-            double dist = 40 + rng.nextDouble() * 40;
+            int min = config.airDropMinDistance();
+            double dist = min + rng.nextDouble() * (config.airDropMaxDistance() - min);
             int x = center.getBlockX() + (int) Math.round(Math.cos(angle) * dist);
             int z = center.getBlockZ() + (int) Math.round(Math.sin(angle) * dist);
             int y = world.getHighestBlockYAt(x, z) + 1;

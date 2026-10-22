@@ -19,7 +19,16 @@ public enum NexusUpgrade {
     SHARD_YIELD("残滓精製", Material.AMETHYST_CLUSTER, 5, 45, 1.65,
             "Shard 獲得量 +12%/Lv"),
     REPAIR_EFFICIENCY("整備術式", Material.ANVIL, 4, 50, 1.7,
-            "修理・強化コスト -10%/Lv");
+            "修理・強化コスト -10%/Lv"),
+    TURRET_SLOTS("砲台増設", Material.DISPENSER, 13, 30, 1.2,
+            "タレットを置ける数を増やす");
+
+    /** 砲台増設の段数。config.yml の turret-limit から決まるので、設定を読み直すたびに入れ直す。 */
+    private static volatile int turretSlotLevels = 13;
+
+    public static void turretSlotLevels(int levels) {
+        turretSlotLevels = Math.max(0, levels);
+    }
 
     private final String displayName;
     private final Material icon;
@@ -46,7 +55,7 @@ public enum NexusUpgrade {
     }
 
     public int maxLevel() {
-        return maxLevel;
+        return this == TURRET_SLOTS ? turretSlotLevels : maxLevel;
     }
 
     public String description() {
@@ -55,7 +64,7 @@ public enum NexusUpgrade {
 
     /** 現在レベルから次のレベルへ上げるコスト。maxLevel 到達時は -1。 */
     public int costFor(int currentLevel) {
-        if (currentLevel >= maxLevel) {
+        if (currentLevel >= maxLevel()) {
             return -1;
         }
         return (int) Math.round(baseCost * Math.pow(costGrowth, currentLevel));

@@ -3,6 +3,7 @@ package work.maiotanet.invasioncore.config;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.Plugin;
 import work.maiotanet.invasioncore.item.InvasionItems;
+import work.maiotanet.invasioncore.nexus.NexusUpgrade;
 
 import java.util.List;
 import java.util.Map;
@@ -24,11 +25,16 @@ public final class InvasionConfig {
     public void reload() {
         plugin.reloadConfig();
         this.cfg = plugin.getConfig();
+        // 砲台増設の段数は上限まで届く数にする（例: 5 から 2 ずつで 30 まで → 13 段）
+        int perLevel = turretLimitPerLevel();
+        NexusUpgrade.turretSlotLevels(perLevel <= 0 ? 0
+                : (int) Math.ceil((turretLimitMax() - turretLimitBase()) / (double) perLevel));
         // アイテムの作り方は static なので、設定を読み直すたびにここで入れ直す
+        // 数字で書けば数値、"" で囲めば文字列として付ける（cfg.get は書いたままの型で返す）
         InvasionItems.modelData(
-                cfg.getString("custom-model-data.shard", "shard"),
-                cfg.getString("custom-model-data.recall", "recall"),
-                cfg.getString("custom-model-data.hammer", "hammer"));
+                cfg.get("custom-model-data.shard", "shard"),
+                cfg.get("custom-model-data.recall", 1),
+                cfg.get("custom-model-data.hammer", "hammer"));
     }
 
     // ---- ネクサス ----
@@ -41,12 +47,12 @@ public final class InvasionConfig {
     }
 
     public int nexusDefenseRadius() {
-        return cfg.getInt("nexus.defense-radius", 48);
+        return cfg.getInt("nexus.defense-radius", 25);
     }
 
     /** 侵略Mobがブロックを壊してよい範囲。ここを超える破壊は行わない。 */
     public int nexusBreachRadius() {
-        return cfg.getInt("nexus.breach-radius", 40);
+        return cfg.getInt("nexus.breach-radius", 24);
     }
 
     public double nexusDamagePerHit() {
@@ -194,11 +200,11 @@ public final class InvasionConfig {
     }
 
     public int spawnRadiusMin() {
-        return cfg.getInt("wave.spawn-radius-min", 26);
+        return cfg.getInt("wave.spawn-radius-min", 60);
     }
 
     public int spawnRadiusMax() {
-        return cfg.getInt("wave.spawn-radius-max", 42);
+        return cfg.getInt("wave.spawn-radius-max", 100);
     }
 
     // ---- GameStage ----
@@ -307,6 +313,46 @@ public final class InvasionConfig {
 
     public int airDropIntervalSeconds() {
         return cfg.getInt("world-events.air-drop.interval-seconds", 1200);
+    }
+
+    /** 補給物資を落とす場所の、ネクサスからの距離の範囲（ブロック）。 */
+    public int airDropMinDistance() {
+        return Math.max(8, cfg.getInt("world-events.air-drop.min-distance", 40));
+    }
+
+    public int airDropMaxDistance() {
+        return Math.max(airDropMinDistance() + 1, cfg.getInt("world-events.air-drop.max-distance", 600));
+    }
+
+    /** 一番近くに落ちたときの中身の倍率。遠くに落ちるほど、一番遠いときの倍率へ近づく。 */
+    public double airDropNearMultiplier() {
+        return Math.max(0.0, cfg.getDouble("world-events.air-drop.near-multiplier", 0.3));
+    }
+
+    public double airDropFarMultiplier() {
+        return Math.max(0.0, cfg.getDouble("world-events.air-drop.far-multiplier", 3.0));
+    }
+
+    // ---- 死んだとき ----
+    /** 死んだあと観戦モードで待つ秒数。0 ならすぐ復活する。 */
+    public int deathSpectateSeconds() {
+        return Math.max(0, cfg.getInt("death.spectate-seconds", 10));
+    }
+
+    // ---- タレットの数 ----
+    /** 最初に置けるタレットの数（拠点全体）。 */
+    public int turretLimitBase() {
+        return Math.max(0, cfg.getInt("turret-limit.base", 5));
+    }
+
+    /** ネクサスの「砲台増設」1 段ごとに増える数。 */
+    public int turretLimitPerLevel() {
+        return Math.max(0, cfg.getInt("turret-limit.per-level", 2));
+    }
+
+    /** 置けるタレットの数の上限。 */
+    public int turretLimitMax() {
+        return Math.max(turretLimitBase(), cfg.getInt("turret-limit.max", 30));
     }
 
     // ---- SHOP ----

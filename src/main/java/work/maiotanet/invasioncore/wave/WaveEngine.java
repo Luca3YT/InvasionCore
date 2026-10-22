@@ -301,14 +301,28 @@ public final class WaveEngine implements NexusCombatSink {
         if (world == null || center == null) {
             return;
         }
+        if (!keep) {
+            // 湧き半径はアップグレードで変わるので、範囲を数え直さずにまとめて外す
+            world.removePluginChunkTickets(plugin);
+            return;
+        }
         int cx = center.getBlockX() >> 4;
         int cz = center.getBlockZ() >> 4;
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dz = -1; dz <= 1; dz++) {
-                if (keep) {
-                    world.addPluginChunkTicket(cx + dx, cz + dz, plugin);
+        // 敵は湧き半径の外側から歩いてくる。そこまで読み込んでおかないと、湧いた敵が誰もいない所で止まる
+        int r = Math.max(1, (int) Math.ceil((nexuses.spawnRadiusMax(nexus) + 8) / 16.0));
+        for (int dx = -r; dx <= r; dx++) {
+            for (int dz = -r; dz <= r; dz++) {
+                int x = cx + dx;
+                int z = cz + dz;
+                if (world.isChunkLoaded(x, z)) {
+                    world.addPluginChunkTicket(x, z, plugin);
                 } else {
-                    world.removePluginChunkTicket(cx + dx, cz + dz, plugin);
+                    // 範囲が広いので、まだ読まれていない所はまとめて同期で読まず、読み終わってから保持する
+                    world.getChunkAtAsync(x, z).thenAccept(chunk -> {
+                        if (nexus.isActive()) {
+                            world.addPluginChunkTicket(x, z, plugin);
+                        }
+                    });
                 }
             }
         }

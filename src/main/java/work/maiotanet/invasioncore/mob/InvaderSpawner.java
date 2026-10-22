@@ -102,7 +102,7 @@ public final class InvaderSpawner {
             return null;
         }
 
-        applyStats(mob, type, tier, gameStage, boss);
+        applyStats(mob, nexus, type, tier, gameStage, boss);
         applyAppearance(mob, type, tier, boss);
         applyBehaviourTweaks(mob, type, boss);
         // Phantom の setSize など、後段の設定が最大HPを変えることがある。
@@ -134,7 +134,7 @@ public final class InvaderSpawner {
 
     // ---------- 能力付与 ----------
 
-    private void applyStats(Mob mob, InvaderType type, MutationTier tier, int gameStage, BossType boss) {
+    private void applyStats(Mob mob, Nexus nexus, InvaderType type, MutationTier tier, int gameStage, BossType boss) {
         // GameStage による地力の底上げ。線形だと後半で破綻するので緩やかな伸びにする。
         double stageHealth = 1.0 + gameStage * 0.012;
         double stageDamage = 1.0 + gameStage * 0.008;
@@ -161,7 +161,7 @@ public final class InvaderSpawner {
         AttributeInstance follow = mob.getAttribute(Attribute.FOLLOW_RANGE);
         if (follow != null) {
             // ネクサスまで到達させるため索敵範囲を広く取る
-            follow.setBaseValue(Math.max(follow.getBaseValue(), config.nexusDefenseRadius() + 24.0));
+            follow.setBaseValue(Math.max(follow.getBaseValue(), nexuses.spawnRadiusMax(nexus) + 24.0));
         }
         AttributeInstance kb = mob.getAttribute(Attribute.KNOCKBACK_RESISTANCE);
         if (kb != null && type.isHeavy()) {
@@ -199,9 +199,7 @@ public final class InvaderSpawner {
                 boss != null ? boss.color() : tier.color()).decoration(TextDecoration.ITALIC, false));
         // ボスは常時名前を出す。誰を優先して倒すべきかが一目で分かる必要がある。
         mob.setCustomNameVisible(boss != null);
-        if (tier != MutationTier.NORMAL || boss != null) {
-            mob.setGlowing(true);
-        }
+        // 発光（ハイライト）はさせない。血の月に何十体も光ると画面が見づらく、壁越しに位置が分かりすぎる
 
         EntityEquipment eq = mob.getEquipment();
         if (eq == null) {

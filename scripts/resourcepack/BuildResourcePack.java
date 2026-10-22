@@ -71,6 +71,10 @@ public final class BuildResourcePack {
             for (Item item : ITEMS) {
                 File png = new File(textures, item.texture() + ".png");
                 String value = modelData.getOrDefault(item.configKey(), item.configKey());
+                boolean forcedString = value.startsWith("\u0000");
+                if (forcedString) {
+                    value = value.substring(1);
+                }
                 if (!png.isFile()) {
                     continue;
                 }
@@ -90,21 +94,37 @@ public final class BuildResourcePack {
                         + "  \"textures\": { \"layer0\": \"invasioncore:item/" + item.texture() + "\" }\n"
                         + "}\n").getBytes(StandardCharsets.UTF_8));
                 String fallback = vanillaModel(jar, item.vanilla());
-                files.put("assets/minecraft/items/" + item.vanilla() + ".json", ("{\n"
-                        + "  \"model\": {\n"
-                        + "    \"type\": \"minecraft:select\",\n"
-                        + "    \"property\": \"minecraft:custom_model_data\",\n"
-                        + "    \"index\": 0,\n"
-                        + "    \"cases\": [\n"
-                        + "      {\n"
-                        + "        \"when\": " + json(value) + ",\n"
-                        + "        \"model\": { \"type\": \"minecraft:model\", \"model\": \"invasioncore:item/" + item.texture() + "\" }\n"
-                        + "      }\n"
-                        + "    ],\n"
-                        + "    \"fallback\": " + fallback + "\n"
-                        + "  }\n"
-                        + "}\n").getBytes(StandardCharsets.UTF_8));
-                done.add(item.texture() + "（custom_model_data = \"" + value + "\"）");
+                String custom = "{ \"type\": \"minecraft:model\", \"model\": \"invasioncore:item/" + item.texture() + "\" }";
+                String definition;
+                if (!forcedString && isNumber(value)) {
+                    // 数値の CustomModelData は range_dispatch で見る。値が threshold 以上ならこちらの絵、
+                    // 付いていない（0 扱い）ならバニラの見た目
+                    definition = "{\n"
+                            + "  \"model\": {\n"
+                            + "    \"type\": \"minecraft:range_dispatch\",\n"
+                            + "    \"property\": \"minecraft:custom_model_data\",\n"
+                            + "    \"index\": 0,\n"
+                            + "    \"entries\": [\n"
+                            + "      { \"threshold\": " + value + ", \"model\": " + custom + " }\n"
+                            + "    ],\n"
+                            + "    \"fallback\": " + fallback + "\n"
+                            + "  }\n"
+                            + "}\n";
+                } else {
+                    definition = "{\n"
+                            + "  \"model\": {\n"
+                            + "    \"type\": \"minecraft:select\",\n"
+                            + "    \"property\": \"minecraft:custom_model_data\",\n"
+                            + "    \"index\": 0,\n"
+                            + "    \"cases\": [\n"
+                            + "      { \"when\": " + json(value) + ", \"model\": " + custom + " }\n"
+                            + "    ],\n"
+                            + "    \"fallback\": " + fallback + "\n"
+                            + "  }\n"
+                            + "}\n";
+                }
+                files.put("assets/minecraft/items/" + item.vanilla() + ".json", definition.getBytes(StandardCharsets.UTF_8));
+                done.add(item.texture() + "（custom_model_data = " + (!forcedString && isNumber(value) ? value : "\"" + value + "\"") + "）");
             }
             if (done.isEmpty()) {
                 System.out.println("resourcepack/textures/ に PNG がありません。shard.png / recall.png / hammer.png を置いてから実行してください。");
@@ -172,9 +192,13 @@ public final class BuildResourcePack {
             if (inSection && !line.isEmpty() && !Character.isWhitespace(line.charAt(0))) {
                 break;
             }
-            Matcher m = Pattern.compile("^\\s+(\\w+):\\s*\"?([^\"#]*)\"?\\s*(#.*)?$").matcher(line);
+            Matcher m = Pattern.compile("^\\s+(\\w+):\\s*(\"[^\"]*\"|'[^']*'|[^#\\s]*)\\s*(#.*)?$").matcher(line);
             if (inSection && m.matches()) {
-                out.put(m.group(1), m.group(2).trim());
+                String raw = m.group(2).trim();
+                // "" で囲んだものは文字列。囲まずに数字だけを書いたものは数値として扱う
+                boolean quoted = raw.length() >= 2 && (raw.startsWith("\"") || raw.startsWith("'"));
+                String value = quoted ? raw.substring(1, raw.length() - 1) : raw;
+                out.put(m.group(1), quoted && isNumber(value) ? "\u0000" + value : value);
             }
         }
         return out;
@@ -189,6 +213,11 @@ public final class BuildResourcePack {
             in.transferTo(buf);
             return buf.toString(StandardCharsets.UTF_8);
         }
+    }
+
+    /** 数値として扱う値か。"" で囲んで書いた数字は readModelData が先頭に印を付けて文字列のままにする。 */
+    private static boolean isNumber(String s) {
+        return s.matches("-?\\d+(\\.\\d+)?");
     }
 
     private static String json(String s) {

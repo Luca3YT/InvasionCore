@@ -41,22 +41,35 @@ public final class InvasionItems {
     public static final String RECALL = "recall_compass";
 
     /**
-     * 独自アイテムに付ける CustomModelData の文字列（アイテムの ID → 値）。
+     * 独自アイテムに付ける CustomModelData（アイテムの ID → 値）。
+     * 値が数字なら数値（floats）、それ以外は文字列（strings）として付ける。
+     * 数値はよくあるリソースパックの「custom_model_data: 1」の形、文字列は名前で見分ける形。
      * リソースパックはこの値を見て、独自アイテムだけ見た目を差し替える。空なら付けない。
      * config.yml の custom-model-data から読み、reload でも入れ直す。
      */
-    private static volatile Map<String, String> modelData = Map.of();
+    private static volatile Map<String, Object> modelData = Map.of();
 
     private InvasionItems() {
     }
 
-    /** config.yml の custom-model-data（shard・recall・hammer）を反映する。これより後に作るアイテムから付く。 */
-    public static void modelData(String shard, String recall, String hammer) {
-        Map<String, String> map = new HashMap<>();
-        map.put(SHARD, shard == null ? "" : shard.trim());
-        map.put(RECALL, recall == null ? "" : recall.trim());
-        map.put(HAMMER, hammer == null ? "" : hammer.trim());
+    /**
+     * config.yml の custom-model-data（shard・recall・hammer）を反映する。これより後に作るアイテムから付く。
+     * 値は Number（数値として付ける）か String（文字列として付ける）。null や空文字なら付けない。
+     */
+    public static void modelData(Object shard, Object recall, Object hammer) {
+        Map<String, Object> map = new HashMap<>();
+        putModelData(map, SHARD, shard);
+        putModelData(map, RECALL, recall);
+        putModelData(map, HAMMER, hammer);
         modelData = Map.copyOf(map);
+    }
+
+    private static void putModelData(Map<String, Object> map, String id, Object value) {
+        if (value instanceof Number number) {
+            map.put(id, number.floatValue());
+        } else if (value != null && !value.toString().isBlank()) {
+            map.put(id, value.toString().trim());
+        }
     }
 
     // ---------- 生成 ----------
@@ -189,10 +202,14 @@ public final class InvasionItems {
             meta.lore(lore);
             meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
             meta.getPersistentDataContainer().set(Keys.ITEM_ID, PersistentDataType.STRING, id);
-            String model = modelData.getOrDefault(id, "");
-            if (!model.isEmpty()) {
+            Object model = modelData.get(id);
+            if (model != null) {
                 CustomModelDataComponent cmd = meta.getCustomModelDataComponent();
-                cmd.setStrings(List.of(model));
+                if (model instanceof Float number) {
+                    cmd.setFloats(List.of(number));
+                } else {
+                    cmd.setStrings(List.of(model.toString()));
+                }
                 meta.setCustomModelDataComponent(cmd);
             }
             stack.setItemMeta(meta);

@@ -24,6 +24,7 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import work.maiotanet.invasioncore.config.InvasionConfig;
 import work.maiotanet.invasioncore.defense.FortifyService;
+import work.maiotanet.invasioncore.defense.PlacedBlockTracker;
 import work.maiotanet.invasioncore.economy.ContributionTracker;
 import work.maiotanet.invasioncore.economy.ShardService;
 import work.maiotanet.invasioncore.heat.HeatService;
@@ -67,12 +68,15 @@ public final class InvaderListener implements Listener {
     private final GameStageService stages;
     private final HeatService heat;
     private final WaveEngine waves;
+    private final PlacedBlockTracker placed;
 
     public InvaderListener(InvasionConfig config, NexusManager nexuses, InvaderRegistry registry,
                            InvaderSpawner spawner, InvaderAiService ai, FortifyService fortify,
                            BreachLog breachLog, ShardService shards,
                            PerkService perks, ContributionTracker contributions,
-                           GameStageService stages, HeatService heat, WaveEngine waves) {
+                           GameStageService stages, HeatService heat, WaveEngine waves,
+                           PlacedBlockTracker placed) {
+        this.placed = placed;
         this.config = config;
         this.nexuses = nexuses;
         this.registry = registry;
@@ -200,6 +204,10 @@ public final class InvaderListener implements Listener {
 
         for (Block block : affected) {
             if (nexus.isAt(block.getLocation())) {
+                continue;
+            }
+            if (!fortify.isFortified(block) && !placed.isPlaced(block)) {
+                // 元からある地形は壊さない。壊してよいのはプレイヤーが置いた・強化したブロック（壁）だけ
                 continue;
             }
             if (center == null || !center.getWorld().equals(block.getWorld())
@@ -342,21 +350,37 @@ public final class InvaderListener implements Listener {
             heat.add(loc, config.heatPerKill());
         }
         if (shardAmount > 0) {
-            loc.getWorld().dropItemNaturally(loc, InvasionItems.shard(shardAmount));
+            if (killer == null && nexus != null && nexus.phase() == Nexus.Phase.BLOOD_MOON) {
+                // 血の月はタレットや罠が大量に倒すので、落とすと地面が Shard で埋まり拾いきれない。
+                // プレイヤーが倒した分だけ落とし、それ以外は直接ネクサス内の Shard に入れる
+                nexus.sharedShards(nexus.sharedShards() + shardAmount);
+            } else {
+                loc.getWorld().dropItemNaturally(loc, InvasionItems.shard(shardAmount));
+            }
         }
 
         if (nexus == null) {
             return;
         }
 
-        // 変調「増殖」：撃破した個体が2体に分かれる
+        // 変調「増殖」：撃破した個体が2体に分かれる。
+        // 分かれて出てきた個体まで分かれると、スパイクの上などで「死ぬ→2体に分かれる→また死ぬ」が
+        // 止まらず倍々に増える。分裂は 1 代限りにし、同時に出せる数の上限も守る。
+        boolean splitChild = event.getEntity().getPersistentDataContainer()
+                .has(Keys.INVADER_SPLIT_CHILD, PersistentDataType.BYTE);
         if (WaveModifier.isSplit(nexus.activeModifier())
+                && !splitChild
                 && invader.type() != InvaderType.BOSS
-                && invader.tier() != MutationTier.RADIATED) {
+                && invader.tier() != MutationTier.RADIATED
+                && registry.aliveCount(nexus.id()) + 2 <= config.waveMaxAlive()) {
             int stage = stages.computeCurrent(nexus);
             for (int i = 0; i < 2; i++) {
-                spawner.spawnAt(nexus, InvaderType.RUNNER, MutationTier.NORMAL,
+                Invader child = spawner.spawnAt(nexus, InvaderType.RUNNER, MutationTier.NORMAL,
                         Math.max(1, stage / 2), invader.wave(), loc);
+                if (child != null) {
+                    child.entity().getPersistentDataContainer()
+                            .set(Keys.INVADER_SPLIT_CHILD, PersistentDataType.BYTE, (byte) 1);
+                }
             }
         }
 

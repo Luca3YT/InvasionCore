@@ -12,14 +12,17 @@ import java.util.UUID;
 /**
  * Shard を拾ったときの効果音。
  *
- * <p>拾った 1 個につき 1 回、1 tick（0.05 秒）おきに順番に鳴らす。64 個なら約 3.2 秒鳴り続ける。
+ * <p>拾った 1 個につき 1 回、1 tick（0.05 秒）おきに順番に鳴らす。ただし 32 回まで（32 個以上拾っても約 1.6 秒で止まる）。
  * 同じ tick にまとめて鳴らすと重なって 1 回の大きな音にしか聞こえないので、順番待ちにしている。
  * 鳴っている途中でさらに拾った分は、残りの後ろに足す。</p>
  */
 public final class ShardPickupSound {
 
     private static final Sound SOUND = Sound.BLOCK_NOTE_BLOCK_CHIME;
-    private static final float VOLUME = 0.8f;
+    private static final float VOLUME = 0.5f;
+
+    /** 1 人あたり、順番待ちにためておく回数の上限。一度に大量に拾っても、これ以上は鳴らさない。 */
+    private static final int MAX_PENDING = 32;
     private static final float PITCH = 2.0f;
 
     /** プレイヤーごとの、まだ鳴らしていない回数。 */
@@ -27,7 +30,8 @@ public final class ShardPickupSound {
 
     public void queue(Player player, int count) {
         if (count > 0) {
-            pending.merge(player.getUniqueId(), count, Integer::sum);
+            pending.merge(player.getUniqueId(), Math.min(count, MAX_PENDING),
+                    (a, b) -> Math.min(MAX_PENDING, a + b));
         }
     }
 

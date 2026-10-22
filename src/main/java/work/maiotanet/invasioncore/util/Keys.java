@@ -37,6 +37,10 @@ public final class Keys {
      * 取り出したときに「拾った」として数えるのは、この数までにする（自分で入れた Shard を出し入れしても数えない）。
      */
     public static NamespacedKey LOOT_SHARDS;
+    /** 変調「増殖」で分裂して出てきた侵略Mobの目印 (Byte)。この個体はもう分裂しない。 */
+    public static NamespacedKey INVADER_SPLIT_CHILD;
+    /** 死んだあと観戦モードで待っている間、復活する時刻 (Long, ミリ秒)。再起動を跨いでも戻せるよう本人に記録する。 */
+    public static NamespacedKey DEATH_SPECTATE_UNTIL;
 
     private Keys() {
     }
@@ -54,6 +58,8 @@ public final class Keys {
         ITEM_ID = key("item_id");
         ITEM_USES = key("item_uses");
         LOOT_SHARDS = key("loot_shards");
+        INVADER_SPLIT_CHILD = key("invader_split_child");
+        DEATH_SPECTATE_UNTIL = key("death_spectate_until");
     }
 
     public static NamespacedKey key(String name) {

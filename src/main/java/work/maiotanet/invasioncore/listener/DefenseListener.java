@@ -24,6 +24,7 @@ import work.maiotanet.invasioncore.economy.ShardService;
 import work.maiotanet.invasioncore.item.InvasionItems;
 import work.maiotanet.invasioncore.nexus.Nexus;
 import work.maiotanet.invasioncore.nexus.NexusManager;
+import work.maiotanet.invasioncore.nexus.NexusUpgrade;
 import work.maiotanet.invasioncore.perk.PerkService;
 import work.maiotanet.invasioncore.pregame.PreGameService;
 import work.maiotanet.invasioncore.util.Sounds;
@@ -237,6 +238,15 @@ public final class DefenseListener implements Listener {
 
     // ---------- 設置・破壊 ----------
 
+    /**
+     * 拠点全体に置けるタレットの数。並べるだけで血の月が終わる拠点にならないよう上限を設け、
+     * ネクサスの「砲台増設」で広げられるようにする。
+     */
+    private int turretLimit(Nexus nexus) {
+        return Math.min(config.turretLimitMax(), config.turretLimitBase()
+                + config.turretLimitPerLevel() * nexus.upgradeLevel(NexusUpgrade.TURRET_SLOTS));
+    }
+
     @EventHandler(ignoreCancelled = true)
     public void onPlace(BlockPlaceEvent event) {
         ItemStack item = event.getItemInHand();
@@ -252,6 +262,14 @@ public final class DefenseListener implements Listener {
             if (nexus == null) {
                 event.setCancelled(true);
                 Text.actionBarError(player, "タレットはネクサスの防衛範囲内にのみ設置できる。");
+                Sounds.fail(player);
+                return;
+            }
+            int limit = turretLimit(nexus);
+            if (turrets.count() >= limit) {
+                event.setCancelled(true);
+                Text.actionBarError(player, "タレットはあと置けない（" + turrets.count() + " / " + limit
+                        + "）。ネクサスの「砲台増設」で増やせる。");
                 Sounds.fail(player);
                 return;
             }

@@ -10,6 +10,7 @@ import work.maiotanet.invasioncore.command.InvasionCommands;
 import work.maiotanet.invasioncore.command.LinkCommand;
 import work.maiotanet.invasioncore.config.InvasionConfig;
 import work.maiotanet.invasioncore.defense.FortifyService;
+import work.maiotanet.invasioncore.defense.PlacedBlockTracker;
 import work.maiotanet.invasioncore.defense.TrapService;
 import work.maiotanet.invasioncore.defense.TurretService;
 import work.maiotanet.invasioncore.economy.ContributionTracker;
@@ -20,6 +21,7 @@ import work.maiotanet.invasioncore.economy.ShardService;
 import work.maiotanet.invasioncore.economy.ShopService;
 import work.maiotanet.invasioncore.gadget.RecallService;
 import work.maiotanet.invasioncore.grave.GraveService;
+import work.maiotanet.invasioncore.listener.DeathPenaltyListener;
 import work.maiotanet.invasioncore.heat.HeatService;
 import work.maiotanet.invasioncore.item.RecipeRegistrar;
 import work.maiotanet.invasioncore.listener.DefenseListener;
@@ -78,6 +80,7 @@ public final class InvasionCore extends JavaPlugin {
     private GadgetListener gadgets;
     private WebServer web;
     private GraveService graves;
+    private PlacedBlockTracker placedBlocks;
     private NexusGuideService guide;
     private InvaderHealthService invaderHealth;
 
@@ -95,6 +98,7 @@ public final class InvasionCore extends JavaPlugin {
         this.perks = new PerkService(this);
         this.hud = new HudService();
         this.graves = new GraveService(this, config);
+        this.placedBlocks = new PlacedBlockTracker(this, nexuses);
         // 侵略者の破壊はすべて FortifyService を通るので、そこで墓を守る
         fortify.protect(graves::isGrave);
 
@@ -137,6 +141,7 @@ public final class InvasionCore extends JavaPlugin {
         traps.load();
         perks.load();
         graves.load();
+        placedBlocks.load();
 
         // ---- 登録 ----
         new RecipeRegistrar(this).registerAll();
@@ -155,7 +160,7 @@ public final class InvasionCore extends JavaPlugin {
         this.gadgets = new GadgetListener(this, nexuses, registry, perks, fortify, pregame);
         getServer().getPluginManager().registerEvents(gadgets, this);
         InvaderListener invaderListener = new InvaderListener(config, nexuses, registry, spawner, ai,
-                fortify, breachLog, shards, perks, contributions, stages, heat, waves);
+                fortify, breachLog, shards, perks, contributions, stages, heat, waves, placedBlocks);
         getServer().getPluginManager().registerEvents(invaderListener, this);
         // 有効化より前に読み込まれていたチャンク（スポーン周辺など）には読み込みイベントが来ないので、
         // 前回の異常終了で残った侵略Mobをここで一掃する。
@@ -170,6 +175,8 @@ public final class InvasionCore extends JavaPlugin {
                 new PlayerListener(config, nexuses, heat, perks, hud, shardSound, shards), this);
         getServer().getPluginManager().registerEvents(new GraveListener(graves), this);
         getServer().getPluginManager().registerEvents(shardLoot, this);
+        getServer().getPluginManager().registerEvents(placedBlocks, this);
+        getServer().getPluginManager().registerEvents(new DeathPenaltyListener(this, config, nexuses), this);
 
         SetupChecklist setupChecklist = new SetupChecklist(config, nexuses, stages);
         InvasionCommands commands = new InvasionCommands(
@@ -286,6 +293,9 @@ public final class InvasionCore extends JavaPlugin {
         }
         if (graves != null) {
             graves.save();
+        }
+        if (placedBlocks != null) {
+            placedBlocks.save();
         }
     }
 

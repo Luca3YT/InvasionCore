@@ -21,6 +21,15 @@
 プラグインが独自アイテムにだけ付けている **CustomModelData**（`config.yml` の `custom-model-data`）を見て、
 独自アイテムのときだけ絵を差し替えています。
 
+| アイテム | 付いている CustomModelData | /give で同じものを付けるとき |
+|---|---|---|
+| Shard | 文字列 `"shard"` | `custom_model_data={strings:["shard"]}` |
+| 帰還の羅針盤 | 数値 `1` | `custom_model_data={floats:[1]}` |
+| 強化ハンマー | 文字列 `"hammer"` | `custom_model_data={strings:["hammer"]}` |
+
+`config.yml` で数字で書いた値は数値、`""` で囲んだ値は文字列として付きます。
+自分で作ったパックや配布されているパックを使うときは、そのパックが見ている値に合わせてください。
+
 ## パックの作り方
 
 1. 上の名前で PNG を `textures/` に置く。

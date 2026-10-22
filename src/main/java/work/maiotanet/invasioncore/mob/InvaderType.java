@@ -45,11 +45,14 @@ public enum InvaderType {
             Material.GOLDEN_HELMET, Material.SCAFFOLDING),
 
     /** 自爆。壁とタレットを吹き飛ばす。 */
-    BOMBER("爆導体", EntityType.CREEPER, 0.85, 1.10, 1.00, 7, 26, 24,
+    BOMBER("爆導体", EntityType.CREEPER, 0.85, 1.10, 1.00, 7, 26, 40,
             null, null),
 
-    /** 質量爆弾を放物線で撃ち込む砲撃型。遠距離から拠点を削る。 */
-    LOBBER("投擲手", EntityType.WITHER_SKELETON, 0.90, 0.80, 1.00, 9, 28, 16,
+    /**
+     * 質量爆弾を放物線で撃ち込む砲撃型。遠距離から拠点の地形ごと削り過ぎたので、ウェーブには出さない
+     * （重みは爆導体へ移した）。管理コマンドでの確認用に種別だけ残している。
+     */
+    LOBBER("投擲手", EntityType.WITHER_SKELETON, 0.90, 0.80, 1.00, 9, 28, 0,
             null, Material.TNT),
 
     /** 超重装。足は遅いがノックバックが効かず、ネクサスへの一撃が重い。 */
