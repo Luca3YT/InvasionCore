@@ -2,6 +2,10 @@ package work.maiotanet.invasioncore.command;
 
 import io.papermc.paper.command.brigadier.BasicCommand;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
+import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -18,11 +22,13 @@ import work.maiotanet.invasioncore.mob.MutationTier;
 import work.maiotanet.invasioncore.nexus.Nexus;
 import work.maiotanet.invasioncore.nexus.NexusManager;
 import work.maiotanet.invasioncore.perk.PerkService;
+import work.maiotanet.invasioncore.setup.SetupChecklist;
 import work.maiotanet.invasioncore.stage.GameStageService;
 import work.maiotanet.invasioncore.ui.NexusGui;
 import work.maiotanet.invasioncore.util.Text;
 import work.maiotanet.invasioncore.wave.WaveEngine;
 import work.maiotanet.invasioncore.wave.WaveModifier;
+import work.maiotanet.invasioncore.web.WebServer;
 import work.maiotanet.invasioncore.world.BreachLog;
 import work.maiotanet.invasioncore.world.WorldEventService;
 
@@ -42,14 +48,14 @@ public final class InvasionCommands implements BasicCommand {
     private static final String ADMIN_PERMISSION = "invasioncore.admin";
 
     private static final List<String> ROOT = List.of(
-            "status", "join", "leave", "stop", "perks", "top", "give", "admin", "help");
+            "status", "join", "leave", "stop", "perks", "top", "setup", "give", "tp", "admin", "help");
     private static final List<String> ITEMS = List.of(
             "nexus", "hammer", "shard", "kit",
             "turret_arrow", "turret_flame", "turret_frost", "turret_heal",
-            "spike", "mine", "flash", "medkit", "barrier");
+            "spike", "mine", "flash", "medkit", "barrier", "recall");
     private static final List<String> ADMIN = List.of(
             "forcewave", "setlevel", "setday", "restore", "despawn", "reload", "info",
-            "list", "create", "activate", "spawn", "boss", "points", "airdrop");
+            "list", "create", "activate", "spawn", "boss", "points", "airdrop", "end", "web");
 
     private final InvasionCore plugin;
     private final NexusManager nexuses;
@@ -62,11 +68,14 @@ public final class InvasionCommands implements BasicCommand {
     private final InvaderSpawner spawner;
     private final WorldEventService worldEvents;
     private final BreachLog breachLog;
+    private final SetupChecklist setup;
+    /** Web 機能が無効なら null。 */
+    private WebServer web;
 
     public InvasionCommands(InvasionCore plugin, NexusManager nexuses, GameStageService stages,
                             ShardService shards, PerkService perks, NexusGui gui,
                             WaveEngine waves, InvaderRegistry registry, InvaderSpawner spawner,
-                            WorldEventService worldEvents, BreachLog breachLog) {
+                            WorldEventService worldEvents, BreachLog breachLog, SetupChecklist setup) {
         this.plugin = plugin;
         this.nexuses = nexuses;
         this.stages = stages;
@@ -78,6 +87,11 @@ public final class InvasionCommands implements BasicCommand {
         this.spawner = spawner;
         this.worldEvents = worldEvents;
         this.breachLog = breachLog;
+        this.setup = setup;
+    }
+
+    public void web(WebServer web) {
+        this.web = web;
     }
 
     @Override
@@ -94,7 +108,9 @@ public final class InvasionCommands implements BasicCommand {
             case "stop" -> stop(sender);
             case "perks" -> openPerks(sender);
             case "top" -> top(sender);
+            case "setup" -> setup(sender);
             case "give" -> give(sender, args);
+            case "tp" -> teleport(sender, args);
             case "admin" -> admin(sender, args);
             default -> sendHelp(sender);
         }
@@ -108,6 +124,9 @@ public final class InvasionCommands implements BasicCommand {
         String head = args[0].toLowerCase(Locale.ROOT);
         if (head.equals("give") && args.length == 2) {
             return filter(ITEMS, args[1]);
+        }
+        if (head.equals("tp") && args.length == 2) {
+            return filter(List.of("nexus"), args[1]);
         }
         if (head.equals("admin") && args.length == 2) {
             return filter(ADMIN, args[1]);
@@ -134,9 +153,10 @@ public final class InvasionCommands implements BasicCommand {
                     + " / 侵略者: " + registry.totalAlive()));
             return;
         }
-        Nexus nexus = nexuses.nearest(player.getLocation());
+        // 参加はサーバー単位なので、遠出していてもネザーにいても、その1基を対象にする
+        Nexus nexus = nexuses.primary();
         if (nexus == null) {
-            player.sendMessage(Text.warn("近くにネクサスがない。"));
+            player.sendMessage(Text.warn("ネクサスがまだ置かれていない。"));
             return;
         }
         int stage = stages.computeCurrent(nexus);
@@ -167,9 +187,10 @@ public final class InvasionCommands implements BasicCommand {
             sender.sendMessage(Text.error("プレイヤー専用のコマンドだ。"));
             return;
         }
-        Nexus nexus = nexuses.nearest(player.getLocation());
+        // 参加はサーバー単位なので、遠出していてもネザーにいても、その1基を対象にする
+        Nexus nexus = nexuses.primary();
         if (nexus == null) {
-            player.sendMessage(Text.warn("近くにネクサスがない。"));
+            player.sendMessage(Text.warn("ネクサスがまだ置かれていない。"));
             return;
         }
         nexus.members().add(player.getUniqueId());
@@ -190,6 +211,32 @@ public final class InvasionCommands implements BasicCommand {
         player.sendMessage(removed > 0
                 ? Text.good("防衛から離脱した。")
                 : Text.warn("参加しているネクサスがない。"));
+    }
+
+    /**
+     * 運営がネクサスのそばへ飛ぶ。配信中に遠くの参加者の様子を見に行ったあと、すぐ拠点へ戻れるように。
+     * ディメンションをまたいでも使える。
+     */
+    private void teleport(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(Text.error("プレイヤー専用のコマンドだ。"));
+            return;
+        }
+        if (!player.hasPermission(ADMIN_PERMISSION)) {
+            player.sendMessage(Text.error("権限がない。"));
+            return;
+        }
+        if (args.length < 2 || !args[1].equalsIgnoreCase("nexus")) {
+            player.sendMessage(Text.warn("使い方: /invasion tp nexus"));
+            return;
+        }
+        Location spot = nexuses.standingSpot(nexuses.primary());
+        if (spot == null) {
+            player.sendMessage(Text.warn("ネクサスがまだ置かれていない。"));
+            return;
+        }
+        player.teleport(spot);
+        player.sendMessage(Text.good("ネクサスのそばへ移動した。"));
     }
 
     private void stop(CommandSender sender) {
@@ -217,7 +264,7 @@ public final class InvasionCommands implements BasicCommand {
             sender.sendMessage(Text.error("プレイヤー専用のコマンドだ。"));
             return;
         }
-        gui.openPerks(player, nexuses.nearest(player.getLocation()));
+        gui.openPerks(player, nexuses.primary());
     }
 
     private void top(CommandSender sender) {
@@ -236,6 +283,25 @@ public final class InvasionCommands implements BasicCommand {
             sender.sendMessage(Text.prefixed(Text.of("  " + (i + 1) + ". " + name
                     + " — 踏破 " + p.bloodMoonsSurvived() + " 回 / 最高 Wave " + p.bestWave()
                     + " / 撃破 " + p.totalKills(), Text.MUTED)));
+        }
+    }
+
+    /**
+     * ゲーム開始前の確認項目を表示する。
+     * 直すコマンドを実行できるのは管理者だけなので、表示も管理者に限る。
+     */
+    private void setup(CommandSender sender) {
+        if (!sender.hasPermission(ADMIN_PERMISSION)) {
+            sender.sendMessage(Text.error("権限がない。"));
+            return;
+        }
+        Location origin = sender instanceof Player player ? player.getLocation() : null;
+        List<SetupChecklist.Check> checks = setup.run(origin);
+        Nexus nexus = origin != null
+                ? nexuses.nearest(origin)
+                : nexuses.primary();
+        for (var line : setup.render(checks, nexus)) {
+            sender.sendMessage(line);
         }
     }
 
@@ -283,6 +349,7 @@ public final class InvasionCommands implements BasicCommand {
             case "flash" -> player.getInventory().addItem(InvasionItems.flashCharge(amount));
             case "medkit" -> player.getInventory().addItem(InvasionItems.medkit(amount));
             case "barrier" -> player.getInventory().addItem(InvasionItems.barrier(amount));
+            case "recall" -> player.getInventory().addItem(InvasionItems.recall(amount));
             default -> {
                 sender.sendMessage(Text.error("不明なアイテム: " + args[1]));
                 return;
@@ -307,15 +374,19 @@ public final class InvasionCommands implements BasicCommand {
         // 複数基ある環境では /invasion admin list で並び順を確認できる。
         Nexus nexus = player != null
                 ? nexuses.nearest(player.getLocation())
-                : nexuses.all().stream().findFirst().orElse(null);
+                : nexuses.primary();
 
         switch (args[1].toLowerCase(Locale.ROOT)) {
             case "list" -> listNexuses(sender);
             case "create" -> createNexus(sender, args);
+            case "end" -> endGame(sender);
+            case "web" -> showWebUrls(sender);
             case "activate" -> {
                 if (requireNexus(sender, nexus)) {
                     // 管理コマンドなので Shard コストは取らず、崩壊状態からも復旧させる
-                    if (waves.forceActivate(nexus)) {
+                    if (!nexus.isActive() && nexuses.isFloating(nexus, true)) {
+                        sender.sendMessage(Text.error("ネクサスの真下が空中になっている。地面か固いブロックの上に置き直すこと。"));
+                    } else if (waves.forceActivate(nexus)) {
                         nexuses.save();
                         sender.sendMessage(Text.good("ネクサスを起動した（HP "
                                 + (int) nexus.health() + "）。"));
@@ -428,15 +499,76 @@ public final class InvasionCommands implements BasicCommand {
             return;
         }
         Location loc = new Location(world, x, y, z);
-        if (nexuses.at(loc) != null) {
-            sender.sendMessage(Text.error("その座標には既にネクサスがある。"));
+        if (!nexuses.all().isEmpty()) {
+            sender.sendMessage(Text.error("ネクサスはサーバーに1基だけ置ける。先に /invasion admin end で終了すること。"));
             return;
         }
         loc.getBlock().setType(Material.LODESTONE);
         Nexus nexus = nexuses.create(loc, null, sender.getName());
+        nexuses.joinAllOnline(nexus);
         nexuses.save();
         sender.sendMessage(Text.good("ネクサスを設置した: " + world.getName()
                 + " " + x + "," + y + "," + z + "（HP " + (int) nexus.health() + "）"));
+    }
+
+    /**
+     * 管理画面と OBS オーバーレイの URL を表示する。
+     * 管理画面の URL にはパスワードが入っているので、管理者にだけ見せる（admin サブコマンドなので権限は確認済み）。
+     */
+    private void showWebUrls(CommandSender sender) {
+        if (web == null || !web.isRunning()) {
+            sender.sendMessage(Text.error("Web 機能が動いていない。config.yml の web.enabled と web.port を確認すること。"));
+            return;
+        }
+        sender.sendMessage(Text.info("━━ 管理画面 ━━"));
+        for (String url : web.adminUrls()) {
+            sender.sendMessage(link(url));
+        }
+        sender.sendMessage(Text.info("━━ OBS オーバーレイ（ブラウザソースに入れる） ━━"));
+        for (String url : web.overlayUrls()) {
+            sender.sendMessage(link(url));
+        }
+        sender.sendMessage(Text.prefixed(Text.of("管理画面の URL にはパスワードが入っている。配信画面に映さないこと。", Text.WARN)));
+        if (!web.hasPublicUrl()) {
+            sender.sendMessage(Text.prefixed(Text.of("外部のサーバー（VPS など）なら、config.yml の web.public-url を設定すると"
+                    + "外から開ける URL が表示される。", Text.MUTED)));
+        }
+    }
+
+    private Component link(String url) {
+        return Text.prefixed(Text.of(url, Text.INFO)
+                .decorate(TextDecoration.UNDERLINED)
+                .clickEvent(ClickEvent.openUrl(url))
+                .hoverEvent(HoverEvent.showText(Text.of("クリックでブラウザを開く", Text.MUTED))));
+    }
+
+    /**
+     * ゲームを強制終了する。侵略者を撤収させ、ネクサスを中の共有 Shard・報酬ごと消す。
+     *
+     * <p>配信の終わりや、やり直したいときに使う。ネクサスが無くなるので、
+     * 次にネクサスを置いて起動するまでは「ゲーム開始前」の制限が戻る。
+     * ネクサスは1基しか置けないので、距離に関係なくその1基を対象にする。</p>
+     */
+    private void endGame(CommandSender sender) {
+        Nexus nexus = nexuses.primary();
+        if (nexus == null) {
+            sender.sendMessage(Text.error("終了するゲームがない（ネクサスが無い）。"));
+            return;
+        }
+        waves.deactivate(nexus, false);
+        breachLog.clear(nexus.id());
+        Location loc = nexus.location();
+        if (loc != null && loc.getBlock().getType() == Material.LODESTONE) {
+            loc.getBlock().setType(Material.AIR);
+        }
+        nexuses.remove(nexus);
+        nexuses.save();
+        for (Player p : plugin.getServer().getOnlinePlayers()) {
+            p.sendMessage(Text.warn("ゲームは管理者によって終了された。"));
+        }
+        if (!(sender instanceof Player)) {
+            sender.sendMessage(Text.good("ゲームを終了し、ネクサスを撤去した。"));
+        }
     }
 
     /** 指定種別の侵略Mobを湧かせる。バランス確認とトラブルシュートに使う。 */
@@ -585,7 +717,9 @@ public final class InvasionCommands implements BasicCommand {
         sender.sendMessage(Text.prefixed(Text.of("/invasion top — ランキング", Text.MUTED)));
         sender.sendMessage(Text.prefixed(Text.of("/invasion stop — 侵攻の停止（所有者）", Text.MUTED)));
         if (sender.hasPermission(ADMIN_PERMISSION)) {
+            sender.sendMessage(Text.prefixed(Text.of("/invasion setup — ゲーム開始前の確認", Text.MUTED)));
             sender.sendMessage(Text.prefixed(Text.of("/invasion give <item> [数] — アイテム配布", Text.MUTED)));
+            sender.sendMessage(Text.prefixed(Text.of("/invasion tp nexus — ネクサスのそばへ移動", Text.MUTED)));
             sender.sendMessage(Text.prefixed(Text.of("/invasion admin <sub> — 管理コマンド", Text.MUTED)));
         }
     }

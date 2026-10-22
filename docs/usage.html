@@ -125,13 +125,12 @@ td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
 @media (max-width: 560px) { .ladder { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* Crafting grids */
-.recipes { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 14px; margin-top: 14px; }
+.recipes { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin-top: 14px; }
+.recipe img { display: block; width: 100%; height: auto; image-rendering: pixelated; border-radius: 4px; }
+.recipe .mats { margin: 8px 0 0; font-size: 12.5px; color: var(--muted); }
 .recipe { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px; min-width: 0; }
 .recipe h4 { margin: 0 0 10px; font-size: 14.5px; display: flex; justify-content: space-between; gap: 8px; }
 .recipe h4 span { color: var(--muted); font-weight: 400; font-variant-numeric: tabular-nums; }
-.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; width: 100%; max-width: 210px; }
-.cell { aspect-ratio: 1; background: var(--sunk); border: 1px solid var(--line); border-radius: 3px; display: grid; place-items: center; font-size: 10.5px; line-height: 1.25; text-align: center; padding: 2px; color: var(--fg); overflow: hidden; max-width: 100%; }
-.cell.empty { background: transparent; border-style: dashed; }
 
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-top: 12px; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px; min-width: 0; }
@@ -197,12 +196,18 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
           <p>テスト用に一式欲しいときは <code>hammer</code>・<code>shard</code>・<code>turret_arrow</code> なども配れます（<a href="#commands">一覧</a>）。</p></div></li>
         <li><div><strong>拠点の中心にネクサスを置く</strong>
           <p>見た目はロードストーンです。周囲 <strong>48 ブロック</strong>が防衛範囲、<strong>40 ブロック</strong>以内が「侵略者が壁を壊してよい範囲」になります。範囲の外の建物は壊されません。</p>
+          <p><strong>地面か固いブロックの上に置いてください。</strong>真下が空中だと起動できません（侵略者が届かず、待つだけで勝ててしまうため）。起動したあとに真下を掘って浮かせると、つなぎ直すまで HP が毎秒減ります。侵略者の爆発がネクサスのすぐそばで起きたときも HP が減ります。</p>
           <p>ネクサス同士は 96 ブロック以上離す必要があります。</p></div></li>
+        <li><div><strong>開始前チェックをする</strong>
+          <p>ネクサスの近くで次のコマンドを打つと、ゲームを始められる状態かを一覧で確認できます。赤い <code>[✘]</code> は直さないと進まない項目、黄色の <code>[⚠]</code> は注意です。</p>
+          <div class="cmd"><span>/invasion setup</span><button type="button">コピー</button></div>
+          <p>直し方のある項目は、文字をクリックするとコマンドが入力欄に入るので、Enter を押すだけで直せます（例: 難易度がピースフルなら <code>/difficulty normal</code>）。すべて ✔ になったら次へ。</p></div></li>
         <li><div><strong>右クリックして「侵攻を起動する」</strong>
-          <p>ネクサスの画面が開きます。緑の染料のボタンを押すと Day 1 が始まります。日没後に起動した場合、その夜は襲撃が来ません。</p></div></li>
+          <p>ネクサスの画面が開きます。緑の染料のボタンを押すと Day 1 が始まり、待機中の制限が解除されます。日没後に起動した場合、その夜は襲撃が来ません。起動できるのは OP（<code>invasioncore.admin</code>）だけで、参加者が押しても動きません。</p></div></li>
         <li><div><strong>参加者を集める</strong>
-          <p>防衛範囲（48 ブロック）にいるプレイヤーは自動で参加者になります。範囲の外に出ることが多い人は、ネクサスの近くで次のコマンドを打っておくと、120 ブロック以内まで参加者として扱われます。</p>
-          <div class="cmd"><span>/invasion join</span><button type="button">コピー</button></div></div></li>
+          <p>サーバーに入った人は自動で参加者になります（どのディメンションにいても参加者として数えます）。起動するまでは「待機中」で、OP 以外はブロックの破壊・設置、アイテムを拾う・落とす、チェストや作業台を開ける、ボタン・レバー・感圧板などのレッドストーン部品を使う、Mob への攻撃ができません。体力と満腹度が常に回復するので死にません。画面下には参加人数とルールの案内が出ます。</p>
+          <p>ネクサスを置くまでは移動を制限しません。<strong>ネクサスを置いた瞬間に OP 以外の全員がネクサスのそばへテレポート</strong>し、起動するまではネクサスから 48 ブロック（防衛範囲）より先へ進めなくなります。後から入ってきた人も、ネクサスのそばへ移されます。</p>
+          <p>ルール説明の URL は <code>/rule</code> で表示できます（config.yml の <code>rules.url</code> で変更）。</p></div></li>
         <li><div><strong>壁と設備を整えて Day 7 を待つ</strong>
           <p>ここからは全員で準備です。<a href="#cycle">7日間の流れ</a>へ進んでください。</p></div></li>
       </ol>
@@ -213,7 +218,7 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
       <h2>7日間の流れ</h2>
       <span class="who player">参加者</span>
       <div class="cycle" role="list">
-        <div class="day" role="listitem"><b>Day 1</b><span>探索・採掘。夜も安全</span></div>
+        <div class="day" role="listitem"><b>Day 1</b><span>探索・採掘。夜の襲撃なし</span></div>
         <div class="day" role="listitem"><b>Day 2</b><span>壁を作り始める</span></div>
         <div class="day raid" role="listitem"><b>Day 3</b><span>夜に小規模襲撃が始まる</span></div>
         <div class="day raid" role="listitem"><b>Day 4</b><span>強化・タレット設置</span></div>
@@ -221,14 +226,15 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
         <div class="day raid" role="listitem"><b>Day 6</b><span>最終確認</span></div>
         <div class="day moon-day" role="listitem"><b>Day 7</b><span>日没から血の月</span></div>
       </div>
-      <p>Day 3 以降は、血の月以外の夜にも小規模な襲撃があります。準備期間中にも、次のようなイベントが起きます。</p>
+      <p>Day 3 以降は、血の月以外の夜にも小規模な襲撃があります。Day 1・Day 2 は猶予期間で、叫喚体も湧かず、徘徊ホードも弱いグラント 3〜5 体だけです。準備期間中にも、次のようなイベントが起きます。</p>
       <div class="table-wrap"><table>
         <thead><tr><th>イベント</th><th>内容</th></tr></thead>
         <tbody>
           <tr><td>徘徊ホード</td><td>10〜25 分おきに、少数の侵略者が拠点に向かってくる</td></tr>
           <tr><td>空中投下</td><td>20 分おきに、拠点から 40〜80 ブロック離れた場所へ補給物資の樽が落ちる（15 分で消える）。座標はチャットに出る</td></tr>
           <tr><td>ヒートと叫喚体</td><td>拠点での採掘・建築・撃破・射撃が「熱」として溜まり、溜まりすぎると<strong>叫喚体</strong>が現れて仲間を呼ぶ。サイドバーの「ヒート」が赤くなったら手を止める</td></tr>
-          <tr><td>死亡バックパック</td><td>拠点の近くで死ぬと、所持品が死亡地点の樽にまとめられる（30 分で中身がその場に落ちる）</td></tr>
+          <tr><td>墓</td><td>どこで死んでも、所持品が死亡地点の墓（本人の頭）にまとめられる。右クリックか左クリックで回収。最初の 10 分は本人だけ（他の人がクリックすると本人に「許可する / 断る」が届く）、その後はだれでも。回収されるまで消えない</td></tr>
+          <tr><td>攻撃の警告</td><td>ネクサスが殴られると、全員に画面中央の文字・チャット（残り HP）・警告音で知らせる（10 秒に 1 回まで）</td></tr>
         </tbody>
       </table></div>
       <p>血の月の当日は、昼過ぎ・夕方・日没直前の 3 回、チャットとサウンドで警告が出ます。</p>
@@ -269,7 +275,7 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
 
     <section id="fortify">
       <h2>拠点を固める</h2>
-      <p>通貨は <strong class="shard">Shard</strong>（アメジストの欠片の見た目）です。侵略者を倒すと落とし、防衛成功でも配られます。インベントリに入っている実物を使います。</p>
+      <p>通貨は <strong class="shard">Shard</strong>（アメジストの欠片の見た目）です。侵略者を倒すと落とし、防衛成功でも配られます。普通の敵（ゾンビ・スケルトンなど）をプレイヤーが倒しても 1 個落とします（スポナーから出た敵は対象外。<code>economy.vanilla-mob-shard</code>）。インベントリに入っている実物を使います。</p>
       <h3>強化ハンマー</h3>
       <p>強化ハンマー（鉄の斧の見た目）でブロックを右クリックすると、そのブロックの状態に応じて次のどれかが起きます。防衛範囲の中でだけ使えます。</p>
       <div class="table-wrap"><table>
@@ -290,6 +296,8 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
       </div>
       <p>未強化のブロックも硬さに応じた耐久を持っていますが、丸石で約 110 と低めです。土で囲んでも一瞬で抜かれます。</p>
       <p><strong>応急補修キット</strong>（ハニカムの見た目）を強化ブロックに右クリックすると、Shard なしで即座に全回復します。</p>
+      <h3>ネクサス内の Shard（共有）</h3>
+      <p>Shard を手に持ってネクサスを右クリックするとその束を、ネクサスの画面の「Shard をネクサスに預ける」で手持ちを全部、ネクサスに預けられます。預けた分はサイドバーに「ネクサス内の Shard」と出て、強化・修理・アップグレード・再建で <strong>手持ちが足りない分に自動で使われます</strong>。引き出せるのは管理者だけです（画面の「ネクサス内の Shard」から 1・10・64・全部）。</p>
       <div class="note"><strong>侵略者が得意なこと</strong>：壁蟲は壁を登り、工兵は足場を積んで高所を越え、掘削者は地面を掘って入ってきます。高い壁だけ・一枚壁だけでは止まりません。厚み・屋根・罠の組み合わせが大事です。</div>
     </section>
 
@@ -318,6 +326,7 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
         <div class="card"><b>閃光弾</b><span class="meta">雪玉の見た目・投げる</span><p>着弾点から 7 ブロック以内の侵略者を盲目・鈍足にして、狙いを外させます。ボスにも効きます。</p></div>
         <div class="card"><b>救急キット</b><span class="meta">ガストの涙の見た目</span><p>自分と、周囲 6 ブロックの味方をまとめて回復します。</p></div>
         <div class="card"><b>緊急バリア</b><span class="meta">鉄のトラップドアの見た目</span><p>右クリックしたブロックの面に、鋼鉄並みに硬い 3×3 の壁を 45 秒だけ張ります。壁に穴が開いたときの応急処置に。</p></div>
+        <div class="card"><b>帰還の羅針盤</b><span class="meta">回復コンパスの見た目</span><p>右クリックして 7 秒動かずに待つと、どこからでもネクサスのそばへ戻れます。動くかダメージを受けると中断（羅針盤は減りません）。使うとなくなります。ゲーム開始時に 1 人 1 個配られ、ネクサスの画面で 10 Shard で買えるほか、作業台でも作れます。</p></div>
       </div>
     </section>
 
@@ -416,6 +425,9 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
           <tr><td><code>/invasion leave</code></td><td>防衛から抜ける</td></tr>
           <tr><td><code>/invasion perks</code></td><td>パーク画面を開く</td></tr>
           <tr><td><code>/invasion top</code></td><td>血の月の踏破ランキング</td></tr>
+          <tr><td><code>/rule</code></td><td>ルール説明の URL を表示する</td></tr>
+          <tr><td><code>/bug</code>（<code>/issues</code>）</td><td>バグ報告・意見のフォームと、送られた報告の一覧の URL を表示する</td></tr>
+          <tr><td><code>/patchnote</code></td><td>最新のパッチノートの URL を表示する</td></tr>
           <tr><td><code>/invasion stop</code></td><td>侵攻を止める（ネクサスの所有者と管理者のみ）</td></tr>
         </tbody>
       </table></div>
@@ -423,7 +435,8 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
       <div class="table-wrap"><table>
         <thead><tr><th>コマンド</th><th>内容</th></tr></thead>
         <tbody>
-          <tr><td><code>/invasion give &lt;アイテム&gt; [数]</code></td><td>nexus / hammer / shard / kit / turret_arrow / turret_flame / turret_frost / turret_heal / spike / mine / flash / medkit / barrier</td></tr>
+          <tr><td><code>/invasion setup</code></td><td>ゲームを始める前の確認。難易度・ゲームルール・ネクサスの状態などを一覧表示し、直すコマンドをクリックで入力欄に入れられる</td></tr>
+          <tr><td><code>/invasion give &lt;アイテム&gt; [数]</code></td><td>nexus / hammer / shard / kit / turret_arrow / turret_flame / turret_frost / turret_heal / spike / mine / flash / medkit / barrier / recall</td></tr>
           <tr><td><code>/invasion admin activate</code></td><td>Shard なしで起動する。崩壊したネクサスも復旧できる</td></tr>
           <tr><td><code>/invasion admin setday &lt;日&gt;</code></td><td>経過日数を変える。<code>7</code> にして夜にすると、すぐ血の月を試せる</td></tr>
           <tr><td><code>/invasion admin setlevel &lt;Lv&gt;</code></td><td>ネクサスのレベルを変える</td></tr>
@@ -431,6 +444,9 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
           <tr><td><code>/invasion admin spawn &lt;種類&gt; [数]</code></td><td>侵略者を湧かせる（稼働中のネクサスが必要）</td></tr>
           <tr><td><code>/invasion admin boss &lt;名前&gt;</code></td><td>ボスを出す（warlord / siege_titan / blight_queen / emberheart / void_herald）</td></tr>
           <tr><td><code>/invasion admin airdrop</code></td><td>補給物資をすぐ落とす</td></tr>
+          <tr><td><code>/invasion tp nexus</code></td><td>ネクサスのそばへテレポートする（OP のみ）。ネザーなど別のディメンションからでも使える</td></tr>
+          <tr><td><code>/invasion admin web</code></td><td>管理画面（スマホからも開ける）と OBS オーバーレイの URL を表示する。管理画面の URL はパスワード入りなので配信に映さない</td></tr>
+          <tr><td><code>/invasion admin end</code></td><td>ゲームを強制終了する。侵略者を消し、ネクサスを中の Shard・報酬ごと撤去する（確認なし・元に戻せない）</td></tr>
           <tr><td><code>/invasion admin points &lt;数&gt;</code></td><td>自分にパークポイントを付与する</td></tr>
           <tr><td><code>/invasion admin despawn</code></td><td>侵略者を全員消す</td></tr>
           <tr><td><code>/invasion admin restore</code></td><td>侵略者に壊されたブロックを元に戻す</td></tr>
@@ -450,12 +466,12 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
           <tr><td>敵が多すぎて配信が止まりそう</td><td><code>/invasion admin despawn</code> で全員消す</td></tr>
           <tr><td>ネクサスを片付けたい</td><td><code>/invasion stop</code> で止めてから壊す（稼働中は OP しか壊せない）</td></tr>
           <tr><td>ブロックが置けない</td><td>スポーン保護を確認する（<code>spawn-protection=0</code>）</td></tr>
-          <tr><td>侵略者がすぐ消える</td><td>難易度がピースフルになっていないか確認する</td></tr>
+          <tr><td>侵略者がすぐ消える・血の月が止まっている</td><td>難易度がピースフルになっていないか確認する。<code>/invasion setup</code> で一覧確認できる。ピースフルの間は血の月が止まり、ノーマルに戻すと再開する</td></tr>
         </tbody>
       </table></div>
     </section>
 
-    <footer>InvasionCore 0.1.0 / Paper 26.2 build 92。数値は既定の config.yml の値です。サーバーの設定を変えている場合は異なります。</footer>
+    <footer>InvasionCore 0.3.1 / Paper 26.2 build 92。数値は既定の config.yml の値です。サーバーの設定を変えている場合は異なります。</footer>
   </main>
 </div>
 
@@ -463,18 +479,19 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
 (function () {
   // 3x3 crafting grids. Rows are 3-character strings; a space is an empty slot.
   var recipes = [
-    { name: "ネクサス", out: 1, rows: ["ODO", "DNP", "ODO"], key: { O: "黒曜石", D: "ダイヤ", N: "ネザースター", P: "エンダーアイ" } },
-    { name: "強化ハンマー", out: 1, rows: ["III", "ISI", " S "], key: { I: "鉄インゴット", S: "棒" } },
-    { name: "応急補修キット", out: 2, rows: ["SIS", "IHI", "SIS"], key: { S: "糸", I: "鉄ナゲット", H: "ハニカム" } },
-    { name: "射撃タレット", out: 1, rows: ["III", "IDI", "IRI"], key: { I: "鉄インゴット", D: "ディスペンサー", R: "レッドストーンブロック" } },
-    { name: "火炎タレット", out: 1, rows: ["IBI", "BDB", "IRI"], key: { I: "鉄インゴット", B: "ブレイズロッド", D: "ディスペンサー", R: "レッドストーンブロック" } },
-    { name: "凍結タレット", out: 1, rows: ["IBI", "BDB", "IRI"], key: { I: "鉄インゴット", B: "青氷", D: "ディスペンサー", R: "レッドストーンブロック" } },
-    { name: "修復タレット", out: 1, rows: ["IGI", "GDG", "IRI"], key: { I: "鉄インゴット", G: "金ブロック", D: "ディスペンサー", R: "レッドストーンブロック" } },
-    { name: "スパイクトラップ", out: 4, rows: [" I ", "III", "SSS"], key: { I: "鉄インゴット", S: "石" } },
-    { name: "爆裂地雷", out: 2, rows: ["III", "ITI", "IRI"], key: { I: "鉄インゴット", T: "TNT", R: "レッドストーン" } },
-    { name: "閃光弾", out: 4, rows: [" G ", "GBG", " G "], key: { G: "グロウストーンダスト", B: "火薬" } },
-    { name: "救急キット", out: 2, rows: ["SPS", "PGP", "SPS"], key: { S: "糸", P: "輝くスイカの薄切り", G: "金のニンジン" } },
-    { name: "緊急バリア", out: 2, rows: ["IRI", "RDR", "IRI"], key: { I: "鉄ブロック", R: "レッドストーンブロック", D: "ダイヤ" } }
+    { name: "ネクサス", img: "nexus", out: 1, rows: ["ODO", "DNP", "ODO"], key: { O: "黒曜石", D: "ダイヤ", N: "ネザースター", P: "エンダーアイ" } },
+    { name: "強化ハンマー", img: "hammer", out: 1, rows: ["III", "ISI", " S "], key: { I: "鉄インゴット", S: "棒" } },
+    { name: "応急補修キット", img: "repair_kit", out: 2, rows: ["SIS", "IHI", "SIS"], key: { S: "糸", I: "鉄ナゲット", H: "ハニカム" } },
+    { name: "射撃タレット", img: "turret_arrow", out: 1, rows: ["III", "IDI", "IRI"], key: { I: "鉄インゴット", D: "ディスペンサー", R: "レッドストーンブロック" } },
+    { name: "火炎タレット", img: "turret_flame", out: 1, rows: ["IBI", "BDB", "IRI"], key: { I: "鉄インゴット", B: "ブレイズロッド", D: "ディスペンサー", R: "レッドストーンブロック" } },
+    { name: "凍結タレット", img: "turret_frost", out: 1, rows: ["IBI", "BDB", "IRI"], key: { I: "鉄インゴット", B: "青氷", D: "ディスペンサー", R: "レッドストーンブロック" } },
+    { name: "修復タレット", img: "turret_heal", out: 1, rows: ["IGI", "GDG", "IRI"], key: { I: "鉄インゴット", G: "金ブロック", D: "ディスペンサー", R: "レッドストーンブロック" } },
+    { name: "スパイクトラップ", img: "trap_spike", out: 4, rows: [" I ", "III", "SSS"], key: { I: "鉄インゴット", S: "石" } },
+    { name: "爆裂地雷", img: "trap_mine", out: 2, rows: ["III", "ITI", "IRI"], key: { I: "鉄インゴット", T: "TNT", R: "レッドストーン" } },
+    { name: "閃光弾", img: "flash_charge", out: 4, rows: [" G ", "GBG", " G "], key: { G: "グロウストーンダスト", B: "火薬" } },
+    { name: "救急キット", img: "medkit", out: 2, rows: ["SPS", "PGP", "SPS"], key: { S: "糸", P: "輝くスイカの薄切り", G: "金のニンジン" } },
+    { name: "緊急バリア", img: "barrier", out: 2, rows: ["IRI", "RDR", "IRI"], key: { I: "鉄ブロック", R: "レッドストーンブロック", D: "ダイヤ" } },
+    { name: "帰還の羅針盤（並べ方は自由）", img: "recall", out: 1, rows: ["PPP", "III", "II "], key: { P: "紙", I: "鉄インゴット" } }
   ];
   var list = document.getElementById("recipe-list");
   recipes.forEach(function (r) {
@@ -486,29 +503,23 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
     count.textContent = "×" + r.out;
     h.appendChild(count);
     card.appendChild(h);
-    var grid = document.createElement("div");
-    grid.className = "grid3";
-    grid.setAttribute("role", "img");
     var label = [];
-    r.rows.forEach(function (row) {
-      for (var i = 0; i < 3; i++) {
-        var ch = row.charAt(i);
-        var cell = document.createElement("div");
-        if (ch === " " || !ch) {
-          cell.className = "cell empty";
-        } else {
-          cell.className = "cell";
-          cell.textContent = r.key[ch];
-        }
-        grid.appendChild(cell);
-      }
-    });
     Object.keys(r.key).forEach(function (k) {
       var n = r.rows.join("").split(k).length - 1;
       label.push(r.key[k] + "×" + n);
     });
-    grid.setAttribute("aria-label", r.name + "の材料: " + label.join("、"));
-    card.appendChild(grid);
+    // 作業台の画面にアイテムの絵を並べた画像（scripts/recipe-images/RecipeImages.java で作る）
+    var img = document.createElement("img");
+    img.src = "images/recipes/" + r.img + ".png";
+    img.width = 512;
+    img.height = 256;
+    img.loading = "lazy";
+    img.alt = r.name + "の作り方。材料: " + label.join("、");
+    card.appendChild(img);
+    var mats = document.createElement("p");
+    mats.className = "mats";
+    mats.textContent = "材料: " + label.join("、");
+    card.appendChild(mats);
     list.appendChild(card);
   });
 

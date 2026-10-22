@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.function.Predicate;
 import java.util.logging.Level;
 
 /**
@@ -69,6 +70,12 @@ public final class FortifyService {
     private final Plugin plugin;
     private final Map<String, Fortified> blocks = new HashMap<>();
     private final File file;
+
+    /**
+     * 侵略者に壊させないブロック（墓など）。
+     * 侵略者・ボス・質量爆弾のブロック破壊はすべて damage() を通るので、ここ1か所で止める。
+     */
+    private Predicate<Block> unbreakable = block -> false;
 
     public FortifyService(Plugin plugin) {
         this.plugin = plugin;
@@ -171,12 +178,16 @@ public final class FortifyService {
 
     // ---------- 破壊 ----------
 
+    public void protect(Predicate<Block> unbreakable) {
+        this.unbreakable = unbreakable;
+    }
+
     /**
      * ブロックにダメージを与える。破壊されたら true。
      * 未強化ブロックは硬度ベースの暗黙HPを持ち、都度メモリに載せずに即時判定する。
      */
     public boolean damage(Block block, double amount) {
-        if (block.getType().isAir()) {
+        if (block.getType().isAir() || unbreakable.test(block)) {
             return false;
         }
         String k = key(block);

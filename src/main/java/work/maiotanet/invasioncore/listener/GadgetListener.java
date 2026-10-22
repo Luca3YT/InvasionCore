@@ -33,7 +33,9 @@ import work.maiotanet.invasioncore.mob.Invader;
 import work.maiotanet.invasioncore.mob.InvaderRegistry;
 import work.maiotanet.invasioncore.nexus.NexusManager;
 import work.maiotanet.invasioncore.perk.PerkService;
+import work.maiotanet.invasioncore.pregame.PreGameService;
 import work.maiotanet.invasioncore.util.Keys;
+import work.maiotanet.invasioncore.util.Sounds;
 import work.maiotanet.invasioncore.util.Text;
 
 import java.util.ArrayList;
@@ -58,6 +60,7 @@ public final class GadgetListener implements Listener {
     private final InvaderRegistry registry;
     private final PerkService perks;
     private final FortifyService fortify;
+    private final PreGameService pregame;
 
     /**
      * 展開中の緊急バリアのブロック位置。
@@ -68,7 +71,8 @@ public final class GadgetListener implements Listener {
     private final Set<Location> barrierBlocks = new HashSet<>();
 
     public GadgetListener(Plugin plugin, NexusManager nexuses, InvaderRegistry registry,
-                          PerkService perks, FortifyService fortify) {
+                          PerkService perks, FortifyService fortify, PreGameService pregame) {
+        this.pregame = pregame;
         this.plugin = plugin;
         this.nexuses = nexuses;
         this.registry = registry;
@@ -105,6 +109,11 @@ public final class GadgetListener implements Listener {
             case InvasionItems.BARRIER -> {
                 if (event.getClickedBlock() != null) {
                     event.setCancelled(true);
+                    if (pregame.isRestricted(player)) {
+                        // バリアはブロックを置くので、開始前の「置く」の禁止と揃える
+                        pregame.notice(player, "ゲーム開始まではブロックを置けません。");
+                        return;
+                    }
                     deployBarrier(player, held, event.getClickedBlock(), event.getBlockFace());
                 }
             }
@@ -180,6 +189,7 @@ public final class GadgetListener implements Listener {
     private void deployBarrier(Player player, ItemStack held, Block clicked, BlockFace face) {
         if (nexuses.nearest(clicked.getLocation()) == null) {
             Text.actionBarError(player, "ネクサスの防衛範囲内でのみ展開できる。");
+            Sounds.fail(player);
             return;
         }
         Block origin = clicked.getRelative(face);
@@ -206,6 +216,7 @@ public final class GadgetListener implements Listener {
         }
         if (placed.isEmpty()) {
             Text.actionBarWarn(player, "展開できる空間がない。");
+            Sounds.fail(player);
             return;
         }
         World world = origin.getWorld();

@@ -5,6 +5,7 @@ import org.bukkit.Location;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Block;
+import org.bukkit.entity.Enemy;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Monster;
 import org.bukkit.entity.Player;
@@ -154,12 +155,14 @@ public final class InvaderListener implements Listener {
     public void onInvaderExplode(EntityExplodeEvent event) {
         Nexus nexus;
         double power;
+        double tierMultiplier;
 
         Invader invader = registry.get(event.getEntity());
         if (invader != null) {
             // 爆導体の自爆
             nexus = nexuses.byId(invader.nexusId());
-            power = 400.0 * invader.tier().damageMultiplier();
+            tierMultiplier = invader.tier().damageMultiplier();
+            power = 400.0 * tierMultiplier;
         } else {
             // 投擲手が撃ち込んだ質量爆弾
             var pdc = event.getEntity().getPersistentDataContainer();
@@ -173,6 +176,8 @@ public final class InvaderListener implements Listener {
                 return;
             }
             power = pdc.getOrDefault(Keys.PROJECTILE_POWER, PersistentDataType.DOUBLE, 520.0);
+            // 撃った時点の変異ティアの倍率は威力に掛け込まれている
+            tierMultiplier = power / 520.0;
         }
 
         List<Block> affected = new ArrayList<>(event.blockList());
@@ -184,6 +189,14 @@ public final class InvaderListener implements Listener {
         }
         Location center = nexus.center();
         double breachRadiusSq = config.nexusBreachRadius() * (double) config.nexusBreachRadius();
+
+        // ネクサスのすぐそばで爆発したら HP も削る。殴れない高所に置かれても、爆弾なら届くようにする
+        double reach = config.nexusExplosionRadius();
+        if (center != null && reach > 0 && nexus.isActive()
+                && center.getWorld().equals(event.getLocation().getWorld())
+                && center.distanceSquared(event.getLocation()) <= reach * reach) {
+            waves.damageNexus(nexus, config.nexusExplosionDamage() * tierMultiplier);
+        }
 
         for (Block block : affected) {
             if (nexus.isAt(block.getLocation())) {
@@ -271,6 +284,34 @@ public final class InvaderListener implements Listener {
     }
 
     // ---------- 撃破 ----------
+
+    /**
+     * 侵略者ではない普通の敵（ゾンビ・スケルトンなど）も、プレイヤーが倒せば Shard を少しだけ落とす。
+     *
+     * <p>準備期間に外へ素材集めに出ても Shard が少しずつ貯まるようにして、
+     * 「侵略者が来るまで拠点で待つ」以外の稼ぎ方を作る。
+     * スポナーの敵まで落とすとトラップタワーで無限に稼げるので、既定では対象外。
+     * 侵略者の撃破（下の onDeath）は MONITOR で登録簿から外すので、ここではまだ判別できる。</p>
+     */
+    @EventHandler(ignoreCancelled = true)
+    public void onVanillaEnemyDeath(EntityDeathEvent event) {
+        int amount = config.vanillaMobShard();
+        if (amount <= 0 || !(event.getEntity() instanceof Enemy)) {
+            return;
+        }
+        if (registry.get(event.getEntity()) != null
+                || event.getEntity().getPersistentDataContainer().has(Keys.INVADER_NEXUS, PersistentDataType.STRING)) {
+            return;
+        }
+        if (event.getEntity().getKiller() == null) {
+            return;
+        }
+        if (!config.vanillaMobShardFromSpawner()
+                && event.getEntity().getEntitySpawnReason() == SpawnReason.SPAWNER) {
+            return;
+        }
+        event.getDrops().add(InvasionItems.shard(amount));
+    }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onDeath(EntityDeathEvent event) {

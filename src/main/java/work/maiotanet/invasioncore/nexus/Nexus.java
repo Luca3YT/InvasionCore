@@ -70,6 +70,18 @@ public final class Nexus {
     private final Set<UUID> members = new HashSet<>();
     private final List<ItemStack> rewardBuffer = new ArrayList<>();
 
+    /**
+     * 開始時の帰還の羅針盤を受け取った人。ゲーム（このネクサス）ごとに1人1個だけ配るため保存する。
+     * 入り直すたびに配ると、抜けて入るだけで何個でも手に入ってしまう。
+     */
+    private final Set<UUID> recallGiven = new HashSet<>();
+
+    /**
+     * ネクサスに預けられた共有 Shard。
+     * 参加者の支払いで、手持ちが足りない分に充てられる。引き出せるのは管理者だけ。
+     */
+    private int sharedShards = 0;
+
     // --- 実行時のみの状態（永続化しない） ---
     private transient int currentWave = 0;
     private transient int totalWaves = 0;
@@ -224,10 +236,24 @@ public final class Nexus {
         return members.contains(uuid);
     }
 
+    public Set<UUID> recallGiven() {
+        return recallGiven;
+    }
+
     // ---------- 報酬バッファ ----------
 
     public List<ItemStack> rewardBuffer() {
         return rewardBuffer;
+    }
+
+    // ---------- 共有 Shard ----------
+
+    public int sharedShards() {
+        return sharedShards;
+    }
+
+    public void sharedShards(int sharedShards) {
+        this.sharedShards = Math.max(0, sharedShards);
     }
 
     // ---------- 実行時状態 ----------
@@ -290,7 +316,13 @@ public final class Nexus {
             memberList.add(uuid.toString());
         }
         sec.set("members", memberList);
+        List<String> recallList = new ArrayList<>(recallGiven.size());
+        for (UUID uuid : recallGiven) {
+            recallList.add(uuid.toString());
+        }
+        sec.set("recall-given", recallList);
         sec.set("rewards", new ArrayList<>(rewardBuffer));
+        sec.set("shared-shards", sharedShards);
     }
 
     @SuppressWarnings("unchecked")
@@ -314,6 +346,7 @@ public final class Nexus {
         nexus.day = Math.max(1, sec.getInt("day", 1));
         nexus.lastProcessedWorldDay = sec.getLong("last-world-day", -1L);
         nexus.bestWave = sec.getInt("best-wave", 0);
+        nexus.sharedShards = Math.max(0, sec.getInt("shared-shards", 0));
         try {
             nexus.phase = Phase.valueOf(sec.getString("phase", Phase.DORMANT.name()));
         } catch (IllegalArgumentException ex) {
@@ -341,6 +374,14 @@ public final class Nexus {
         for (String s : sec.getStringList("members")) {
             try {
                 nexus.members.add(UUID.fromString(s));
+            } catch (IllegalArgumentException ignored) {
+                // 同上
+            }
+        }
+
+        for (String s : sec.getStringList("recall-given")) {
+            try {
+                nexus.recallGiven.add(UUID.fromString(s));
             } catch (IllegalArgumentException ignored) {
                 // 同上
             }

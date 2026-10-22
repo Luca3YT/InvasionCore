@@ -35,6 +35,7 @@ public final class InvasionItems {
     public static final String FLASH_CHARGE = "flash_charge";
     public static final String MEDKIT = "medkit";
     public static final String BARRIER = "emergency_barrier";
+    public static final String RECALL = "recall_compass";
 
     private InvasionItems() {
     }
@@ -125,6 +126,16 @@ public final class InvasionItems {
                 Text.lore("ブロックを右クリックで展開。",
                         "その面に鋼鉄級の壁を一時的に張る。",
                         "45秒で消滅する。決壊時の応急処置。"));
+    }
+
+    public static ItemStack recall(int amount) {
+        // 普通の素材（紙など）の見た目にすると、クラフトの材料として使えてしまう。
+        // 回復コンパスはどのレシピにも使われないので、取り違えが起きない。
+        return build(Material.RECOVERY_COMPASS, amount, RECALL,
+                Component.text("帰還の羅針盤", TextColor.color(0x80DEEA)),
+                Text.lore("右クリックで詠唱を始め、終わるとネクサスのそばへ戻る。",
+                        "動くかダメージを受けると中断する。",
+                        "どのディメンションからでも使える。使うとなくなる。"));
     }
 
     private static ItemStack build(Material material, int amount, String id,

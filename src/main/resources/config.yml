@@ -11,7 +11,8 @@ nexus:
   base-health: 500.0
   # レベルが1上がるごとの最大HP増加量
   health-per-level: 120.0
-  # 防衛範囲。この半径内のプレイヤーが参加者として扱われる
+  # 防衛範囲（ブロック）。強化ハンマーなどが使える範囲で、境目にパーティクルが出る。
+  # ネクサスを置いてからゲーム開始までは、運営（invasioncore.admin）以外はこの範囲から出られない
   defense-radius: 48
   # 侵略者がブロックを破壊してよい半径。範囲外の建築物は絶対に壊されない
   breach-radius: 40
@@ -20,6 +21,16 @@ nexus:
   # 6.0 だと20体が到達した時点で毎秒120ダメージとなり、防衛線が破られた瞬間に
   # 立て直す時間が一切無くなる（実機検証で確認）。反応できる余地を残す値にしている。
   damage-per-hit: 2.5
+  # ネクサスが殴られたときの警告（画面中央の文字・チャット・警告音）を、何秒に1回まで出すか
+  attack-warning-seconds: 10
+  # 起動後にネクサスの真下を掘って宙に浮かせたとき、地面につなぎ直すまで毎秒減る HP。
+  # 浮いたネクサスは侵略者が殴れず、待つだけで勝ててしまうため（真下が空中のままでは起動もできない）
+  floating-damage-per-second: 5.0
+  # 侵略者の爆発（爆導体の自爆・投擲手の爆弾）がネクサスからこの距離（ブロック）以内で起きると HP が減る。
+  # 高い柱の上などで殴られないネクサスにも、爆弾なら届くようにするため
+  explosion-radius: 4.0
+  # 上の爆発 1 回で減る HP（変異した侵略者は倍率がかかる）
+  explosion-damage: 15.0
   # ネクサスレベルの上限
   max-level: 30
   # 稼働中ネクサスの周囲でバニラ敵Mobの自然湧きを止める。
@@ -33,6 +44,8 @@ mob:
   # 飛行型の速度（ブロック/tick）。経路探索を使わないためここで決まる。
   # 参考: プレイヤーの歩行が約0.215、疾走が約0.28
   flyer-speed: 0.20
+  # ダメージを受けた侵略者の頭上に HP を出しておく秒数
+  health-display-seconds: 4
 
 breach:
   # AI更新1回あたりの基礎ブロック破壊力
@@ -57,7 +70,8 @@ cycle:
   # 血の月以外の夜にも小規模襲撃を行うか
   night-skirmish: true
   # 夜間襲撃が始まる日。これより前の夜は襲撃が来ない。
-  # 拠点もShardも無い初日から削られると立ち上がりが理不尽になるため猶予を置く
+  # 拠点もShardも無い初日から削られると立ち上がりが理不尽になるため猶予を置く。
+  # この日より前は叫喚体も湧かず、徘徊ホードは弱いゾンビ（グラント）の少数だけになる
   skirmish-start-day: 3
   # 小規模襲撃の規模（血の月に対する比率）
   night-skirmish-scale: 0.22
@@ -109,6 +123,10 @@ economy:
   # 修理コスト。missing HP をこの値で割った量の Shard を要求する。
   # 鋼鉄(3200HP)の全損修理が約53 Shard になる想定。小さくすると修理が高騰する
   repair-cost-per-hp: 60
+  # 侵略者ではない普通の敵（ゾンビ・スケルトンなど）をプレイヤーが倒したときに落とす Shard の数。0 で落とさない
+  vanilla-mob-shard: 1
+  # モンスタースポナーから出た敵にも落とさせるか。true にするとトラップタワーで無限に稼げてしまう
+  vanilla-mob-shard-from-spawner: false
 
 world-events:
   wandering-horde:
@@ -118,10 +136,59 @@ world-events:
   air-drop:
     enabled: true
     interval-seconds: 1200
-  backpack:
-    # 死亡時に所持品をバックパック（樽）にまとめる
-    enabled: true
-    expire-seconds: 1800
+
+recall:
+  # 帰還の羅針盤。右クリックしてからネクサスのそばへ戻るまでの詠唱時間（秒）。動くかダメージを受けると中断する
+  cast-seconds: 7
+  # ネクサスの画面で買うときの値段（Shard、手持ちから払う）
+  price: 10
+
+grave:
+  # 死んだとき、所持品を死んだ場所の墓（プレイヤーの頭）にまとめる。どこで死んでも作る
+  enabled: true
+  # 本人しか回収できない時間（秒）。過ぎるとだれでも回収できる。墓は回収されるまで消えない
+  owner-only-seconds: 600
+  # 他の人が回収しようとしたとき、本人に「許可 / 拒否」を聞いて返事を待つ時間（秒）
+  approval-timeout-seconds: 60
+
+guide:
+  # ネクサスを光らせる（壁越しにも輪郭が見える）
+  nexus-glow: true
+  # 防衛範囲（nexus.defense-radius）の外にいるとき、アクションバーにネクサスの方向と距離を出す
+  compass: true
+  # 防衛範囲の境目からこの距離（ブロック）以内にいると、境目にパーティクルを描く。0 で描かない
+  boundary-particles-within: 12
+
+rules:
+  # /rule で表示するルール説明の URL。配信ごとに差し替えてよい
+  url: "https://luca3yt.github.io/InvasionCore/"
+
+links:
+  # /bug（/issues）で表示する、バグ報告・意見のフォームの URL
+  issues-url: "https://github.com/Luca3YT/InvasionCore/issues/new/choose"
+  # /bug（/issues）で一緒に表示する、送られた報告の一覧の URL
+  issues-list-url: "https://github.com/Luca3YT/InvasionCore/issues"
+  # /patchnote（/patchnotes）で表示する、最新のパッチノートの URL
+  patch-notes-url: "https://github.com/Luca3YT/InvasionCore/releases/latest"
+
+web:
+  # 管理画面と OBS オーバーレイを配信する Web サーバー
+  enabled: true
+  # 待ち受けるポート。VPS やホスティングパネル（Pelican など）では、割り当てられた追加ポートを書く。
+  # Minecraft 本体のポート（server-port）とは別の番号にすること。変えたらサーバーの再起動が必要
+  port: 8765
+  # 待ち受けるアドレス。0.0.0.0 で外部（インターネットや同じ Wi-Fi）から開ける。この PC だけにするなら 127.0.0.1
+  bind: "0.0.0.0"
+  # 外から見たこのサーバーのアドレス。/invasion admin web で表示する URL に使う。
+  # VPS なら "http://<サーバーのIPかドメイン>:<上の port>" のように書く（末尾の / は不要）。
+  # 空欄なら、このマシンの LAN の IP と localhost で表示する（自宅で動かすとき向け）
+  public-url: ""
+  # true にすると OBS オーバーレイにもパスワードが必要になる（URL に token が付く）。
+  # オーバーレイに出るのは名前と Shard の数だけなので、既定ではパスワードなし
+  overlay-token: false
+  # オーバーレイの表示パターン（b: ポートレート / c: トースト / e: ビッグナンバー / f: バナー）。
+  # 管理画面からも切り替えられる
+  overlay-style: "b"
 
 performance:
   # 侵略MobのAIを何tickに分散させるか。大きいほど軽いが反応が鈍る

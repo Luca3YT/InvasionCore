@@ -34,14 +34,16 @@ import java.util.concurrent.ThreadLocalRandom;
 /**
  * 準備フェーズを退屈にしないためのワールドイベント群。
  *
- * <p>徘徊ホード・空中投下・叫喚体の湧き・死亡時バックパックを扱う。
- * どれも「拠点に籠って待つだけ」を防ぎ、外へ出る動機を作るための仕掛け。</p>
+ * <p>徘徊ホード・空中投下・叫喚体の湧きを扱う。
+ * どれも「拠点に籠って待つだけ」を防ぎ、外へ出る動機を作るための仕掛け。
+ * 夜間襲撃が始まる日（cycle.skirmish-start-day）より前は猶予期間として、
+ * 叫喚体を湧かせず、徘徊ホードも弱い個体の少数だけにする。</p>
  */
 public final class WorldEventService {
 
-    /** 一時的に設置した容器（空中投下・バックパック）の記録。 */
+    /** 一時的に設置した容器（空中投下）の記録。 */
     private record TempContainer(Location location, BlockData original, long placedAtMillis,
-                                 long expireAtMillis, boolean backpack) {
+                                 long expireAtMillis) {
     }
 
     /**
@@ -99,7 +101,7 @@ public final class WorldEventService {
     // ---------- 叫喚体 ----------
 
     private void checkScreamer(Nexus nexus) {
-        if (!config.heatEnabled()) {
+        if (!config.heatEnabled() || isGracePeriod(nexus)) {
             return;
         }
         for (Player player : stages.participants(nexus)) {
@@ -144,9 +146,17 @@ public final class WorldEventService {
             return;
         }
         int stage = stages.computeCurrent(nexus);
-        int count = 3 + ThreadLocalRandom.current().nextInt(4) + stage / 30;
+        boolean grace = isGracePeriod(nexus);
+        int count = grace
+                ? 3 + ThreadLocalRandom.current().nextInt(3)
+                : 3 + ThreadLocalRandom.current().nextInt(4) + stage / 30;
 
         for (int i = 0; i < count; i++) {
+            if (grace) {
+                // 猶予期間は足の遅いグラントの通常個体だけ。拠点が無いうちから走者や変異体に削られないように
+                spawner.spawn(nexus, InvaderType.GRUNT, MutationTier.NORMAL, stage, 0);
+                continue;
+            }
             InvaderType type = ThreadLocalRandom.current().nextDouble() < 0.7
                     ? InvaderType.GRUNT : InvaderType.RUNNER;
             spawner.spawn(nexus, type, MutationTier.roll(stage), stage, 0);
@@ -155,6 +165,11 @@ public final class WorldEventService {
             p.sendMessage(Text.warn("徘徊するホードが近づいている（" + count + " 体）"));
             p.playSound(p.getLocation(), Sound.ENTITY_ZOMBIE_AMBIENT, 1.0f, 0.6f);
         }
+    }
+
+    /** 夜間襲撃が始まる日より前か。最初の数日は拠点作りに集中できるよう、襲撃を弱める。 */
+    private boolean isGracePeriod(Nexus nexus) {
+        return nexus.day() < config.skirmishStartDay();
     }
 
     // ---------- 空中投下 ----------
@@ -171,7 +186,7 @@ public final class WorldEventService {
         }
         int stage = stages.computeCurrent(nexus);
         List<ItemStack> overflow = placeContainer(spot, Material.BARREL, rewards.airDropLoot(stage),
-                15 * 60 * 1000L, false);
+                15 * 60 * 1000L);
         if (overflow == null) {
             return null;
         }
@@ -235,64 +250,19 @@ public final class WorldEventService {
         return null;
     }
 
-    // ---------- 死亡時バックパック ----------
-
-    /**
-     * 死亡地点に所持品をまとめたバックパックを置く。
-     *
-     * <p>樽は27スロットしかなく、防具・オフハンドを含む所持品（最大41スタック）は入り切らないことがある。
-     * 溢れた分は呼び出し元へ返し、通常ドロップとして落とさせる。</p>
-     *
-     * @return 置けたら入り切らなかったアイテム（空のこともある）。置けなければ null で、通常ドロップに任せる。
-     */
-    public List<ItemStack> placeBackpack(Player player, List<ItemStack> drops) {
-        if (!config.backpackEnabled() || drops.isEmpty()) {
-            return null;
-        }
-        Block block = findBackpackSpot(player.getLocation());
-        if (block == null) {
-            return null;
-        }
-        List<ItemStack> overflow = placeContainer(block.getLocation(), Material.BARREL, drops,
-                config.backpackExpireSeconds() * 1000L, true);
-        if (overflow == null) {
-            // 設置に失敗したら通常ドロップに任せる。ここで成功扱いにすると所持品が消える。
-            return null;
-        }
-        player.sendMessage(Text.warn("所持品は死亡地点のバックパックに残された（"
-                + block.getX() + ", " + block.getY() + ", " + block.getZ() + "）"
-                + (overflow.isEmpty() ? "" : " 入り切らなかった分はその場に落ちている。")));
-        return overflow;
-    }
-
-    private Block findBackpackSpot(Location origin) {
-        World world = origin.getWorld();
-        if (world == null) {
-            return null;
-        }
-        for (int dy = 0; dy <= 3; dy++) {
-            Block block = world.getBlockAt(origin.getBlockX(), origin.getBlockY() + dy, origin.getBlockZ());
-            if (block.getType().isAir() || block.isLiquid()) {
-                return block;
-            }
-        }
-        return null;
-    }
-
     // ---------- 一時容器 ----------
 
     /**
      * 一時的な容器を設置して中身を詰める。
      *
      * <p>{@code getState()} はスナップショットなので、書き戻しに失敗すると
-     * 「空の樽だけが残る」状態になりうる。バックパックでこれが起きると
-     * 呼び出し元がドロップを破棄した後なので所持品が丸ごと消える。
+     * 「空の樽だけが残る」状態になりうる。
      * 格納できたかを必ず実体から読み直して確認し、失敗時は設置を取り消す。</p>
      *
      * @return 格納に成功したら、容量不足で入り切らなかったアイテム（空のこともある）。失敗したら null
      */
     private List<ItemStack> placeContainer(Location loc, Material material, List<ItemStack> contents,
-                                           long lifetimeMillis, boolean backpack) {
+                                           long lifetimeMillis) {
         Block block = loc.getBlock();
         BlockData original = block.getBlockData().clone();
         block.setType(material, false);
@@ -321,7 +291,7 @@ public final class WorldEventService {
             return null;
         }
         long now = System.currentTimeMillis();
-        temporary.add(new TempContainer(loc.clone(), original, now, now + lifetimeMillis, backpack));
+        temporary.add(new TempContainer(loc.clone(), original, now, now + lifetimeMillis));
         return overflow;
     }
 
@@ -363,7 +333,7 @@ public final class WorldEventService {
             if (now < tc.expireAtMillis()) {
                 // 目印のパーティクル
                 if ((now / 1000L) % 3 == 0) {
-                    world.spawnParticle(tc.backpack() ? Particle.SOUL_FIRE_FLAME : Particle.END_ROD,
+                    world.spawnParticle(Particle.END_ROD,
                             tc.location().clone().add(0.5, 1.2, 0.5), 3, 0.15, 0.4, 0.15, 0.01);
                 }
                 continue;

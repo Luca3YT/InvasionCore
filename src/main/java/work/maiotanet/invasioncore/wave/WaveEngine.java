@@ -3,6 +3,7 @@ package work.maiotanet.invasioncore.wave;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.title.Title;
+import org.bukkit.Difficulty;
 import org.bukkit.Location;
 import org.bukkit.Sound;
 import org.bukkit.World;
@@ -46,9 +47,12 @@ import java.util.concurrent.ThreadLocalRandom;
 public final class WaveEngine implements NexusCombatSink {
 
     /** 夜の開始時刻（tick）。 */
-    private static final long DUSK = 13000L;
+    public static final long DUSK = 13000L;
     /** 夜の終了時刻（tick）。 */
-    private static final long DAWN = 23500L;
+    public static final long DAWN = 23500L;
+
+    /** 浮いたネクサスの警告をチャットに出す間隔。毎秒だと流れてしまう。 */
+    private static final long FLOATING_WARN_INTERVAL_MILLIS = 15_000L;
 
     private final Plugin plugin;
     private final InvasionConfig config;
@@ -72,6 +76,18 @@ public final class WaveEngine implements NexusCombatSink {
 
     /** 直前に出したボス。同じ血の月で連続させないために覚えておく。 */
     private final Map<UUID, BossType> lastBoss = new HashMap<>();
+
+    /** ピースフルで血の月を止めている間、最後に警告を出した時刻（tick）。 */
+    private final Map<UUID, Long> peacefulWarnedAt = new HashMap<>();
+
+    /** 浮いているネクサスについて最後に知らせた時刻（ミリ秒）。 */
+    private final Map<UUID, Long> floatingWarnedAt = new HashMap<>();
+
+    /** ネクサスが殴られたと最後に警告した時刻（ミリ秒）。毎秒殴られるので間隔を空けて出す。 */
+    private final Map<UUID, Long> attackWarnedAt = new HashMap<>();
+
+    /** ピースフルの警告を繰り返す間隔（tick）。毎秒出すとチャットが埋まる。 */
+    private static final long PEACEFUL_WARN_INTERVAL = 1200L;
 
     /** 事前告知を出す時刻（tick）と文言。日没 13000 に向けて段階的に煽る。 */
     private static final long[] WARN_TIMES = {6000L, 10000L, 12200L};
@@ -118,15 +134,21 @@ public final class WaveEngine implements NexusCombatSink {
         if (nexus.phase() != Nexus.Phase.DORMANT && nexus.phase() != Nexus.Phase.BROKEN) {
             return false;
         }
+        if (nexuses.isFloating(nexus, true)) {
+            if (by != null) {
+                by.sendMessage(Text.error("ネクサスの真下が空中になっている。地面か固いブロックの上に置き直してから起動すること。"));
+            }
+            return false;
+        }
         // 崩壊からの再建には代償を課す。無料で再挑戦できると防衛の失敗が痛くなくなる。
         if (nexus.phase() == Nexus.Phase.BROKEN) {
             int cost = rebuildCost(nexus);
             if (by == null) {
                 return false;
             }
-            if (!shards.take(by, cost)) {
+            if (!shards.takeWithPool(by, nexus, cost, "再建した")) {
                 by.sendMessage(Text.error("再建には " + cost + " Shard が必要だ（所持 "
-                        + shards.count(by) + "）"));
+                        + shards.count(by) + " / ネクサス内 " + nexus.sharedShards() + "）"));
                 return false;
             }
             by.sendMessage(Text.good("ネクサスを再建した。（-" + cost + " Shard）"));
@@ -194,6 +216,8 @@ public final class WaveEngine implements NexusCombatSink {
         hud.hideBar(nexus.id());
         applyChunkTicket(nexus, false);
         duskHandled.remove(nexus.id());
+        attackWarnedAt.remove(nexus.id());
+        floatingWarnedAt.remove(nexus.id());
         nexus.phase(broken ? Nexus.Phase.BROKEN : Nexus.Phase.DORMANT);
         nexus.currentWave(0);
         nexus.totalWaves(0);
@@ -225,6 +249,10 @@ public final class WaveEngine implements NexusCombatSink {
             }
 
             applyChunkTicket(nexus, true);
+            if (drainIfFloating(nexus)) {
+                // 浮かせたまま HP が尽きて崩壊した
+                continue;
+            }
 
             if (nexus.phase() == Nexus.Phase.BLOOD_MOON) {
                 tickBloodMoon(nexus, fullTime, timeOfDay);
@@ -233,6 +261,31 @@ public final class WaveEngine implements NexusCombatSink {
             }
             updateHud(nexus);
         }
+    }
+
+    /**
+     * 起動後に真下を掘って宙に浮かせたら、地面につなぎ直すまで HP を削る。
+     * 浮いたネクサスは序盤の侵略者が誰も届かず、守りが成立しすぎるため。
+     *
+     * @return 削った結果ネクサスが崩壊したら true
+     */
+    private boolean drainIfFloating(Nexus nexus) {
+        if (!nexuses.isFloating(nexus, false)) {
+            floatingWarnedAt.remove(nexus.id());
+            return false;
+        }
+        long now = System.currentTimeMillis();
+        Long last = floatingWarnedAt.get(nexus.id());
+        if (last == null || now - last >= FLOATING_WARN_INTERVAL_MILLIS) {
+            floatingWarnedAt.put(nexus.id(), now);
+            broadcast(nexus, Text.error("ネクサスの真下が空中になっている！ 地面か固いブロックでつなぐまで、HP が減り続ける。"));
+        }
+        nexus.health(nexus.health() - config.nexusFloatingDamagePerSecond());
+        if (nexus.health() <= 0) {
+            resolveDefeat(nexus);
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -337,6 +390,14 @@ public final class WaveEngine implements NexusCombatSink {
         if (!isNight) {
             // 夜明けを跨いだ（/time set 等でも安全に閉じる）
             resolveVictory(nexus);
+            return;
+        }
+
+        World world = nexus.world();
+        if (world != null && world.getDifficulty() == Difficulty.PEACEFUL) {
+            // ピースフルでは侵略者を生成できない。ウェーブを進めると0体のまま全ウェーブを消化して
+            // 防衛成功になってしまうので、難易度が戻るまで血の月を止めておく。
+            warnPeaceful(nexus, fullTime);
             return;
         }
 
@@ -463,10 +524,16 @@ public final class WaveEngine implements NexusCombatSink {
         int count = Math.max(2, (int) Math.round(
                 (config.waveBaseMobs() + stage * config.waveMobsPerStage()) * config.nightSkirmishScale()));
 
+        int spawned = 0;
         for (int i = 0; i < count; i++) {
-            spawner.spawn(nexus, rollType(stage), MutationTier.roll(stage), stage, 0);
+            if (spawner.spawn(nexus, rollType(stage), MutationTier.roll(stage), stage, 0) != null) {
+                spawned++;
+            }
         }
-        broadcast(nexus, Text.info("夜の徘徊者が近づいている（" + count + " 体）"));
+        // ピースフルなどで1体も出せなかったときに「近づいている」と告げると嘘になる
+        if (spawned > 0) {
+            broadcast(nexus, Text.info("夜の徘徊者が近づいている（" + spawned + " 体）"));
+        }
     }
 
     /**
@@ -499,7 +566,27 @@ public final class WaveEngine implements NexusCombatSink {
 
     // ---------- 勝敗 ----------
 
+    private void warnPeaceful(Nexus nexus, long fullTime) {
+        Long last = peacefulWarnedAt.get(nexus.id());
+        if (last != null && fullTime - last < PEACEFUL_WARN_INTERVAL) {
+            return;
+        }
+        peacefulWarnedAt.put(nexus.id(), fullTime);
+        broadcast(nexus, Text.error("難易度がピースフルのため、血の月を止めています。"
+                + "管理者が /difficulty normal を実行すると再開します。"));
+        Location loc = nexus.location();
+        String where = loc == null ? nexus.worldName()
+                : nexus.worldName() + " " + loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ();
+        plugin.getLogger().warning("難易度がピースフルのため、ネクサス（" + where
+                + "）の血の月を止めています。/difficulty normal で再開します。");
+    }
+
     private void resolveVictory(Nexus nexus) {
+        if (nexus.currentWave() == 0) {
+            // 一度もウェーブを出せないまま夜が明けた（ピースフルで止めていた等）。戦っていないので報酬は出さない。
+            endWithoutBattle(nexus);
+            return;
+        }
         int wavesCleared = nexus.currentWave();
         List<Player> participants = stages.participants(nexus);
         int stage = stages.compute(nexus, participants);
@@ -532,7 +619,7 @@ public final class WaveEngine implements NexusCombatSink {
         for (Player p : participants) {
             int amount = split.getOrDefault(p.getUniqueId(), 0);
             if (amount > 0) {
-                shards.give(p, amount);
+                shards.give(p, amount, "血の月の報酬");
             }
             // 踏破実績とパークポイントを付与する
             perks.recordVictory(p.getUniqueId(), wavesCleared);
@@ -550,6 +637,19 @@ public final class WaveEngine implements NexusCombatSink {
                     Title.Times.times(Duration.ofMillis(300), Duration.ofSeconds(3), Duration.ofMillis(700))));
             p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
         }
+    }
+
+    private void endWithoutBattle(Nexus nexus) {
+        ai.cleanupPlacedBlocks(nexus.id());
+        registry.despawnAll(nexus.id());
+        hud.hideBar(nexus.id());
+        nexus.phase(Nexus.Phase.PREPARATION);
+        nexus.currentWave(0);
+        nexus.totalWaves(0);
+        nexus.activeModifier(null);
+        peacefulWarnedAt.remove(nexus.id());
+        contributions.reset(nexus.id());
+        broadcast(nexus, Text.warn("侵略者が一度も来ないまま夜が明けた。今回の血の月は無効で、報酬もない。"));
     }
 
     private void resolveDefeat(Nexus nexus) {
@@ -581,6 +681,37 @@ public final class WaveEngine implements NexusCombatSink {
         nexus.health(nexus.health() - amount);
         if (nexus.health() <= 0) {
             resolveDefeat(nexus);
+            return;
+        }
+        warnAttacked(nexus);
+    }
+
+    /**
+     * ネクサスが攻撃されていることを全員に知らせる（画面中央・チャット・警告音）。
+     *
+     * <p>小競り合いや徘徊ホードは、皆が素材集めに出ている間に拠点へ着くことが多く、
+     * 気づいたときには HP が削れ切っている。遠くにいても戻れるよう、どこにいても知らせる。</p>
+     */
+    private void warnAttacked(Nexus nexus) {
+        long now = System.currentTimeMillis();
+        Long last = attackWarnedAt.get(nexus.id());
+        if (last != null && now - last < config.nexusAttackWarningSeconds() * 1000L) {
+            return;
+        }
+        attackWarnedAt.put(nexus.id(), now);
+
+        int hp = (int) Math.ceil(nexus.health());
+        int max = (int) nexuses.maxHealth(nexus);
+        int percent = (int) Math.round(nexuses.healthRatio(nexus) * 100);
+        Title title = Title.title(
+                Text.of("ネクサスが攻撃されている！", Text.ACCENT),
+                Text.of("HP " + hp + " / " + max, Text.WARN),
+                Title.Times.times(Duration.ofMillis(100), Duration.ofMillis(1500), Duration.ofMillis(400)));
+        for (Player p : stages.participants(nexus)) {
+            p.showTitle(title);
+            p.sendMessage(Text.error("ネクサスが攻撃されている！ 残り HP " + hp + " / " + max
+                    + "（" + percent + "%）"));
+            p.playSound(p.getLocation(), Sound.BLOCK_BELL_USE, 1.0f, 0.7f);
         }
     }
 

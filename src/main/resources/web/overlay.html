@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>InvasionCore Shard オーバーレイ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@500;700;900&family=JetBrains+Mono:wght@700;800&display=swap">
+<style>
+/*
+ * OBS のブラウザソース用。背景は透明で、Shard が増減した瞬間だけ右上にカードが出て 5 秒で消える。
+ * 表示パターン（b / c / e / f）は管理画面で切り替え、サーバーから届く style に従う。
+ * ブラウザソースの大きさは 1920×1080 を想定。カードは右上に寄せて描く。
+ */
+:root {
+  --amethyst: #9b6dff;
+  --amethyst-deep: #5b33b8;
+  --gain: #5ee38a;
+  --spend: #ff7468;
+  --font-body: "Noto Sans JP", "Hiragino Sans", "Yu Gothic UI", system-ui, sans-serif;
+  --font-num: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  color-scheme: dark;
+}
+html, body { margin: 0; background: transparent; overflow: hidden; font-family: var(--font-body); }
+.overlay { position: fixed; top: 40px; right: 40px; width: 460px; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.row { position: relative; width: 100%; transition: opacity .3s ease, transform .3s ease, max-height .3s ease, margin .3s ease; max-height: 140px; }
+.row.leaving { opacity: 0; max-height: 0; margin-top: -10px; }
+.face { image-rendering: pixelated; display: block; }
+.name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.total, .delta { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.timer { position: absolute; left: 0; bottom: 0; height: 2px; width: 100%; transform-origin: left; }
+.delta.gain { --d: var(--gain); }
+.delta.spend { --d: var(--spend); }
+@keyframes pop { 0% { transform: scale(.6); } 100% { transform: scale(1); } }
+@keyframes glint { from { transform: translateX(-120%); } to { transform: translateX(120%); } }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(155,109,255,.7); } 100% { box-shadow: 0 0 0 12px rgba(155,109,255,0); } }
+
+/* ===== B. ポートレート ===== */
+.p-b .row {
+  width: 290px; display: grid; grid-template-columns: 68px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: 12px;
+  padding: 10px 12px; border-radius: 12px; background: linear-gradient(160deg, rgba(91,51,184,.92), rgba(30,18,58,.92));
+  box-shadow: 0 8px 24px rgba(0,0,0,.4); transform-origin: top center; animation: flipIn .45s cubic-bezier(.2,.9,.3,1.2) both;
+}
+@keyframes flipIn { from { opacity: 0; transform: perspective(600px) rotateX(-70deg); } to { opacity: 1; transform: none; } }
+.p-b .row.leaving { transform: perspective(600px) rotateX(60deg); }
+.p-b .row.fx { animation: pulse .5s ease-out; }
+.p-b .face { grid-row: 1 / 3; width: 68px; height: 68px; border-radius: 10px; border: 3px solid rgba(255,255,255,.85); box-sizing: border-box; }
+.p-b .info { min-width: 0; align-self: end; }
+.p-b .name { font-weight: 700; font-size: 16px; color: #fff; display: block; }
+.p-b .reason { display: block; font-size: 11px; color: rgba(255,255,255,.7); }
+.p-b .total { align-self: start; font-family: var(--font-num); font-weight: 800; font-size: 30px; color: #fff; line-height: 1.15; }
+.p-b .total::after { content: " Shard"; font-family: var(--font-body); font-size: 12px; font-weight: 500; color: rgba(255,255,255,.7); }
+.p-b .delta { position: absolute; top: -8px; left: 54px; font-family: var(--font-num); font-weight: 800; font-size: 15px; padding: 2px 9px; border-radius: 999px; background: var(--d); color: #10121a; box-shadow: 0 2px 6px rgba(0,0,0,.35); }
+.p-b .delta.fx { animation: pop .4s cubic-bezier(.3,1.6,.5,1); }
+.p-b .timer { background: rgba(255,255,255,.7); left: 12px; right: 12px; width: auto; bottom: 4px; border-radius: 2px; }
+
+/* ===== C. トースト ===== */
+.p-c .row {
+  width: auto; max-width: 100%; display: flex; align-items: center; gap: 10px; padding: 5px 18px 5px 5px; border-radius: 999px;
+  background: rgba(255,255,255,.94); box-shadow: 0 6px 20px rgba(0,0,0,.3); animation: toastIn .35s cubic-bezier(.2,.9,.3,1.3) both;
+}
+@keyframes toastIn { from { opacity: 0; transform: scale(.7); } to { opacity: 1; transform: none; } }
+.p-c .row.leaving { transform: scale(.8); }
+.p-c .face { width: 38px; height: 38px; border-radius: 50%; box-shadow: 0 0 0 3px var(--amethyst); }
+.p-c .info { min-width: 0; }
+.p-c .name { font-weight: 700; font-size: 15px; color: #1b1f2a; display: block; max-width: 180px; }
+.p-c .reason { display: none; }
+.p-c .total { font-family: var(--font-num); font-weight: 800; font-size: 22px; color: var(--amethyst-deep); }
+.p-c .total::before { content: "◆ "; font-size: 14px; vertical-align: 2px; }
+.p-c .delta { position: absolute; left: -60px; top: 50%; font-family: var(--font-num); font-weight: 800; font-size: 22px; color: var(--d); text-shadow: 0 2px 0 rgba(0,0,0,.6), 0 0 8px rgba(0,0,0,.4); opacity: 0; }
+.p-c .delta.fx { animation: floatUp 1.4s ease-out both; }
+@keyframes floatUp { 0% { opacity: 0; transform: translateY(-20%) scale(.7); } 15% { opacity: 1; transform: translateY(-50%) scale(1.15); } 70% { opacity: 1; transform: translateY(-90%); } 100% { opacity: 0; transform: translateY(-150%); } }
+.p-c .timer { display: none; }
+
+/* ===== E. ビッグナンバー ===== */
+.p-e .row { display: grid; justify-items: end; width: auto; padding-right: 6px; animation: fadeDown .3s ease-out both; }
+@keyframes fadeDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+.p-e .head { display: flex; align-items: center; gap: 8px; }
+.p-e .face { width: 28px; height: 28px; border-radius: 4px; box-shadow: 0 0 0 2px rgba(255,255,255,.8), 0 2px 6px rgba(0,0,0,.5); }
+.p-e .name { font-weight: 900; font-size: 16px; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,.8); max-width: 240px; }
+.p-e .reason { display: none; }
+.p-e .numline { position: relative; display: flex; align-items: baseline; gap: 10px; }
+.p-e .total { font-family: var(--font-num); font-weight: 800; font-size: 56px; line-height: 1; color: #fff;
+  -webkit-text-stroke: 2px var(--amethyst-deep); paint-order: stroke fill; text-shadow: 0 0 16px rgba(155,109,255,.85), 0 4px 0 rgba(0,0,0,.45); }
+.p-e .row.fx .total { animation: slam .35s cubic-bezier(.3,1.5,.5,1); }
+@keyframes slam { 0% { transform: scale(1.35); } 100% { transform: scale(1); } }
+.p-e .delta { font-family: var(--font-num); font-weight: 800; font-size: 26px; color: var(--d); text-shadow: 0 2px 0 rgba(0,0,0,.7), 0 0 10px rgba(0,0,0,.4); }
+.p-e .delta.fx { animation: rise .5s ease-out; }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.p-e .timer { display: none; }
+
+/* ===== F. バナー ===== */
+.p-f .row { display: flex; align-items: center; width: 100%; height: 56px; padding-left: 28px; animation: wipe .45s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes wipe { from { clip-path: inset(0 0 0 100%); } to { clip-path: inset(0 0 0 0); } }
+.p-f .row.leaving { clip-path: inset(0 0 0 100%); transition: clip-path .3s ease, opacity .3s, max-height .3s, margin .3s; }
+.p-f .band { position: relative; flex: 1; min-width: 0; height: 42px; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px;
+  padding: 0 18px 0 42px; background: linear-gradient(90deg, #5b33b8, #9b6dff 70%, #c9b0ff); clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%); }
+.p-f .band::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 35%, rgba(255,255,255,.45) 50%, transparent 65%); transform: translateX(-120%); }
+.p-f .row.fx .band::after { animation: glint .8s ease-out; }
+.p-f .diamond { position: absolute; left: 0; top: 50%; width: 52px; height: 52px; transform: translateY(-50%) rotate(45deg); background: #fff; padding: 3px; z-index: 1; box-shadow: 0 3px 10px rgba(0,0,0,.4); overflow: hidden; box-sizing: border-box; }
+.p-f .face { width: 66px; height: 66px; transform: rotate(-45deg); margin: -10px; }
+.p-f .name { font-weight: 900; font-size: 17px; color: #fff; letter-spacing: .02em; text-shadow: 0 1px 2px rgba(0,0,0,.4); }
+.p-f .reason { display: none; }
+.p-f .total { font-family: var(--font-num); font-weight: 800; font-size: 26px; color: #fff; text-shadow: 0 2px 0 rgba(40,10,90,.6); }
+.p-f .delta { font-family: var(--font-num); font-weight: 800; font-size: 15px; padding: 0 8px; background: #fff; border-radius: 3px; }
+.p-f .delta.gain { color: #1e8a4a; }
+.p-f .delta.spend { color: #c8382c; }
+.p-f .delta.fx { animation: pop .38s cubic-bezier(.3,1.6,.5,1); }
+.p-f .timer { background: rgba(255,255,255,.85); left: 42px; width: auto; right: 14px; }
+</style>
+</head>
+<body>
+<div class="overlay p-b" id="overlay"></div>
+<script>
+(function () {
+  var MAX_ROWS = 5;
+  var SHOW_MS = 5000;
+  var POLL_MS = 500;
+  var overlay = document.getElementById("overlay");
+  var style = null;
+  var since = null;
+  // config.yml の web.overlay-token が true のときは、URL に付いたパスワードをそのまま使う
+  var token = new URLSearchParams(location.search).get("token");
+  var rows = {}; // uuid -> { el, delta, born, timer }
+
+  function span(cls, text) { var s = document.createElement("span"); s.className = cls; if (text != null) s.textContent = text; return s; }
+
+  function face(uuid) {
+    var img = document.createElement("img");
+    img.className = "face";
+    img.alt = "";
+    img.src = "/face/" + uuid + ".png";
+    return img;
+  }
+
+  /** パターンごとに部品の並べ方だけを変える。中身（顔・名前・理由・所持数・増減）は共通。 */
+  function build(e) {
+    var row = document.createElement("div");
+    row.className = "row fx";
+    var f = face(e.uuid), nm = span("name", e.name), rs = span("reason", e.reason), tot = span("total"), dl = span("delta"), tm = span("timer");
+    if (style === "e") {
+      var head = span("head"); head.appendChild(f); head.appendChild(nm);
+      var num = span("numline"); num.appendChild(dl); num.appendChild(tot);
+      row.appendChild(head); row.appendChild(num);
+    } else if (style === "f") {
+      var dia = span("diamond"); dia.appendChild(f);
+      var band = span("band"); band.appendChild(nm); band.appendChild(tot); band.appendChild(dl); band.appendChild(tm);
+      row.appendChild(dia); row.appendChild(band);
+    } else {
+      var info = span("info"); info.appendChild(nm); info.appendChild(rs);
+      row.appendChild(f); row.appendChild(info); row.appendChild(tot); row.appendChild(dl); row.appendChild(tm);
+    }
+    return row;
+  }
+
+  function animateNumber(el, from, to) {
+    var start = performance.now();
+    function step(now) {
+      var t = Math.min(1, (now - start) / 600);
+      el.textContent = Math.round(from + (to - from) * (1 - Math.pow(1 - t, 3)));
+      if (t < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  function retrigger(el, cls) { el.classList.remove(cls); el.getBoundingClientRect(); el.classList.add(cls); }
+
+  function restartTimer(uuid) {
+    var row = rows[uuid];
+    clearTimeout(row.timer);
+    var bar = row.el.querySelector(".timer");
+    if (bar) {
+      bar.style.transition = "none"; bar.style.transform = "scaleX(1)"; bar.getBoundingClientRect();
+      bar.style.transition = "transform " + SHOW_MS + "ms linear"; bar.style.transform = "scaleX(0)";
+    }
+    row.timer = setTimeout(function () { removeRow(uuid); }, SHOW_MS);
+  }
+
+  function setDelta(row) {
+    var d = row.el.querySelector(".delta");
+    d.textContent = (row.delta >= 0 ? "+" : "−") + Math.abs(row.delta);
+    d.className = "delta " + (row.delta >= 0 ? "gain" : "spend");
+    retrigger(d, "fx");
+  }
+
+  function removeRow(uuid) {
+    var row = rows[uuid];
+    if (!row) return;
+    delete rows[uuid];
+    clearTimeout(row.timer);
+    row.el.classList.add("leaving");
+    setTimeout(function () { row.el.remove(); }, 340);
+  }
+
+  /** 表示中の同じ人はまとめる（行を増やさず数字を更新し、5 秒を数え直す）。 */
+  function show(e) {
+    var before = e.total - e.delta;
+    var row = rows[e.uuid];
+    if (row) {
+      row.delta += e.delta;
+      var reasonEl = row.el.querySelector(".reason");
+      if (reasonEl) reasonEl.textContent = e.reason;
+      animateNumber(row.el.querySelector(".total"), before, e.total);
+      setDelta(row);
+      retrigger(row.el, "fx");
+      restartTimer(e.uuid);
+      return;
+    }
+    var live = Object.keys(rows);
+    if (live.length >= MAX_ROWS) {
+      removeRow(live.reduce(function (a, b) { return rows[a].born < rows[b].born ? a : b; }));
+    }
+    var el = build(e);
+    overlay.insertBefore(el, overlay.firstChild);
+    rows[e.uuid] = { el: el, delta: e.delta, born: performance.now(), timer: null };
+    animateNumber(el.querySelector(".total"), before, e.total);
+    setDelta(rows[e.uuid]);
+    restartTimer(e.uuid);
+  }
+
+  function setStyle(next) {
+    if (next === style) return;
+    style = next;
+    overlay.className = "overlay p-" + style;
+    // 並べ方が変わるので、表示中のカードは片付ける
+    Object.keys(rows).forEach(function (u) { clearTimeout(rows[u].timer); });
+    rows = {};
+    overlay.textContent = "";
+  }
+
+  function poll() {
+    var params = [];
+    if (since !== null) params.push("since=" + since);
+    if (token) params.push("token=" + encodeURIComponent(token));
+    var url = "/api/overlay/events" + (params.length ? "?" + params.join("&") : "");
+    fetch(url, { cache: "no-store" })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        setStyle(d.style || "b");
+        if (since === null) {
+          since = d.latest;
+          return;
+        }
+        d.events.forEach(function (e) {
+          show(e);
+          since = Math.max(since, e.seq);
+        });
+        // サーバーが再起動して番号が戻ったときは、そこから数え直す
+        if (d.latest < since) since = d.latest;
+      })
+      .catch(function () { /* サーバー停止中は何も出さずに待つ */ })
+      .then(function () { setTimeout(poll, POLL_MS); });
+  }
+  poll();
+})();
+</script>
+</body>
+</html>

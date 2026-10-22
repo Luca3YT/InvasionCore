@@ -11,12 +11,14 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import work.maiotanet.invasioncore.config.InvasionConfig;
 import work.maiotanet.invasioncore.economy.ShardService;
+import work.maiotanet.invasioncore.gadget.RecallService;
 import work.maiotanet.invasioncore.nexus.Nexus;
 import work.maiotanet.invasioncore.nexus.NexusManager;
 import work.maiotanet.invasioncore.nexus.NexusUpgrade;
 import work.maiotanet.invasioncore.perk.Perk;
 import work.maiotanet.invasioncore.perk.PerkService;
 import work.maiotanet.invasioncore.stage.GameStageService;
+import work.maiotanet.invasioncore.util.Sounds;
 import work.maiotanet.invasioncore.util.Text;
 import work.maiotanet.invasioncore.wave.WaveEngine;
 import work.maiotanet.invasioncore.wave.WaveModifier;
@@ -36,6 +38,22 @@ public final class NexusGui {
     private static final int SLOT_REWARDS = 13;
     private static final int SLOT_UPGRADE = 15;
     private static final int SLOT_PERK = 22;
+    private static final int SLOT_DEPOSIT = 20;
+    private static final int SLOT_POOL = 24;
+    private static final int SLOT_RECALL = 18;
+
+    /**
+     * 侵攻の起動・再建ができる権限。参加者が勝手に押すと、配信者の準備が終わる前にゲームが始まってしまう。
+     */
+    private static final String ACTIVATE_PERMISSION = "invasioncore.admin";
+
+    /** ネクサス内の Shard を引き出せる権限。共有の財産を独り占めされないよう管理者だけにする。 */
+    private static final String WITHDRAW_PERMISSION = "invasioncore.admin";
+
+    /** 引き出し画面のボタン位置と個数。-1 は「全部」。 */
+    private static final int[] WITHDRAW_SLOTS = {11, 12, 14, 15};
+    private static final int[] WITHDRAW_AMOUNTS = {1, 10, 64, -1};
+    private static final int SHARD_BACK_SLOT = 26;
 
     /** パーク画面（45スロット）の配置。2行に分けて最大14種まで並べられる。 */
     private static final int[] PERK_SLOTS = {
@@ -50,9 +68,11 @@ public final class NexusGui {
     private final ShardService shards;
     private final PerkService perks;
     private final WaveEngine waves;
+    private final RecallService recall;
 
     public NexusGui(InvasionConfig config, NexusManager nexuses, GameStageService stages,
-                    ShardService shards, PerkService perks, WaveEngine waves) {
+                    ShardService shards, PerkService perks, WaveEngine waves, RecallService recall) {
+        this.recall = recall;
         this.config = config;
         this.nexuses = nexuses;
         this.stages = stages;
@@ -95,9 +115,13 @@ public final class NexusGui {
         } else if (broken) {
             activateLore = List.of("崩壊したネクサスを再建する。",
                     "必要 Shard: " + waves.rebuildCost(nexus),
-                    "所持 Shard: " + shards.count(player));
+                    "所持 Shard: " + shards.count(player),
+                    "ネクサス内の Shard: " + nexus.sharedShards());
         } else {
             activateLore = List.of("クリックでネクサスを起動する。", "起動すると日数が進み始める。");
+        }
+        if (canActivate && !player.hasPermission(ACTIVATE_PERMISSION)) {
+            activateLore = List.of("起動できるのは運営だけ。", "運営の合図を待ってね。");
         }
         inv.setItem(SLOT_ACTIVATE, icon(
                 canActivate ? Material.LIME_DYE : Material.GRAY_DYE,
@@ -113,6 +137,31 @@ public final class NexusGui {
         inv.setItem(SLOT_UPGRADE, icon(Material.ANVIL,
                 Text.of("アップグレード", Text.INFO),
                 List.of("Shard を消費してネクサスを強化する。",
+                        "所持 Shard: " + shards.count(player),
+                        "ネクサス内の Shard: " + nexus.sharedShards())));
+
+        inv.setItem(SLOT_DEPOSIT, icon(Material.AMETHYST_SHARD,
+                Text.of("Shard をネクサスに預ける", Text.GOOD),
+                List.of("クリックで手持ちの Shard を全部預ける。",
+                        "Shard を持ってネクサスを右クリックしても預けられる。",
+                        "預けた Shard は、みんなの強化・修理で",
+                        "手持ちが足りない分に使われる。",
+                        "所持 Shard: " + shards.count(player))));
+
+        List<String> poolLore = new ArrayList<>();
+        poolLore.add("ネクサス内の Shard: " + nexus.sharedShards());
+        poolLore.add("手持ちが足りないときに自動で使われる。");
+        if (player.hasPermission(WITHDRAW_PERMISSION)) {
+            poolLore.add("クリックで引き出す（管理者のみ）");
+        }
+        inv.setItem(SLOT_POOL, icon(Material.AMETHYST_CLUSTER,
+                Text.of("ネクサス内の Shard", Text.INFO), poolLore));
+
+        inv.setItem(SLOT_RECALL, icon(Material.RECOVERY_COMPASS,
+                Text.of("帰還の羅針盤を買う（" + recall.price() + " Shard）", Text.INFO),
+                List.of("右クリックして動かずに待つと、",
+                        "どこからでもネクサスのそばへ戻れる。使うとなくなる。",
+                        "手持ちの Shard で払う（ネクサス内の Shard は使わない）。",
                         "所持 Shard: " + shards.count(player))));
 
         inv.setItem(SLOT_PERK, icon(Material.EXPERIENCE_BOTTLE,
@@ -142,6 +191,7 @@ public final class NexusGui {
             lore.add(Text.bar((double) level / up.maxLevel(), 10));
             lore.add(cost < 0 ? "上限に達している。" : "必要 Shard: " + cost);
             lore.add("所持 Shard: " + shards.count(player));
+            lore.add("ネクサス内の Shard: " + nexus.sharedShards());
             inv.setItem(10 + i + (i >= 3 ? 1 : 0), icon(up.icon(),
                     Text.of(up.displayName(), Text.WARN), lore));
         }
@@ -191,13 +241,21 @@ public final class NexusGui {
     public boolean handleMain(Player player, Nexus nexus, int slot) {
         switch (slot) {
             case SLOT_ACTIVATE -> {
+                if (!nexus.isActive() && !player.hasPermission(ACTIVATE_PERMISSION)) {
+                    Sounds.fail(player);
+                    player.sendMessage(Text.warn("ネクサスを起動できるのは運営だけ。運営の合図を待ってね。"));
+                    return true;
+                }
                 boolean wasBroken = nexus.phase() == Nexus.Phase.BROKEN;
                 if (waves.activate(nexus, player)) {
                     player.playSound(player.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 1.0f);
                     player.closeInventory();
-                } else if (!wasBroken) {
-                    // 崩壊時は activate 側が Shard 不足の理由を通知済み
-                    player.sendMessage(Text.warn("すでに稼働している。"));
+                } else {
+                    Sounds.fail(player);
+                    if (nexus.isActive()) {
+                        // 起動できなかった理由（Shard 不足・浮いている）は activate 側が通知済み
+                        player.sendMessage(Text.warn("すでに稼働している。"));
+                    }
                 }
                 return true;
             }
@@ -207,11 +265,31 @@ public final class NexusGui {
                 return true;
             }
             case SLOT_UPGRADE -> {
+                Sounds.click(player);
                 openUpgrades(player, nexus);
                 return true;
             }
             case SLOT_PERK -> {
+                Sounds.click(player);
                 openPerks(player, nexus);
+                return true;
+            }
+            case SLOT_RECALL -> {
+                if (recall.buy(player)) {
+                    openMain(player, nexus);
+                }
+                return true;
+            }
+            case SLOT_DEPOSIT -> {
+                deposit(player, nexus, shards.depositAll(player, nexus));
+                openMain(player, nexus);
+                return true;
+            }
+            case SLOT_POOL -> {
+                if (player.hasPermission(WITHDRAW_PERMISSION)) {
+                    Sounds.click(player);
+                    openShard(player, nexus);
+                }
                 return true;
             }
             default -> {
@@ -222,6 +300,7 @@ public final class NexusGui {
 
     public boolean handleUpgrade(Player player, Nexus nexus, int slot) {
         if (slot == 26) {
+            Sounds.click(player);
             openMain(player, nexus);
             return true;
         }
@@ -236,13 +315,14 @@ public final class NexusGui {
             int cost = up.costFor(level);
             if (cost < 0) {
                 player.sendMessage(Text.warn(up.displayName() + " は上限に達している。"));
+                Sounds.fail(player);
                 return true;
             }
             int actual = upgradeCost(player, nexus, cost);
-            if (!shards.take(player, actual)) {
+            if (!shards.takeWithPool(player, nexus, actual, "アップグレード")) {
                 player.sendMessage(Text.error("Shard が足りない（必要 " + actual
-                        + " / 所持 " + shards.count(player) + "）"));
-                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+                        + " / 所持 " + shards.count(player) + " / ネクサス内 " + nexus.sharedShards() + "）"));
+                Sounds.fail(player);
                 return true;
             }
             nexus.upgradeLevel(up, level + 1);
@@ -260,6 +340,7 @@ public final class NexusGui {
 
     public boolean handlePerk(Player player, Nexus nexus, int slot) {
         if (slot == PERK_BACK_SLOT && nexus != null) {
+            Sounds.click(player);
             openMain(player, nexus);
             return true;
         }
@@ -275,7 +356,7 @@ public final class NexusGui {
                 player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.4f);
             } else {
                 player.sendMessage(Text.error("ポイントが足りないか、上限に達している。"));
-                player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+                Sounds.fail(player);
             }
             openPerks(player, nexus);
             return true;
@@ -289,9 +370,76 @@ public final class NexusGui {
                 * perks.costMultiplier(player.getUniqueId())));
     }
 
+    // ---------- ネクサス内の Shard ----------
+
+    /** 預けた結果を知らせる。右クリックで預けたときも同じ表示にする。 */
+    public void deposit(Player player, Nexus nexus, int amount) {
+        if (amount <= 0) {
+            Text.actionBarWarn(player, "預けられる Shard を持っていない。");
+            Sounds.fail(player);
+            return;
+        }
+        nexuses.save();
+        Text.actionBarGood(player, "Shard を " + amount + " 個ネクサスに預けた。（ネクサス内 "
+                + nexus.sharedShards() + "）");
+        player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 1.0f, 1.2f);
+    }
+
+    /** 管理者用の引き出し画面。 */
+    public void openShard(Player player, Nexus nexus) {
+        InvasionHolder holder = new InvasionHolder(InvasionHolder.Kind.SHARD, nexus.id());
+        Inventory inv = Bukkit.createInventory(holder, 27, Text.of("ネクサス内の Shard", Text.INFO));
+        holder.inventory(inv);
+
+        inv.setItem(SLOT_STATUS, icon(Material.AMETHYST_CLUSTER,
+                Text.of("ネクサス内の Shard: " + nexus.sharedShards(), Text.INFO),
+                List.of("所持 Shard: " + shards.count(player))));
+        for (int i = 0; i < WITHDRAW_SLOTS.length; i++) {
+            int amount = WITHDRAW_AMOUNTS[i];
+            String label = amount < 0 ? "全部引き出す" : amount + " 個引き出す";
+            inv.setItem(WITHDRAW_SLOTS[i], icon(Material.AMETHYST_SHARD,
+                    Text.of(label, Text.GOOD), List.of("ネクサス内の Shard を手持ちに移す。")));
+        }
+        inv.setItem(SHARD_BACK_SLOT, icon(Material.ARROW, Text.of("戻る", Text.MUTED), List.of()));
+        fill(inv);
+        player.openInventory(inv);
+    }
+
+    public boolean handleShard(Player player, Nexus nexus, int slot) {
+        if (slot == SHARD_BACK_SLOT) {
+            Sounds.click(player);
+            openMain(player, nexus);
+            return true;
+        }
+        if (!player.hasPermission(WITHDRAW_PERMISSION)) {
+            player.closeInventory();
+            return true;
+        }
+        for (int i = 0; i < WITHDRAW_SLOTS.length; i++) {
+            if (WITHDRAW_SLOTS[i] != slot) {
+                continue;
+            }
+            int requested = WITHDRAW_AMOUNTS[i] < 0 ? nexus.sharedShards() : WITHDRAW_AMOUNTS[i];
+            int taken = shards.withdraw(player, nexus, requested);
+            if (taken > 0) {
+                nexuses.save();
+                Text.actionBarGood(player, "Shard を " + taken + " 個引き出した。（ネクサス内 "
+                        + nexus.sharedShards() + "）");
+                Sounds.success(player);
+            } else {
+                Text.actionBarWarn(player, "ネクサス内に Shard が無い。");
+                Sounds.fail(player);
+            }
+            openShard(player, nexus);
+            return true;
+        }
+        return true;
+    }
+
     private void collectRewards(Player player, Nexus nexus) {
         if (nexus.rewardBuffer().isEmpty()) {
             player.sendMessage(Text.warn("受け取れる報酬はない。"));
+            Sounds.fail(player);
             return;
         }
         int handed = 0;

@@ -48,6 +48,31 @@ public final class InvasionConfig {
         return cfg.getInt("nexus.max-level", 30);
     }
 
+    /** ネクサスが殴られたときの警告を、同じネクサスについて何秒に1回まで出すか。 */
+    public int nexusAttackWarningSeconds() {
+        return Math.max(1, cfg.getInt("nexus.attack-warning-seconds", 10));
+    }
+
+    /** 起動後にネクサスの真下が空中になったとき、毎秒減らす HP。 */
+    public double nexusFloatingDamagePerSecond() {
+        return Math.max(0.0, cfg.getDouble("nexus.floating-damage-per-second", 5.0));
+    }
+
+    /** 侵略者の爆発（爆導体の自爆・投擲手の爆弾）がこの距離（ブロック）以内で起きたら、ネクサスの HP を削る。 */
+    public double nexusExplosionRadius() {
+        return Math.max(0.0, cfg.getDouble("nexus.explosion-radius", 4.0));
+    }
+
+    /** 上の距離で起きた爆発 1 回で減るネクサスの HP（変異ティアの倍率がかかる）。 */
+    public double nexusExplosionDamage() {
+        return Math.max(0.0, cfg.getDouble("nexus.explosion-damage", 15.0));
+    }
+
+    /** ダメージを受けた侵略者の頭上に HP を出しておく秒数。 */
+    public int mobHealthDisplaySeconds() {
+        return Math.max(1, cfg.getInt("mob.health-display-seconds", 4));
+    }
+
     /** 稼働中ネクサスの周囲でバニラ敵Mobの自然湧きを止めるか。 */
     public boolean suppressVanillaSpawns() {
         return cfg.getBoolean("nexus.suppress-vanilla-spawns", true);
@@ -120,6 +145,7 @@ public final class InvasionConfig {
     /**
      * 夜間襲撃が始まる日。これより前の夜は襲撃が来ない。
      * 拠点もShardも無い初日から削られると、立ち上がりが理不尽になる。
+     * 叫喚体もこの日までは湧かせず、徘徊ホードは弱い個体の少数だけにする（猶予期間）。
      */
     public int skirmishStartDay() {
         return cfg.getInt("cycle.skirmish-start-day", 3);
@@ -225,6 +251,16 @@ public final class InvasionConfig {
         return cfg.getInt("economy.repair-cost-per-hp", 20);
     }
 
+    /** 侵略者ではない普通の敵をプレイヤーが倒したときに落とす Shard の数。0 で落とさない。 */
+    public int vanillaMobShard() {
+        return Math.max(0, cfg.getInt("economy.vanilla-mob-shard", 1));
+    }
+
+    /** モンスタースポナーから出た敵にも Shard を落とさせるか。トラップタワーでの稼ぎを防ぐため既定は false。 */
+    public boolean vanillaMobShardFromSpawner() {
+        return cfg.getBoolean("economy.vanilla-mob-shard-from-spawner", false);
+    }
+
     // ---- ワールドイベント ----
     public boolean wanderingHordeEnabled() {
         return cfg.getBoolean("world-events.wandering-horde.enabled", true);
@@ -246,12 +282,47 @@ public final class InvasionConfig {
         return cfg.getInt("world-events.air-drop.interval-seconds", 1200);
     }
 
-    public boolean backpackEnabled() {
-        return cfg.getBoolean("world-events.backpack.enabled", true);
+    // ---- 帰還の羅針盤 ----
+    /** 使ってからネクサスへ戻るまでの詠唱時間（秒）。 */
+    public int recallCastSeconds() {
+        return Math.max(1, cfg.getInt("recall.cast-seconds", 7));
     }
 
-    public int backpackExpireSeconds() {
-        return cfg.getInt("world-events.backpack.expire-seconds", 1800);
+    /** ネクサスの画面で買うときの値段（Shard）。 */
+    public int recallPrice() {
+        return Math.max(0, cfg.getInt("recall.price", 10));
+    }
+
+    // ---- 墓 ----
+    /** 死んだときに所持品を墓（プレイヤーの頭）にまとめるか。 */
+    public boolean graveEnabled() {
+        return cfg.getBoolean("grave.enabled", true);
+    }
+
+    /** 墓を本人しか回収できない時間（秒）。過ぎるとだれでも回収できる。 */
+    public int graveOwnerOnlySeconds() {
+        return Math.max(0, cfg.getInt("grave.owner-only-seconds", 600));
+    }
+
+    /** 他の人が回収したいと頼んだとき、本人の返事を待つ時間（秒）。 */
+    public int graveApprovalTimeoutSeconds() {
+        return Math.max(5, cfg.getInt("grave.approval-timeout-seconds", 60));
+    }
+
+    // ---- ネクサスの案内表示 ----
+    /** ネクサスを光らせて、壁越しにも輪郭が見えるようにするか。 */
+    public boolean guideNexusGlow() {
+        return cfg.getBoolean("guide.nexus-glow", true);
+    }
+
+    /** 防衛範囲の外にいるとき、アクションバーにネクサスの方向と距離を出すか。 */
+    public boolean guideCompass() {
+        return cfg.getBoolean("guide.compass", true);
+    }
+
+    /** 防衛範囲の境目からこの距離（ブロック）以内にいると、境目にパーティクルを描く。0 で描かない。 */
+    public int guideBoundaryWithin() {
+        return Math.max(0, cfg.getInt("guide.boundary-particles-within", 12));
     }
 
     // ---- パフォーマンス ----
@@ -265,6 +336,79 @@ public final class InvasionConfig {
 
     public boolean keepChunksLoaded() {
         return cfg.getBoolean("performance.keep-chunks-loaded", true);
+    }
+
+    // ---- ゲーム開始前 ----
+    /** /rule で表示するルール説明の URL。 */
+    public String rulesUrl() {
+        return cfg.getString("rules.url", "https://luca3yt.github.io/InvasionCore/");
+    }
+
+    /** /bug・/issues で表示する、報告フォームの URL。 */
+    public String issuesUrl() {
+        return cfg.getString("links.issues-url", "https://github.com/Luca3YT/InvasionCore/issues/new/choose");
+    }
+
+    /** /bug・/issues で一緒に表示する、送られた報告の一覧の URL。 */
+    public String issuesListUrl() {
+        return cfg.getString("links.issues-list-url", "https://github.com/Luca3YT/InvasionCore/issues");
+    }
+
+    /** /patchnote で表示する、最新のパッチノートの URL。 */
+    public String patchNotesUrl() {
+        return cfg.getString("links.patch-notes-url", "https://github.com/Luca3YT/InvasionCore/releases/latest");
+    }
+
+    // ---- Web（管理画面・OBS オーバーレイ） ----
+    public boolean webEnabled() {
+        return cfg.getBoolean("web.enabled", true);
+    }
+
+    public int webPort() {
+        return cfg.getInt("web.port", 8765);
+    }
+
+    public String webBind() {
+        return cfg.getString("web.bind", "0.0.0.0");
+    }
+
+    /** 外から見たアドレス（末尾の / なし）。空なら LAN の IP で URL を作る。 */
+    public String webPublicUrl() {
+        String url = cfg.getString("web.public-url", "");
+        url = url == null ? "" : url.trim();
+        while (url.endsWith("/")) {
+            url = url.substring(0, url.length() - 1);
+        }
+        return url;
+    }
+
+    /** OBS オーバーレイにもパスワードを要求するか。 */
+    public boolean webOverlayToken() {
+        return cfg.getBoolean("web.overlay-token", false);
+    }
+
+    public String overlayStyle() {
+        String style = cfg.getString("web.overlay-style", "b");
+        return style == null ? "b" : style.toLowerCase(java.util.Locale.ROOT);
+    }
+
+    /**
+     * 管理画面から表示パターンを変えたとき。config.yml のこの項目だけを書き換える。
+     *
+     * <p>メモリ上の設定ごと保存すると、サーバー稼働中に config.yml を手で編集していた場合
+     * その編集が古い内容で上書きされて消える。ファイルを読み直して1項目だけ変えて書き戻す。</p>
+     */
+    public void overlayStyle(String style) {
+        java.io.File file = new java.io.File(plugin.getDataFolder(), "config.yml");
+        org.bukkit.configuration.file.YamlConfiguration disk =
+                org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(file);
+        disk.set("web.overlay-style", style);
+        try {
+            disk.save(file);
+        } catch (java.io.IOException ex) {
+            plugin.getLogger().warning("config.yml に表示パターンを保存できませんでした: " + ex.getMessage());
+        }
+        cfg.set("web.overlay-style", style);
     }
 
     public FileConfiguration raw() {

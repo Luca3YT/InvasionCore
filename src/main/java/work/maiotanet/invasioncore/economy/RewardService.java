@@ -67,8 +67,7 @@ public final class RewardService {
         for (int i = 0; i < rolls; i++) {
             List<Entry> table = tableFor(gameStage, rng);
             Entry entry = pick(table, rng);
-            int amount = rng.nextInt(entry.min(), entry.max() + 1);
-            out.add(new ItemStack(entry.material(), amount));
+            out.add(roll(entry, rng));
         }
 
         // 防衛の再投資用に、補修キットは必ず入れる
@@ -126,9 +125,34 @@ public final class RewardService {
         out.add(new ItemStack(Material.COOKED_BEEF, 8 + rng.nextInt(8)));
         for (int i = 0; i < 2; i++) {
             List<Entry> table = tableFor(gameStage, rng);
-            Entry entry = pick(table, rng);
-            out.add(new ItemStack(entry.material(), rng.nextInt(entry.min(), entry.max() + 1)));
+            out.add(roll(pick(table, rng), rng));
         }
         return out;
+    }
+
+    /** 抽選したエントリを実物にする。 */
+    private ItemStack roll(Entry entry, ThreadLocalRandom rng) {
+        if (entry.material() == Material.ENCHANTED_BOOK) {
+            return enchantedBook(rng);
+        }
+        return new ItemStack(entry.material(), rng.nextInt(entry.min(), entry.max() + 1));
+    }
+
+    /**
+     * エンチャントの本。素の ItemStack だとエンチャントが何も付いていない本になってしまうので、
+     * 防衛に役立つものから1つを付けて渡す。
+     */
+    private ItemStack enchantedBook(ThreadLocalRandom rng) {
+        org.bukkit.enchantments.Enchantment[] pool = {
+                org.bukkit.enchantments.Enchantment.PROTECTION, org.bukkit.enchantments.Enchantment.SHARPNESS,
+                org.bukkit.enchantments.Enchantment.POWER, org.bukkit.enchantments.Enchantment.EFFICIENCY,
+                org.bukkit.enchantments.Enchantment.UNBREAKING, org.bukkit.enchantments.Enchantment.MENDING};
+        org.bukkit.enchantments.Enchantment enchantment = pool[rng.nextInt(pool.length)];
+        ItemStack book = new ItemStack(Material.ENCHANTED_BOOK);
+        if (book.getItemMeta() instanceof org.bukkit.inventory.meta.EnchantmentStorageMeta meta) {
+            meta.addStoredEnchant(enchantment, enchantment.getMaxLevel(), false);
+            book.setItemMeta(meta);
+        }
+        return book;
     }
 }

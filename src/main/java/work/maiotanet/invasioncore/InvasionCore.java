@@ -7,20 +7,26 @@ import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import work.maiotanet.invasioncore.command.InvasionCommands;
+import work.maiotanet.invasioncore.command.LinkCommand;
 import work.maiotanet.invasioncore.config.InvasionConfig;
 import work.maiotanet.invasioncore.defense.FortifyService;
 import work.maiotanet.invasioncore.defense.TrapService;
 import work.maiotanet.invasioncore.defense.TurretService;
 import work.maiotanet.invasioncore.economy.ContributionTracker;
 import work.maiotanet.invasioncore.economy.RewardService;
+import work.maiotanet.invasioncore.economy.ShardPickupSound;
 import work.maiotanet.invasioncore.economy.ShardService;
+import work.maiotanet.invasioncore.gadget.RecallService;
+import work.maiotanet.invasioncore.grave.GraveService;
 import work.maiotanet.invasioncore.heat.HeatService;
 import work.maiotanet.invasioncore.item.RecipeRegistrar;
 import work.maiotanet.invasioncore.listener.DefenseListener;
 import work.maiotanet.invasioncore.listener.GadgetListener;
+import work.maiotanet.invasioncore.listener.GraveListener;
 import work.maiotanet.invasioncore.listener.InvaderListener;
 import work.maiotanet.invasioncore.listener.NexusListener;
 import work.maiotanet.invasioncore.listener.PlayerListener;
+import work.maiotanet.invasioncore.listener.PreGameListener;
 import work.maiotanet.invasioncore.mob.BossAbilities;
 import work.maiotanet.invasioncore.mob.InvaderAiService;
 import work.maiotanet.invasioncore.mob.InvaderRegistry;
@@ -28,12 +34,20 @@ import work.maiotanet.invasioncore.mob.InvaderSpawner;
 import work.maiotanet.invasioncore.nexus.NexusManager;
 import work.maiotanet.invasioncore.perk.PerkEffectService;
 import work.maiotanet.invasioncore.perk.PerkService;
+import work.maiotanet.invasioncore.pregame.PreGameService;
+import work.maiotanet.invasioncore.setup.SetupChecklist;
 import work.maiotanet.invasioncore.stage.GameStageService;
 import work.maiotanet.invasioncore.ui.HudService;
+import work.maiotanet.invasioncore.ui.InvaderHealthService;
+import work.maiotanet.invasioncore.ui.NexusGuideService;
 import work.maiotanet.invasioncore.ui.NexusGui;
 import work.maiotanet.invasioncore.ui.SidebarUpdater;
 import work.maiotanet.invasioncore.util.Keys;
 import work.maiotanet.invasioncore.wave.WaveEngine;
+import work.maiotanet.invasioncore.web.FaceService;
+import work.maiotanet.invasioncore.web.ShardFeed;
+import work.maiotanet.invasioncore.web.WebServer;
+import work.maiotanet.invasioncore.web.WebState;
 import work.maiotanet.invasioncore.world.BreachLog;
 import work.maiotanet.invasioncore.world.WorldEventService;
 
@@ -60,6 +74,10 @@ public final class InvasionCore extends JavaPlugin {
     private WorldEventService worldEvents;
     private WaveEngine waves;
     private GadgetListener gadgets;
+    private WebServer web;
+    private GraveService graves;
+    private NexusGuideService guide;
+    private InvaderHealthService invaderHealth;
 
     @Override
     public void onEnable() {
@@ -74,10 +92,16 @@ public final class InvasionCore extends JavaPlugin {
         this.heat = new HeatService(config);
         this.perks = new PerkService(this);
         this.hud = new HudService();
+        this.graves = new GraveService(this, config);
+        // 侵略者の破壊はすべて FortifyService を通るので、そこで墓を守る
+        fortify.protect(graves::isGrave);
 
         GameStageService stages = new GameStageService(config);
         ShardService shards = new ShardService();
+        ShardPickupSound shardSound = new ShardPickupSound();
         ContributionTracker contributions = new ContributionTracker();
+        ShardFeed shardFeed = new ShardFeed();
+        shards.feed(shardFeed);
         RewardService rewards = new RewardService();
         BreachLog breachLog = new BreachLog();
 
@@ -97,7 +121,8 @@ public final class InvasionCore extends JavaPlugin {
                 rewards, contributions, shards, perks, hudBridge(), breachLog);
         ai.combatSink(waves);
 
-        NexusGui gui = new NexusGui(config, nexuses, stages, shards, perks, waves);
+        RecallService recall = new RecallService(config, nexuses, shards);
+        NexusGui gui = new NexusGui(config, nexuses, stages, shards, perks, waves, recall);
         SidebarUpdater sidebar = new SidebarUpdater(
                 config, nexuses, stages, registry, shards, heat, hud);
 
@@ -107,15 +132,23 @@ public final class InvasionCore extends JavaPlugin {
         turrets.load();
         traps.load();
         perks.load();
+        graves.load();
 
         // ---- 登録 ----
         new RecipeRegistrar(this).registerAll();
 
+        PreGameService pregame = new PreGameService(config, nexuses, recall);
+        getServer().getPluginManager().registerEvents(recall, this);
+        this.guide = new NexusGuideService(config, nexuses, pregame);
+        this.invaderHealth = new InvaderHealthService(config, registry, nexuses, stages);
+        getServer().getPluginManager().registerEvents(invaderHealth, this);
+        getServer().getPluginManager().registerEvents(new PreGameListener(pregame), this);
         getServer().getPluginManager().registerEvents(
-                new NexusListener(config, nexuses, gui, waves), this);
+                new NexusListener(config, nexuses, gui, waves, shards), this);
         getServer().getPluginManager().registerEvents(
-                new DefenseListener(config, nexuses, fortify, turrets, traps, shards, perks, contributions), this);
-        this.gadgets = new GadgetListener(this, nexuses, registry, perks, fortify);
+                new DefenseListener(config, nexuses, fortify, turrets, traps, shards, perks, contributions, pregame),
+                this);
+        this.gadgets = new GadgetListener(this, nexuses, registry, perks, fortify, pregame);
         getServer().getPluginManager().registerEvents(gadgets, this);
         InvaderListener invaderListener = new InvaderListener(config, nexuses, registry, spawner, ai,
                 fortify, breachLog, shards, perks, contributions, stages, heat, waves);
@@ -130,14 +163,45 @@ public final class InvasionCore extends JavaPlugin {
             getLogger().info("前回から残っていた侵略Mobを " + orphans + " 体撤去しました。");
         }
         getServer().getPluginManager().registerEvents(
-                new PlayerListener(config, nexuses, heat, perks, hud, worldEvents), this);
+                new PlayerListener(config, nexuses, heat, perks, hud, shardSound, shards), this);
+        getServer().getPluginManager().registerEvents(new GraveListener(graves), this);
 
+        SetupChecklist setupChecklist = new SetupChecklist(config, nexuses, stages);
         InvasionCommands commands = new InvasionCommands(
                 this, nexuses, stages, shards, perks, gui, waves, registry, spawner,
-                worldEvents, breachLog);
-        getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event ->
-                event.registrar().register("invasion",
-                        "InvasionCore の操作", List.of("inv"), commands));
+                worldEvents, breachLog, setupChecklist);
+
+        // ---- Web（管理画面・OBS オーバーレイ） ----
+        FaceService faces = new FaceService(this);
+        WebState webState = new WebState(config, nexuses, registry, shards, perks, contributions, faces);
+        getServer().getScheduler().runTaskTimer(this, webState::tick, 20L, 20L);
+        if (config.webEnabled()) {
+            try {
+                this.web = new WebServer(this, config, webState, shardFeed, faces);
+                web.start();
+            } catch (LinkageError ex) {
+                // JDK 同梱の HTTP サーバー（jdk.httpserver）を省いた Java だと、クラスが見つからず落ちる。
+                // ゲーム本体まで止めないよう、Web 機能だけを諦める。
+                this.web = null;
+                getLogger().warning("この Java には Web サーバーの機能（jdk.httpserver）が無いため、"
+                        + "管理画面と OBS オーバーレイは使えません。JDK 版の Java で起動してください。");
+            }
+        }
+        commands.web(web);
+        setupChecklist.web(config.webEnabled(), web);
+        LinkCommand rule = new LinkCommand(List.of(
+                new LinkCommand.Link("ルール説明はこちら: ", config::rulesUrl)));
+        LinkCommand bug = new LinkCommand(List.of(
+                new LinkCommand.Link("バグ報告・意見を送る: ", config::issuesUrl),
+                new LinkCommand.Link("送られた報告の一覧: ", config::issuesListUrl)));
+        LinkCommand patchNote = new LinkCommand(List.of(
+                new LinkCommand.Link("最新のパッチノート: ", config::patchNotesUrl)));
+        getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
+            event.registrar().register("invasion", "InvasionCore の操作", List.of("inv"), commands);
+            event.registrar().register("rule", "ルール説明の URL を表示する", List.of("rules"), rule);
+            event.registrar().register("bug", "バグ報告・意見のフォームの URL を表示する", List.of("issues"), bug);
+            event.registrar().register("patchnote", "最新のパッチノートの URL を表示する", List.of("patchnotes"), patchNote);
+        });
 
         // ---- 定期処理 ----
         // AI は毎tick呼ぶが、内部でバケット分割しているので1tickあたりの実処理は 1/N。
@@ -145,6 +209,12 @@ public final class InvasionCore extends JavaPlugin {
         getServer().getScheduler().runTaskTimer(this, waves::tick, 40L, 20L);
         getServer().getScheduler().runTaskTimer(this, worldEvents::tick, 60L, 20L);
         getServer().getScheduler().runTaskTimer(this, sidebar::tick, 80L, 20L);
+        getServer().getScheduler().runTaskTimer(this, pregame::tick, 85L, 20L);
+        getServer().getScheduler().runTaskTimer(this, guide::tick, 90L, 5L);
+        getServer().getScheduler().runTaskTimer(this, invaderHealth::tick, 92L, 5L);
+        getServer().getScheduler().runTaskTimer(this, recall::tick, 94L, 2L);
+        getServer().getScheduler().runTaskTimer(this, graves::tick, 95L, 20L);
+        getServer().getScheduler().runTaskTimer(this, shardSound::tick, 1L, 1L);
         getServer().getScheduler().runTaskTimer(this, turrets::tick,
                 100L, config.turretTickInterval());
         getServer().getScheduler().runTaskTimer(this, traps::tick, 110L, 10L);
@@ -166,6 +236,18 @@ public final class InvasionCore extends JavaPlugin {
         }
         if (worldEvents != null) {
             worldEvents.shutdown();
+        }
+        if (graves != null) {
+            graves.shutdown();
+        }
+        if (guide != null) {
+            guide.shutdown();
+        }
+        if (invaderHealth != null) {
+            invaderHealth.shutdown();
+        }
+        if (web != null) {
+            web.stop();
         }
         if (gadgets != null) {
             // 保存より前に消す。残すと鋼鉄級の耐久記録ごと恒久的な壁になる。
@@ -193,6 +275,9 @@ public final class InvasionCore extends JavaPlugin {
         }
         if (perks != null) {
             perks.save();
+        }
+        if (graves != null) {
+            graves.save();
         }
     }
 

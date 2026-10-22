@@ -18,11 +18,13 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import work.maiotanet.invasioncore.config.InvasionConfig;
+import work.maiotanet.invasioncore.economy.ShardService;
 import work.maiotanet.invasioncore.item.InvasionItems;
 import work.maiotanet.invasioncore.nexus.Nexus;
 import work.maiotanet.invasioncore.nexus.NexusManager;
 import work.maiotanet.invasioncore.ui.InvasionHolder;
 import work.maiotanet.invasioncore.ui.NexusGui;
+import work.maiotanet.invasioncore.util.Sounds;
 import work.maiotanet.invasioncore.util.Text;
 import work.maiotanet.invasioncore.wave.WaveEngine;
 
@@ -37,12 +39,15 @@ public final class NexusListener implements Listener {
     private final NexusManager nexuses;
     private final NexusGui gui;
     private final WaveEngine waves;
+    private final ShardService shards;
 
-    public NexusListener(InvasionConfig config, NexusManager nexuses, NexusGui gui, WaveEngine waves) {
+    public NexusListener(InvasionConfig config, NexusManager nexuses, NexusGui gui, WaveEngine waves,
+                         ShardService shards) {
         this.config = config;
         this.nexuses = nexuses;
         this.gui = gui;
         this.waves = waves;
+        this.shards = shards;
     }
 
     // ---------- 設置 ----------
@@ -56,6 +61,15 @@ public final class NexusListener implements Listener {
         Player player = event.getPlayer();
         Block block = event.getBlockPlaced();
 
+        // ネクサスはサーバーに1基だけ。自動参加や開始前の制限は、ネクサスが1基である前提で動く。
+        if (!nexuses.all().isEmpty()) {
+            event.setCancelled(true);
+            Sounds.fail(player);
+            player.sendMessage(Text.error("ネクサスはサーバーに1基だけ置ける。"
+                    + "今のネクサスを撤去するか、/invasion admin end で終了してから置くこと。"));
+            return;
+        }
+
         // 近すぎるネクサス同士は湧きと防衛範囲が干渉するので禁止する
         double minGap = config.nexusDefenseRadius() * 2.0;
         for (Nexus other : nexuses.all()) {
@@ -65,13 +79,15 @@ public final class NexusListener implements Listener {
             }
             if (c.distance(block.getLocation().add(0.5, 0.5, 0.5)) < minGap) {
                 event.setCancelled(true);
+                Sounds.fail(player);
                 player.sendMessage(Text.error("他のネクサスに近すぎる（最低 "
                         + (int) minGap + " ブロック離すこと）"));
                 return;
             }
         }
 
-        nexuses.create(block.getLocation(), player.getUniqueId(), player.getName());
+        Nexus created = nexuses.create(block.getLocation(), player.getUniqueId(), player.getName());
+        nexuses.joinAllOnline(created);
         player.sendMessage(Text.good("ネクサスを設置した。右クリックで操作できる。"));
         player.playSound(block.getLocation(), Sound.BLOCK_BEACON_POWER_SELECT, 1.0f, 0.8f);
         nexuses.save();
@@ -89,6 +105,7 @@ public final class NexusListener implements Listener {
         if (nexus.isActive() && !player.isOp()) {
             event.setCancelled(true);
             player.sendMessage(Text.error("稼働中のネクサスは破壊できない。先に /invasion stop で停止すること。"));
+            Sounds.fail(player);
             return;
         }
         waves.deactivate(nexus, false);
@@ -138,6 +155,12 @@ public final class NexusListener implements Listener {
         event.setCancelled(true);
         Player player = event.getPlayer();
         nexus.members().add(player.getUniqueId());
+        // Shard を持って右クリックしたら、その束をネクサスに預ける
+        if (InvasionItems.is(event.getItem(), InvasionItems.SHARD)) {
+            gui.deposit(player, nexus, shards.depositHeld(player, nexus));
+            return;
+        }
+        Sounds.click(player);
         gui.openMain(player, nexus);
     }
 
@@ -165,6 +188,7 @@ public final class NexusListener implements Listener {
             case MAIN -> gui.handleMain(player, nexus, event.getSlot());
             case UPGRADE -> gui.handleUpgrade(player, nexus, event.getSlot());
             case PERK -> gui.handlePerk(player, nexus, event.getSlot());
+            case SHARD -> gui.handleShard(player, nexus, event.getSlot());
         }
     }
 }

@@ -17,7 +17,9 @@ public final class InvasionHolder implements InventoryHolder {
         /** ネクサスのアップグレードツリー。 */
         UPGRADE,
         /** プレイヤーのパーク。 */
-        PERK
+        PERK,
+        /** ネクサス内の Shard の引き出し（管理者のみ）。 */
+        SHARD
     }
 
     private final Kind kind;

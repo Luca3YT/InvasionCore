@@ -134,6 +134,14 @@ REM NOTE: keep this file ASCII-only - cmd.exe reads it in the OEM codepage.
 
 setlocal
 cd /d "%~dp0"
+
+REM /restart runs this file again while the old server is still exiting.
+REM INVASION_RESTARTED is inherited from the old server, so wait for it to let go of
+REM the world and the plugin jar before copying anything.
+if defined INVASION_RESTARTED (
+    echo [start] restarting, waiting for the previous server to exit...
+    timeout /t 5 /nobreak >nul
+)
 set "REPO=$repo"
 set "SERVER_JAR=$jarName"
 
@@ -166,6 +174,8 @@ if not exist "%JAVA_HOME%\bin\java.exe" (
 set "PLUGIN="
 for %%F in ("%REPO%\target\InvasionCore-*.jar") do set "PLUGIN=%%~fF"
 if defined PLUGIN (
+    REM Remove older versions first; two InvasionCore jars in plugins\ would conflict.
+    del /q "plugins\InvasionCore-*.jar" 2>nul
     copy /y "%PLUGIN%" "plugins\" >nul
     echo [start] plugin: %PLUGIN%
 ) else (
@@ -173,13 +183,29 @@ if defined PLUGIN (
 )
 echo [start] JAVA_HOME=%JAVA_HOME%
 
+set "INVASION_RESTARTED=1"
 REM -Dstdout.encoding=UTF-8 is required on Windows, otherwise Japanese logs are mojibake.
 "%JAVA_HOME%\bin\java.exe" -Xms1G -Xmx2G -XX:+UseG1GC ^
     -Dfile.encoding=UTF-8 -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 ^
     -jar "%SERVER_JAR%" nogui
 
-pause
+REM Keep the window open only when the server crashed, so the error can be read.
+REM After a normal stop or /restart the window closes by itself.
+if errorlevel 1 pause
 "@ ([Text.Encoding]::ASCII)
+
+# ---------- spigot.yml ----------
+# /restart は spigot.yml の restart-script を実行する。既定は ./start.sh で Windows では動かないので、start.cmd を指す。
+# サーバーは足りない項目を既定値で埋めるので、この 1 項目だけ書いておけばよい。
+$spigot = Join-Path $Path 'spigot.yml'
+if (-not (Test-Path $spigot)) {
+    Write-CrLf $spigot @"
+settings:
+  restart-script: start.cmd
+"@ $utf8
+    Write-Host "[setup] spigot.yml を書いた（/restart で start.cmd を起動し直す）"
+}
+
 
 Write-Host ''
 Write-Host '[setup] 完了。次の手順:'
