@@ -53,6 +53,26 @@ public final class InvasionConfig {
         return Math.max(1, cfg.getInt("nexus.attack-warning-seconds", 10));
     }
 
+    /** 起動後にネクサスの真下が空中になったとき、毎秒減らす HP。 */
+    public double nexusFloatingDamagePerSecond() {
+        return Math.max(0.0, cfg.getDouble("nexus.floating-damage-per-second", 5.0));
+    }
+
+    /** 侵略者の爆発（爆導体の自爆・投擲手の爆弾）がこの距離（ブロック）以内で起きたら、ネクサスの HP を削る。 */
+    public double nexusExplosionRadius() {
+        return Math.max(0.0, cfg.getDouble("nexus.explosion-radius", 4.0));
+    }
+
+    /** 上の距離で起きた爆発 1 回で減るネクサスの HP（変異ティアの倍率がかかる）。 */
+    public double nexusExplosionDamage() {
+        return Math.max(0.0, cfg.getDouble("nexus.explosion-damage", 15.0));
+    }
+
+    /** ダメージを受けた侵略者の頭上に HP を出しておく秒数。 */
+    public int mobHealthDisplaySeconds() {
+        return Math.max(1, cfg.getInt("mob.health-display-seconds", 4));
+    }
+
     /** 稼働中ネクサスの周囲でバニラ敵Mobの自然湧きを止めるか。 */
     public boolean suppressVanillaSpawns() {
         return cfg.getBoolean("nexus.suppress-vanilla-spawns", true);

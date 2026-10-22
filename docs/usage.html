@@ -197,6 +197,7 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
           <p>テスト用に一式欲しいときは <code>hammer</code>・<code>shard</code>・<code>turret_arrow</code> なども配れます（<a href="#commands">一覧</a>）。</p></div></li>
         <li><div><strong>拠点の中心にネクサスを置く</strong>
           <p>見た目はロードストーンです。周囲 <strong>48 ブロック</strong>が防衛範囲、<strong>40 ブロック</strong>以内が「侵略者が壁を壊してよい範囲」になります。範囲の外の建物は壊されません。</p>
+          <p><strong>地面か固いブロックの上に置いてください。</strong>真下が空中だと起動できません（侵略者が届かず、待つだけで勝ててしまうため）。起動したあとに真下を掘って浮かせると、つなぎ直すまで HP が毎秒減ります。侵略者の爆発がネクサスのすぐそばで起きたときも HP が減ります。</p>
           <p>ネクサス同士は 96 ブロック以上離す必要があります。</p></div></li>
         <li><div><strong>開始前チェックをする</strong>
           <p>ネクサスの近くで次のコマンドを打つと、ゲームを始められる状態かを一覧で確認できます。赤い <code>[✘]</code> は直さないと進まない項目、黄色の <code>[⚠]</code> は注意です。</p>
@@ -441,6 +442,7 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
           <tr><td><code>/invasion admin spawn &lt;種類&gt; [数]</code></td><td>侵略者を湧かせる（稼働中のネクサスが必要）</td></tr>
           <tr><td><code>/invasion admin boss &lt;名前&gt;</code></td><td>ボスを出す（warlord / siege_titan / blight_queen / emberheart / void_herald）</td></tr>
           <tr><td><code>/invasion admin airdrop</code></td><td>補給物資をすぐ落とす</td></tr>
+          <tr><td><code>/invasion tp nexus</code></td><td>ネクサスのそばへテレポートする（OP のみ）。ネザーなど別のディメンションからでも使える</td></tr>
           <tr><td><code>/invasion admin web</code></td><td>管理画面（スマホからも開ける）と OBS オーバーレイの URL を表示する。管理画面の URL はパスワード入りなので配信に映さない</td></tr>
           <tr><td><code>/invasion admin end</code></td><td>ゲームを強制終了する。侵略者を消し、ネクサスを中の Shard・報酬ごと撤去する（確認なし・元に戻せない）</td></tr>
           <tr><td><code>/invasion admin points &lt;数&gt;</code></td><td>自分にパークポイントを付与する</td></tr>

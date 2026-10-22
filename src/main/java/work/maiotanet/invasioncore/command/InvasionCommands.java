@@ -48,7 +48,7 @@ public final class InvasionCommands implements BasicCommand {
     private static final String ADMIN_PERMISSION = "invasioncore.admin";
 
     private static final List<String> ROOT = List.of(
-            "status", "join", "leave", "stop", "perks", "top", "setup", "give", "admin", "help");
+            "status", "join", "leave", "stop", "perks", "top", "setup", "give", "tp", "admin", "help");
     private static final List<String> ITEMS = List.of(
             "nexus", "hammer", "shard", "kit",
             "turret_arrow", "turret_flame", "turret_frost", "turret_heal",
@@ -110,6 +110,7 @@ public final class InvasionCommands implements BasicCommand {
             case "top" -> top(sender);
             case "setup" -> setup(sender);
             case "give" -> give(sender, args);
+            case "tp" -> teleport(sender, args);
             case "admin" -> admin(sender, args);
             default -> sendHelp(sender);
         }
@@ -123,6 +124,9 @@ public final class InvasionCommands implements BasicCommand {
         String head = args[0].toLowerCase(Locale.ROOT);
         if (head.equals("give") && args.length == 2) {
             return filter(ITEMS, args[1]);
+        }
+        if (head.equals("tp") && args.length == 2) {
+            return filter(List.of("nexus"), args[1]);
         }
         if (head.equals("admin") && args.length == 2) {
             return filter(ADMIN, args[1]);
@@ -207,6 +211,32 @@ public final class InvasionCommands implements BasicCommand {
         player.sendMessage(removed > 0
                 ? Text.good("防衛から離脱した。")
                 : Text.warn("参加しているネクサスがない。"));
+    }
+
+    /**
+     * 運営がネクサスのそばへ飛ぶ。配信中に遠くの参加者の様子を見に行ったあと、すぐ拠点へ戻れるように。
+     * ディメンションをまたいでも使える。
+     */
+    private void teleport(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(Text.error("プレイヤー専用のコマンドだ。"));
+            return;
+        }
+        if (!player.hasPermission(ADMIN_PERMISSION)) {
+            player.sendMessage(Text.error("権限がない。"));
+            return;
+        }
+        if (args.length < 2 || !args[1].equalsIgnoreCase("nexus")) {
+            player.sendMessage(Text.warn("使い方: /invasion tp nexus"));
+            return;
+        }
+        Location spot = nexuses.standingSpot(nexuses.primary());
+        if (spot == null) {
+            player.sendMessage(Text.warn("ネクサスがまだ置かれていない。"));
+            return;
+        }
+        player.teleport(spot);
+        player.sendMessage(Text.good("ネクサスのそばへ移動した。"));
     }
 
     private void stop(CommandSender sender) {
@@ -353,7 +383,9 @@ public final class InvasionCommands implements BasicCommand {
             case "activate" -> {
                 if (requireNexus(sender, nexus)) {
                     // 管理コマンドなので Shard コストは取らず、崩壊状態からも復旧させる
-                    if (waves.forceActivate(nexus)) {
+                    if (!nexus.isActive() && nexuses.isFloating(nexus, true)) {
+                        sender.sendMessage(Text.error("ネクサスの真下が空中になっている。地面か固いブロックの上に置き直すこと。"));
+                    } else if (waves.forceActivate(nexus)) {
                         nexuses.save();
                         sender.sendMessage(Text.good("ネクサスを起動した（HP "
                                 + (int) nexus.health() + "）。"));
@@ -686,6 +718,7 @@ public final class InvasionCommands implements BasicCommand {
         if (sender.hasPermission(ADMIN_PERMISSION)) {
             sender.sendMessage(Text.prefixed(Text.of("/invasion setup — ゲーム開始前の確認", Text.MUTED)));
             sender.sendMessage(Text.prefixed(Text.of("/invasion give <item> [数] — アイテム配布", Text.MUTED)));
+            sender.sendMessage(Text.prefixed(Text.of("/invasion tp nexus — ネクサスのそばへ移動", Text.MUTED)));
             sender.sendMessage(Text.prefixed(Text.of("/invasion admin <sub> — 管理コマンド", Text.MUTED)));
         }
     }

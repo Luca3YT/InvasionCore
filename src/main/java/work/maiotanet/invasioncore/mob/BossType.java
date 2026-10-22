@@ -1,5 +1,6 @@
 package work.maiotanet.invasioncore.mob;
 
+import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.entity.EntityType;
 
@@ -98,6 +99,17 @@ public enum BossType {
 
     public String description() {
         return description;
+    }
+
+    /** ボスバーの色。名前の色に近いものを選ぶ（ボスバーは決まった7色しか使えない）。 */
+    public BossBar.Color barColor() {
+        return switch (this) {
+            case WARLORD -> BossBar.Color.RED;
+            case SIEGE_TITAN -> BossBar.Color.WHITE;
+            case BLIGHT_QUEEN -> BossBar.Color.GREEN;
+            case EMBERHEART -> BossBar.Color.YELLOW;
+            case VOID_HERALD -> BossBar.Color.PURPLE;
+        };
     }
 
     /** スキルの発動間隔（tick）。硬いボスほど間隔を空けて手数を抑える。 */

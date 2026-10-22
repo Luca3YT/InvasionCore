@@ -4,10 +4,7 @@ import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.World;
-import org.bukkit.block.Block;
-import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -20,7 +17,6 @@ import work.maiotanet.invasioncore.util.Text;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * ゲーム開始（ネクサスの起動）前の待機状態。
@@ -187,52 +183,12 @@ public final class PreGameService {
     }
 
     private void teleportToNexus(Player player, String message) {
-        Location spot = safeSpotNear(nexuses.primary());
+        Location spot = nexuses.standingSpot(nexuses.primary());
         if (spot == null) {
             return;
         }
         player.teleport(spot);
         player.sendMessage(Text.info(message));
-    }
-
-    /**
-     * ネクサスのそばで立てる場所。全員が同じ1点に重ならないよう、少し散らす。
-     * 見つからなければネクサスの上に立たせる。
-     */
-    private Location safeSpotNear(Nexus nexus) {
-        Location base = nexus == null ? null : nexus.location();
-        if (base == null || base.getWorld() == null) {
-            return null;
-        }
-        World world = base.getWorld();
-        ThreadLocalRandom rng = ThreadLocalRandom.current();
-        for (int attempt = 0; attempt < 16; attempt++) {
-            double angle = rng.nextDouble() * Math.PI * 2;
-            double dist = 2.0 + rng.nextDouble() * 3.0;
-            int x = base.getBlockX() + (int) Math.round(Math.cos(angle) * dist);
-            int z = base.getBlockZ() + (int) Math.round(Math.sin(angle) * dist);
-            // 屋根の上や谷底に飛ばさないよう、ネクサスと高さが近い地面だけを使う
-            for (int y = base.getBlockY() + 3; y >= base.getBlockY() - 3; y--) {
-                Block ground = world.getBlockAt(x, y, z);
-                if (ground.getType().isSolid() && ground.getType() != Material.LAVA
-                        && ground.getRelative(BlockFace.UP).isPassable()
-                        && !ground.getRelative(BlockFace.UP).isLiquid()
-                        && ground.getRelative(BlockFace.UP, 2).isPassable()) {
-                    return faceNexus(new Location(world, x + 0.5, y + 1.0, z + 0.5), base);
-                }
-            }
-        }
-        return faceNexus(base.clone().add(0.5, 1.0, 0.5), base);
-    }
-
-    /** 着いたときにネクサスの方を向かせる。 */
-    private static Location faceNexus(Location spot, Location nexus) {
-        double dx = nexus.getX() + 0.5 - spot.getX();
-        double dz = nexus.getZ() + 0.5 - spot.getZ();
-        if (dx * dx + dz * dz > 0.01) {
-            spot.setYaw((float) Math.toDegrees(Math.atan2(-dx, dz)));
-        }
-        return spot;
     }
 
     // ---------- 開始 ----------

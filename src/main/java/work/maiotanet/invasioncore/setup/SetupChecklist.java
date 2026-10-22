@@ -127,6 +127,10 @@ public final class SetupChecklist {
                     "オーバーワールドに置き直してください。", null);
         }
         String where = "（" + nexus.worldName() + " " + coords(nexus) + "）";
+        if (nexuses.isFloating(nexus, true)) {
+            return new Check(Status.FAIL, "ネクサスの真下が空中になっています" + where + "。",
+                    "浮いたネクサスは侵略者が届かないので起動できません。地面か固いブロックの上に置き直してください。", null);
+        }
         return switch (nexus.phase()) {
             case BROKEN -> new Check(Status.FAIL, "ネクサスが崩壊しています" + where + "。",
                     "管理者コマンドなら Shard なしで復旧できます。", "/invasion admin activate");

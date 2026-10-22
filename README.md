@@ -107,6 +107,11 @@ IntelliJ IDEA 同梱の Maven の順。PATH は変更しない）。見つから
 - HP・レベル・アップグレードツリー・報酬バッファを持つ。
 - 稼働中は破壊不可。爆発の巻き添えにもならない。
 - ネクサス同士は最低 `defense-radius × 2` 離す必要がある。
+- **真下が空中だと起動できない**（`/invasion setup` でも ✘）。侵略者は 3 ブロック以内まで近づかないと殴れないので、
+  宙に浮かせると序盤の敵が誰も届かず、待つだけで勝ててしまうため。
+  起動後に真下を掘って浮かせると、全員に警告が出て、つなぎ直すまで毎秒 `nexus.floating-damage-per-second`（5）HP 減る。
+- 侵略者の爆発（爆導体の自爆・投擲手の爆弾）がネクサスから `nexus.explosion-radius`（4）ブロック以内で起きると、
+  `nexus.explosion-damage`（15 × 変異の倍率）HP 減る。高い柱の上に置いても爆弾は届く。
 
 ### GameStage（難易度指標）
 ```
@@ -249,6 +254,12 @@ GameStage が上がると下位種別の出現率が段階的に落ち、上位�
 - 防衛範囲の境目から `guide.boundary-particles-within`（12）ブロック以内に来ると、境目にパーティクルを描く
 - ネクサスが攻撃されると、全員に画面中央の文字・チャット（残り HP）・警告音で知らせる（`nexus.attack-warning-seconds` = 10 秒に1回まで）
 
+### サイドバーと HP 表示
+- サイドバーに、日没まで・次の Day まで（夜は夜明けまで）の残り時間を現実の分で出す。残り 1 分を切ると秒で数え、赤の太字になる
+- 襲撃中の侵略者の数と、拠点（防衛範囲）にいる人数 / 参加者の人数も出す
+- ダメージを受けた侵略者は、頭上の名前に `mob.health-display-seconds`（4）秒だけ HP が出る
+- ボスは生きている間、参加者全員にボスバーで HP を出す
+
 ---
 
 ## 管理画面・OBS オーバーレイ
@@ -282,6 +293,7 @@ GameStage が上がると下位種別の出現率が段階的に落ち、上位�
 | `/invasion stop` | 侵攻の停止（所有者・管理者） |
 | `/invasion setup` | ゲーム開始前の確認（要 `invasioncore.admin`）。難易度・ゲームルール・ネクサスの状態などを ✔ / ⚠ / ✘ で表示し、直すコマンドをクリックで入力欄に入れられる |
 | `/invasion give <item> [数]` | アイテム配布（要 `invasioncore.admin`）<br>`nexus` `hammer` `shard` `kit` `turret_*` `spike` `mine` `flash` `medkit` `barrier` |
+| `/invasion tp nexus` | ネクサスのそばへテレポート（要 `invasioncore.admin`）。別のディメンションからでも使える |
 | `/invasion admin <sub>` | 下記の管理サブコマンド |
 
 ### 管理サブコマンド
@@ -338,6 +350,8 @@ GameStage が上がると下位種別の出現率が段階的に落ち、上位�
 - `heat.screamer-threshold` — 叫喚体が湧く熱量
 - `performance.ai-buckets` — AI更新の分散数（大きいほど軽いが反応が鈍る）
 - `nexus.defense-radius` — 防衛範囲。ネクサス設置後〜起動前に動ける範囲も兼ねる（既定 48）
+- `nexus.floating-damage-per-second` / `nexus.explosion-radius` / `nexus.explosion-damage` — 浮かせたネクサスへの対策
+- `mob.health-display-seconds` — ダメージを受けた侵略者の HP を出す秒数
 - `grave.*` — 墓（本人だけが回収できる時間、許可の返事を待つ時間）
 - `guide.*` — ネクサスの発光・方向表示・境目のパーティクル
 - `rules.url` — `/rule` で表示するルール説明の URL

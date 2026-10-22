@@ -47,9 +47,12 @@ import java.util.concurrent.ThreadLocalRandom;
 public final class WaveEngine implements NexusCombatSink {
 
     /** 夜の開始時刻（tick）。 */
-    private static final long DUSK = 13000L;
+    public static final long DUSK = 13000L;
     /** 夜の終了時刻（tick）。 */
-    private static final long DAWN = 23500L;
+    public static final long DAWN = 23500L;
+
+    /** 浮いたネクサスの警告をチャットに出す間隔。毎秒だと流れてしまう。 */
+    private static final long FLOATING_WARN_INTERVAL_MILLIS = 15_000L;
 
     private final Plugin plugin;
     private final InvasionConfig config;
@@ -76,6 +79,9 @@ public final class WaveEngine implements NexusCombatSink {
 
     /** ピースフルで血の月を止めている間、最後に警告を出した時刻（tick）。 */
     private final Map<UUID, Long> peacefulWarnedAt = new HashMap<>();
+
+    /** 浮いているネクサスについて最後に知らせた時刻（ミリ秒）。 */
+    private final Map<UUID, Long> floatingWarnedAt = new HashMap<>();
 
     /** ネクサスが殴られたと最後に警告した時刻（ミリ秒）。毎秒殴られるので間隔を空けて出す。 */
     private final Map<UUID, Long> attackWarnedAt = new HashMap<>();
@@ -126,6 +132,12 @@ public final class WaveEngine implements NexusCombatSink {
 
     public boolean activate(Nexus nexus, Player by) {
         if (nexus.phase() != Nexus.Phase.DORMANT && nexus.phase() != Nexus.Phase.BROKEN) {
+            return false;
+        }
+        if (nexuses.isFloating(nexus, true)) {
+            if (by != null) {
+                by.sendMessage(Text.error("ネクサスの真下が空中になっている。地面か固いブロックの上に置き直してから起動すること。"));
+            }
             return false;
         }
         // 崩壊からの再建には代償を課す。無料で再挑戦できると防衛の失敗が痛くなくなる。
@@ -205,6 +217,7 @@ public final class WaveEngine implements NexusCombatSink {
         applyChunkTicket(nexus, false);
         duskHandled.remove(nexus.id());
         attackWarnedAt.remove(nexus.id());
+        floatingWarnedAt.remove(nexus.id());
         nexus.phase(broken ? Nexus.Phase.BROKEN : Nexus.Phase.DORMANT);
         nexus.currentWave(0);
         nexus.totalWaves(0);
@@ -236,6 +249,10 @@ public final class WaveEngine implements NexusCombatSink {
             }
 
             applyChunkTicket(nexus, true);
+            if (drainIfFloating(nexus)) {
+                // 浮かせたまま HP が尽きて崩壊した
+                continue;
+            }
 
             if (nexus.phase() == Nexus.Phase.BLOOD_MOON) {
                 tickBloodMoon(nexus, fullTime, timeOfDay);
@@ -244,6 +261,31 @@ public final class WaveEngine implements NexusCombatSink {
             }
             updateHud(nexus);
         }
+    }
+
+    /**
+     * 起動後に真下を掘って宙に浮かせたら、地面につなぎ直すまで HP を削る。
+     * 浮いたネクサスは序盤の侵略者が誰も届かず、守りが成立しすぎるため。
+     *
+     * @return 削った結果ネクサスが崩壊したら true
+     */
+    private boolean drainIfFloating(Nexus nexus) {
+        if (!nexuses.isFloating(nexus, false)) {
+            floatingWarnedAt.remove(nexus.id());
+            return false;
+        }
+        long now = System.currentTimeMillis();
+        Long last = floatingWarnedAt.get(nexus.id());
+        if (last == null || now - last >= FLOATING_WARN_INTERVAL_MILLIS) {
+            floatingWarnedAt.put(nexus.id(), now);
+            broadcast(nexus, Text.error("ネクサスの真下が空中になっている！ 地面か固いブロックでつなぐまで、HP が減り続ける。"));
+        }
+        nexus.health(nexus.health() - config.nexusFloatingDamagePerSecond());
+        if (nexus.health() <= 0) {
+            resolveDefeat(nexus);
+            return true;
+        }
+        return false;
     }
 
     /**

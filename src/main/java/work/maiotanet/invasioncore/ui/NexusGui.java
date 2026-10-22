@@ -241,8 +241,8 @@ public final class NexusGui {
                     player.closeInventory();
                 } else {
                     Sounds.fail(player);
-                    if (!wasBroken) {
-                        // 崩壊時は activate 側が Shard 不足の理由を通知済み
+                    if (nexus.isActive()) {
+                        // 起動できなかった理由（Shard 不足・浮いている）は activate 側が通知済み
                         player.sendMessage(Text.warn("すでに稼働している。"));
                     }
                 }

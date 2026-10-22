@@ -37,6 +37,7 @@ import work.maiotanet.invasioncore.pregame.PreGameService;
 import work.maiotanet.invasioncore.setup.SetupChecklist;
 import work.maiotanet.invasioncore.stage.GameStageService;
 import work.maiotanet.invasioncore.ui.HudService;
+import work.maiotanet.invasioncore.ui.InvaderHealthService;
 import work.maiotanet.invasioncore.ui.NexusGuideService;
 import work.maiotanet.invasioncore.ui.NexusGui;
 import work.maiotanet.invasioncore.ui.SidebarUpdater;
@@ -75,6 +76,7 @@ public final class InvasionCore extends JavaPlugin {
     private WebServer web;
     private GraveService graves;
     private NexusGuideService guide;
+    private InvaderHealthService invaderHealth;
 
     @Override
     public void onEnable() {
@@ -135,6 +137,8 @@ public final class InvasionCore extends JavaPlugin {
 
         PreGameService pregame = new PreGameService(config, nexuses);
         this.guide = new NexusGuideService(config, nexuses, pregame);
+        this.invaderHealth = new InvaderHealthService(config, registry, nexuses, stages);
+        getServer().getPluginManager().registerEvents(invaderHealth, this);
         getServer().getPluginManager().registerEvents(new PreGameListener(pregame), this);
         getServer().getPluginManager().registerEvents(
                 new NexusListener(config, nexuses, gui, waves, shards), this);
@@ -196,6 +200,7 @@ public final class InvasionCore extends JavaPlugin {
         getServer().getScheduler().runTaskTimer(this, sidebar::tick, 80L, 20L);
         getServer().getScheduler().runTaskTimer(this, pregame::tick, 85L, 20L);
         getServer().getScheduler().runTaskTimer(this, guide::tick, 90L, 5L);
+        getServer().getScheduler().runTaskTimer(this, invaderHealth::tick, 92L, 5L);
         getServer().getScheduler().runTaskTimer(this, graves::tick, 95L, 20L);
         getServer().getScheduler().runTaskTimer(this, shardSound::tick, 1L, 1L);
         getServer().getScheduler().runTaskTimer(this, turrets::tick,
@@ -225,6 +230,9 @@ public final class InvasionCore extends JavaPlugin {
         }
         if (guide != null) {
             guide.shutdown();
+        }
+        if (invaderHealth != null) {
+            invaderHealth.shutdown();
         }
         if (web != null) {
             web.stop();
