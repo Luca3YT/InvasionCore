@@ -168,6 +168,11 @@ public final class InvasionConfig {
         return cfg.getInt("breach.engineer-max-build-height", 24);
     }
 
+    /** 工兵が壁の上から内側へ渡す足場の長さの上限（ブロック）。厚い壁ほど長く渡す必要がある。 */
+    public int engineerMaxBridgeLength() {
+        return Math.max(1, cfg.getInt("breach.engineer-max-bridge-length", 6));
+    }
+
     // ---- 日サイクル / ブラッドムーン ----
     public int bloodMoonInterval() {
         return Math.max(1, cfg.getInt("cycle.blood-moon-interval", 7));

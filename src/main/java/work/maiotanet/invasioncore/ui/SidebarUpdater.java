@@ -13,6 +13,7 @@ import work.maiotanet.invasioncore.heat.HeatService;
 import work.maiotanet.invasioncore.mob.InvaderRegistry;
 import work.maiotanet.invasioncore.nexus.Nexus;
 import work.maiotanet.invasioncore.nexus.NexusManager;
+import work.maiotanet.invasioncore.pause.PauseService;
 import work.maiotanet.invasioncore.stage.GameStageService;
 import work.maiotanet.invasioncore.util.Text;
 import work.maiotanet.invasioncore.wave.WaveEngine;
@@ -36,6 +37,7 @@ public final class SidebarUpdater {
     private final ShardService shards;
     private final HeatService heat;
     private final HudService hud;
+    private PauseService pause;
 
     public SidebarUpdater(InvasionConfig config, NexusManager nexuses, GameStageService stages,
                           InvaderRegistry registry, ShardService shards, HeatService heat, HudService hud) {
@@ -46,6 +48,11 @@ public final class SidebarUpdater {
         this.shards = shards;
         this.heat = heat;
         this.hud = hud;
+    }
+
+    /** 一時停止を知らせるために後から渡す（組み立ての順番の都合）。 */
+    public void pause(PauseService pause) {
+        this.pause = pause;
     }
 
     /**
@@ -102,6 +109,10 @@ public final class SidebarUpdater {
     private void addClock(List<Component> lines, Nexus nexus) {
         World world = nexus.world();
         if (world == null) {
+            return;
+        }
+        if (pause != null && pause.isPaused()) {
+            lines.add(Text.of("一時停止中", Text.WARN).decorate(TextDecoration.BOLD));
             return;
         }
         if (Boolean.FALSE.equals(world.getGameRuleValue(GameRule.DO_DAYLIGHT_CYCLE))) {

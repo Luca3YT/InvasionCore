@@ -23,6 +23,7 @@ import work.maiotanet.invasioncore.mob.InvaderType;
 import work.maiotanet.invasioncore.mob.MutationTier;
 import work.maiotanet.invasioncore.nexus.Nexus;
 import work.maiotanet.invasioncore.nexus.NexusManager;
+import work.maiotanet.invasioncore.pause.PauseService;
 import work.maiotanet.invasioncore.perk.PerkService;
 import work.maiotanet.invasioncore.setup.SetupChecklist;
 import work.maiotanet.invasioncore.stage.GameStageService;
@@ -59,7 +60,8 @@ public final class InvasionCommands implements BasicCommand {
             "spike", "mine", "flash", "medkit", "barrier", "recall");
     private static final List<String> ADMIN = List.of(
             "forcewave", "setlevel", "setday", "restore", "despawn", "reload", "info",
-            "list", "create", "activate", "spawn", "boss", "points", "airdrop", "end", "web", "item");
+            "list", "create", "activate", "spawn", "boss", "points", "airdrop", "end", "web", "item",
+            "pause", "resume");
 
     private final InvasionCore plugin;
     private final NexusManager nexuses;
@@ -77,6 +79,7 @@ public final class InvasionCommands implements BasicCommand {
     private WebServer web;
     private BuildInfo build;
     private ItemBox itemBox;
+    private PauseService pause;
 
     public InvasionCommands(InvasionCore plugin, NexusManager nexuses, GameStageService stages,
                             ShardService shards, PerkService perks, NexusGui gui,
@@ -98,6 +101,10 @@ public final class InvasionCommands implements BasicCommand {
 
     public void web(WebServer web) {
         this.web = web;
+    }
+
+    public void pause(PauseService pause) {
+        this.pause = pause;
     }
 
     public void extras(BuildInfo build, ItemBox itemBox) {
@@ -137,6 +144,9 @@ public final class InvasionCommands implements BasicCommand {
         String head = args[0].toLowerCase(Locale.ROOT);
         if (head.equals("give") && args.length == 2) {
             return filter(ITEMS, args[1]);
+        }
+        if (head.equals("admin") && args.length == 3 && args[1].equalsIgnoreCase("pause")) {
+            return filter(List.of("freeze", "walk", "free"), args[2]);
         }
         if (head.equals("admin") && args.length == 3 && args[1].equalsIgnoreCase("item")) {
             return filter(List.of("on", "off"), args[2]);
@@ -396,6 +406,26 @@ public final class InvasionCommands implements BasicCommand {
             case "create" -> createNexus(sender, args);
             case "end" -> endGame(sender);
             case "web" -> showWebUrls(sender);
+            case "pause" -> {
+                // 参加者の止め方。省略したら「歩けるが操作できない」
+                PauseService.Mode mode = args.length >= 3 ? PauseService.Mode.parse(args[2]) : PauseService.Mode.WALK;
+                if (mode == null) {
+                    sender.sendMessage(Text.warn("使い方: /invasion admin pause [freeze|walk|free]"
+                            + "（freeze: 動けない・walk: 歩けるが操作できない・free: 自由）"));
+                    return;
+                }
+                boolean already = pause.isPaused();
+                pause.pause(mode);
+                sender.sendMessage(Text.good((already ? "止め方を変えた: " : "ゲームを一時停止した: ")
+                        + mode.id() + "（参加者は" + mode.description() + "）。再開は /invasion admin resume"));
+            }
+            case "resume" -> {
+                if (pause.resume()) {
+                    sender.sendMessage(Text.good("3 秒後に再開する。"));
+                } else {
+                    sender.sendMessage(Text.warn(pause.isPaused() ? "再開のカウントダウン中。" : "一時停止していない。"));
+                }
+            }
             case "item" -> {
                 // /invasion item を運営以外にも開放する・閉じる（テストプレイ用）
                 if (args.length < 3 || !(args[2].equalsIgnoreCase("on") || args[2].equalsIgnoreCase("off"))) {
@@ -763,6 +793,7 @@ public final class InvasionCommands implements BasicCommand {
             sender.sendMessage(Text.prefixed(Text.of("/invasion give <item> [数] — アイテム配布", Text.MUTED)));
             sender.sendMessage(Text.prefixed(Text.of("/invasion tp nexus — ネクサスのそばへ移動", Text.MUTED)));
             sender.sendMessage(Text.prefixed(Text.of("/invasion admin item on|off — /invasion item を誰でも使えるようにする・運営だけに戻す", Text.MUTED)));
+            sender.sendMessage(Text.prefixed(Text.of("/invasion admin pause [freeze|walk|free] / resume — ゲームの一時停止・再開", Text.MUTED)));
             sender.sendMessage(Text.prefixed(Text.of("/invasion admin <sub> — 管理コマンド", Text.MUTED)));
         }
     }

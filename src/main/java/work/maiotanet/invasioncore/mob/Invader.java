@@ -38,6 +38,24 @@ public final class Invader {
     /** 工兵が設置した足場。侵攻終了時に撤去するため記録する。 */
     private final Deque<Location> placedBlocks = new ArrayDeque<>();
 
+    /** 工兵の作業。壁の前で登っている（CLIMB）・壁の上を渡っている（BRIDGE）・何もしていない（NONE）。 */
+    public enum BuildMode {
+        NONE, CLIMB, BRIDGE
+    }
+
+    private BuildMode buildMode = BuildMode.NONE;
+    /** 登り切る高さ（足の Y）。壁のいちばん上のすぐ上。 */
+    private int buildTopY;
+    /** 渡っていく向き（ネクサスの方へ。東西南北のどれか）。 */
+    private int buildDx;
+    private int buildDz;
+    /** 渡すために置いた足場の数。 */
+    private int bridgeSteps;
+    /** 渡り始めた時刻(tick)。渡り切れずに足場の端で止まり続けないよう、時間でも打ち切る。 */
+    private long bridgeStartTick;
+    /** この時刻(tick)までは積み直さない。登り切れなかった壁の前で積み続けないため。 */
+    private long buildRetryTick;
+
     /** 次に特殊行動（射撃・投擲・ボススキル・叫喚など）を行える時刻(tick)。 */
     private long abilityReadyTick;
 
@@ -55,6 +73,59 @@ public final class Invader {
         this.tier = tier;
         this.nexusId = nexusId;
         this.wave = wave;
+    }
+
+    public BuildMode buildMode() {
+        return buildMode;
+    }
+
+    /** 壁を登り始める。 */
+    public void startClimb(int topY, int dx, int dz) {
+        this.buildMode = BuildMode.CLIMB;
+        this.buildTopY = topY;
+        this.buildDx = dx;
+        this.buildDz = dz;
+        this.bridgeSteps = 0;
+    }
+
+    public void startBridge(long now) {
+        this.buildMode = BuildMode.BRIDGE;
+        this.bridgeSteps = 0;
+        this.bridgeStartTick = now;
+    }
+
+    public long bridgeStartTick() {
+        return bridgeStartTick;
+    }
+
+    /** 作業をやめる。retryTick までは積み直さない。 */
+    public void stopBuilding(long retryTick) {
+        this.buildMode = BuildMode.NONE;
+        this.buildRetryTick = retryTick;
+    }
+
+    public int buildTopY() {
+        return buildTopY;
+    }
+
+    public int buildDx() {
+        return buildDx;
+    }
+
+    public int buildDz() {
+        return buildDz;
+    }
+
+    public int bridgeSteps() {
+        return bridgeSteps;
+    }
+
+    public void bridgeStep() {
+        bridgeSteps++;
+    }
+
+    public long buildRetryTick() {
+        return buildRetryTick;
     }
 
     public Mob entity() {

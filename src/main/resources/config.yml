@@ -62,8 +62,10 @@ breach:
   swing-interval-ticks: 20
   # この距離までプレイヤーが近づくと、ネクサスより先にプレイヤーを狙う
   player-aggro-range: 7.0
-  # 工兵が積める足場の最大段数
+  # 工兵が積める足場の最大数（登る分と渡る分の合計）
   engineer-max-build-height: 24
+  # 工兵が壁の上から内側へ渡す足場の長さの上限（ブロック）
+  engineer-max-bridge-length: 6
 
 cycle:
   # 何日ごとに血の月が来るか。7DTD 準拠の既定値は 7

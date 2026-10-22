@@ -14,6 +14,7 @@ import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
@@ -168,6 +169,24 @@ public final class NexusListener implements Listener {
     }
 
     // ---------- GUI ----------
+
+    /**
+     * プラグインの画面（ネクサス・SHOP・パーク・/invasion item など）にアイテムをドラッグで置かせない。
+     * 置けてしまうと、画面を閉じたときにそのアイテムが消える。
+     */
+    @EventHandler
+    public void onInventoryDrag(InventoryDragEvent event) {
+        if (!(event.getInventory().getHolder() instanceof InvasionHolder)) {
+            return;
+        }
+        int topSize = event.getView().getTopInventory().getSize();
+        for (int raw : event.getRawSlots()) {
+            if (raw < topSize) {
+                event.setCancelled(true);
+                return;
+            }
+        }
+    }
 
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {

@@ -38,6 +38,8 @@ import work.maiotanet.invasioncore.mob.InvaderRegistry;
 import work.maiotanet.invasioncore.mob.InvaderSpawner;
 import work.maiotanet.invasioncore.nexus.NexusManager;
 import work.maiotanet.invasioncore.perk.PerkEffectService;
+import work.maiotanet.invasioncore.pause.PauseListener;
+import work.maiotanet.invasioncore.pause.PauseService;
 import work.maiotanet.invasioncore.perk.PerkService;
 import work.maiotanet.invasioncore.pregame.PreGameService;
 import work.maiotanet.invasioncore.setup.SetupChecklist;
@@ -82,6 +84,7 @@ public final class InvasionCore extends JavaPlugin {
     private GadgetListener gadgets;
     private WebServer web;
     private GraveService graves;
+    private PauseService pause;
     private PlacedBlockTracker placedBlocks;
     private NexusGuideService guide;
     private InvaderHealthService invaderHealth;
@@ -151,6 +154,9 @@ public final class InvasionCore extends JavaPlugin {
         BuildInfo build = BuildInfo.load(getPluginMeta().getVersion());
         ItemBox itemBox = new ItemBox(this);
         getServer().getPluginManager().registerEvents(new VersionNoticeListener(build), this);
+        this.pause = new PauseService(this, registry, worldEvents);
+        getServer().getPluginManager().registerEvents(new PauseListener(pause, registry), this);
+        sidebar.pause(pause);
         PreGameService pregame = new PreGameService(config, nexuses, recall);
         getServer().getPluginManager().registerEvents(recall, this);
         this.guide = new NexusGuideService(config, nexuses, pregame, worldEvents);
@@ -206,6 +212,7 @@ public final class InvasionCore extends JavaPlugin {
         }
         commands.web(web);
         commands.extras(build, itemBox);
+        commands.pause(pause);
         setupChecklist.web(config.webEnabled(), web);
         LinkCommand rule = new LinkCommand(List.of(
                 new LinkCommand.Link("ルール説明はこちら: ", config::rulesUrl)));
@@ -223,9 +230,23 @@ public final class InvasionCore extends JavaPlugin {
 
         // ---- 定期処理 ----
         // AI は毎tick呼ぶが、内部でバケット分割しているので1tickあたりの実処理は 1/N。
-        getServer().getScheduler().runTaskTimer(this, ai::tick, 20L, 1L);
-        getServer().getScheduler().runTaskTimer(this, waves::tick, 40L, 20L);
-        getServer().getScheduler().runTaskTimer(this, worldEvents::tick, 60L, 20L);
+        // 一時停止中は、侵略者・ウェーブ（昼夜と Day）・ワールドイベント・タレットと罠を動かさない
+        getServer().getScheduler().runTaskTimer(this, () -> {
+            if (!pause.isPaused()) {
+                ai.tick();
+            }
+        }, 20L, 1L);
+        getServer().getScheduler().runTaskTimer(this, () -> {
+            if (!pause.isPaused()) {
+                waves.tick();
+            }
+        }, 40L, 20L);
+        getServer().getScheduler().runTaskTimer(this, () -> {
+            if (!pause.isPaused()) {
+                worldEvents.tick();
+            }
+        }, 60L, 20L);
+        getServer().getScheduler().runTaskTimer(this, pause::tick, 62L, 20L);
         getServer().getScheduler().runTaskTimer(this, sidebar::tick, 80L, 20L);
         getServer().getScheduler().runTaskTimer(this, pregame::tick, 85L, 20L);
         getServer().getScheduler().runTaskTimer(this, guide::tick, 90L, 5L);
@@ -233,9 +254,16 @@ public final class InvasionCore extends JavaPlugin {
         getServer().getScheduler().runTaskTimer(this, recall::tick, 94L, 2L);
         getServer().getScheduler().runTaskTimer(this, graves::tick, 95L, 20L);
         getServer().getScheduler().runTaskTimer(this, shardSound::tick, 1L, 1L);
-        getServer().getScheduler().runTaskTimer(this, turrets::tick,
-                100L, config.turretTickInterval());
-        getServer().getScheduler().runTaskTimer(this, traps::tick, 110L, 10L);
+        getServer().getScheduler().runTaskTimer(this, () -> {
+            if (!pause.isPaused()) {
+                turrets.tick();
+            }
+        }, 100L, config.turretTickInterval());
+        getServer().getScheduler().runTaskTimer(this, () -> {
+            if (!pause.isPaused()) {
+                traps.tick();
+            }
+        }, 110L, 10L);
         getServer().getScheduler().runTaskTimer(this,
                 () -> perkEffects.tick(getServer().getOnlinePlayers()), 120L, 20L);
         // 自動保存と記録の掃除は5分ごと。
@@ -247,6 +275,10 @@ public final class InvasionCore extends JavaPlugin {
     @Override
     public void onDisable() {
         getServer().getScheduler().cancelTasks(this);
+        if (pause != null) {
+            // 止めたまま終わると、昼夜の止まったワールドと動かない侵略者が残る
+            pause.shutdown();
+        }
 
         if (registry != null) {
             // 侵略Mobを残したままサーバーを落とすと、次回起動時に制御不能な野良Mobになる

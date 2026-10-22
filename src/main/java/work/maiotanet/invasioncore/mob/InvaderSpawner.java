@@ -77,8 +77,19 @@ public final class InvaderSpawner {
         return invader;
     }
 
-    /** 座標を指定して生成する。徘徊ホードや叫喚体の呼び出しで使う。 */
+    /**
+     * 座標を指定して生成する。徘徊ホードや叫喚体・ボスの呼び出しで使う。
+     *
+     * <p>同時に存在できる数（wave.max-alive）に達していたら出さない。ウェーブは自分で数を見ているが、
+     * ボスの増援や叫喚体の叫びは何度でも呼ぶので、ここで止めないと長引いたときに際限なく増える。
+     * ボス本体は spawnBoss から出すので、この上限で出せなくなることはない。</p>
+     *
+     * @return 出した侵略者。上限や湧き場所の都合で出せなければ null
+     */
     public Invader spawnAt(Nexus nexus, InvaderType type, MutationTier tier, int gameStage, int wave, Location spot) {
+        if (registry.aliveCount(nexus.id()) >= config.waveMaxAlive()) {
+            return null;
+        }
         return spawnAt(nexus, type, tier, gameStage, wave, spot, null);
     }
 

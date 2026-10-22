@@ -9,6 +9,7 @@ import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Arrow;
 import org.bukkit.entity.Creeper;
 import org.bukkit.entity.Mob;
@@ -181,6 +182,12 @@ public final class InvaderAiService {
             return;
         }
 
+        // --- 工兵が壁を登っている・渡っている間は、経路探索に引っ張られないよう作業だけする ---
+        if (invader.buildMode() != Invader.BuildMode.NONE) {
+            tickBuilding(invader, nexus, now);
+            return;
+        }
+
         // --- 通常移動 ---
         Pathfinder pathfinder = mob.getPathfinder();
         boolean pathOk = pathfinder.moveTo(target, 1.0);
@@ -212,10 +219,8 @@ public final class InvaderAiService {
             igniteBomber(invader, target);
             return;
         }
-        if (type.canBuild() && target.getY() > invader.entity().getLocation().getY() + 1.5) {
-            if (buildUpward(invader, nexus)) {
-                return;
-            }
+        if (type.canBuild() && now >= invader.buildRetryTick() && startClimbIfWalled(invader, nexus, target)) {
+            return;
         }
         if (!canSwing) {
             return;
@@ -294,15 +299,124 @@ public final class InvaderAiService {
         return false;
     }
 
-    /**
-     * 工兵は足場を組んで高所へ登る。
-     * 侵略MODの Pig Engineer 相当で、「高い塔に籠れば安全」を成立させないための役割。
-     */
-    private boolean buildUpward(Invader invader, Nexus nexus) {
-        Mob mob = invader.entity();
-        Location feet = mob.getLocation();
-        Block at = feet.getBlock();
+    // ---------- 工兵 ----------
 
+    /** 登り切れなかった・渡り切れなかったとき、同じ壁の前で積み直すまでの間（tick）。 */
+    private static final long BUILD_RETRY_TICKS = 200L;
+
+    /** 渡り始めてからこれだけたっても越えられなければ、渡るのをやめる（tick）。 */
+    private static final long BRIDGE_TIMEOUT_TICKS = 200L;
+
+    /**
+     * 目の前（ネクサスの方へ 2 ブロック以内）に、跳んでも越えられない壁があれば登り始める。
+     *
+     * <p>以前は「進めなくなってネクサスの方が高い」だけで足元に積んでいたので、壁の無い所や
+     * 窪地でも塔が立ち、登り切っても先へ進めずに止まっていた。登るのは壁の前だけにし、
+     * 登り切ったら壁の上から内側へ足場を渡して越えさせる。</p>
+     *
+     * @return 登り始めたら true
+     */
+    private boolean startClimbIfWalled(Invader invader, Nexus nexus, Location target) {
+        Mob mob = invader.entity();
+        Block feet = mob.getLocation().getBlock();
+        int[] dir = towards(feet.getLocation(), target);
+        for (int ahead = 1; ahead <= 2; ahead++) {
+            Block column = feet.getRelative(dir[0] * ahead, 0, dir[1] * ahead);
+            if (!blocksWay(column) && !blocksWay(column.getRelative(BlockFace.UP))) {
+                continue;
+            }
+            int height = wallHeight(column);
+            if (height <= 1) {
+                // 1 段なら跳んで越えられる
+                return false;
+            }
+            if (!isWithinBreachRadius(nexus, column.getLocation())) {
+                // 拠点の外の崖や建物には積まない
+                return false;
+            }
+            invader.startClimb(feet.getY() + height, dir[0], dir[1]);
+            invader.stuckTicks(0);
+            return true;
+        }
+        return false;
+    }
+
+    /** 壁の前で真上に登り、壁の上に出たら内側へ足場を渡す。 */
+    private void tickBuilding(Invader invader, Nexus nexus, long now) {
+        Mob mob = invader.entity();
+        Block feet = mob.getLocation().getBlock();
+        if (invader.buildMode() == Invader.BuildMode.CLIMB) {
+            if (feet.getY() >= invader.buildTopY()) {
+                invader.startBridge(now);
+                return;
+            }
+            // 壁から離れないよう横の動きを止め、足元に足場を置いて真上へ
+            mob.setVelocity(new Vector(0.0, mob.getVelocity().getY(), 0.0));
+            if (!mob.isOnGround()) {
+                return;
+            }
+            if (!placeScaffold(invader, nexus, feet)) {
+                // 上限まで積んだ・積めない場所。しばらくは壁を殴る方に任せる
+                invader.stopBuilding(now + BUILD_RETRY_TICKS);
+                return;
+            }
+            mob.setVelocity(new Vector(0.0, 0.42, 0.0));
+            return;
+        }
+
+        // BRIDGE：ネクサスの方へ 1 ブロックずつ足場を伸ばして進む
+        int dx = invader.buildDx();
+        int dz = invader.buildDz();
+        Block next = feet.getRelative(dx, 0, dz);
+        if (invader.bridgeSteps() >= config.engineerMaxBridgeLength()
+                || now - invader.bridgeStartTick() > BRIDGE_TIMEOUT_TICKS
+                || blocksWay(next) || blocksWay(next.getRelative(BlockFace.UP))) {
+            // 渡り切れない（長すぎる・さらに高い壁がある）
+            invader.stopBuilding(now + BUILD_RETRY_TICKS);
+            return;
+        }
+        Block under = next.getRelative(BlockFace.DOWN);
+        if (pastWall(next, invader.buildTopY())) {
+            // 壁を越えた。内側の空いている所へ 1 マス進めて飛び降りさせ、ここからはいつもの経路探索で進む。
+            // 押すだけだとゾンビ本来の動きに上書きされ、経路探索も高い所から飛び降りる道を選ばないので、
+            // 壁の上で止まってしまう
+            stepInto(mob, next);
+            invader.stopBuilding(now);
+            invader.bestDistance(Double.MAX_VALUE);
+            return;
+        }
+        if (!blocksWay(under) && under.getType() != Material.SCAFFOLDING) {
+            if (!placeScaffold(invader, nexus, under)) {
+                invader.stopBuilding(now + BUILD_RETRY_TICKS);
+                return;
+            }
+            invader.bridgeStep();
+        }
+        // 足場（または壁の上面）ができたので、そこへ 1 マス進む
+        stepInto(mob, next);
+    }
+
+    /** 隣のマスの真ん中へ動かす（向きはそのまま）。渡る・飛び降りるを確実にするため、押さずに動かす。 */
+    private static void stepInto(Mob mob, Block block) {
+        Location to = block.getLocation().add(0.5, 0.0, 0.5);
+        to.setYaw(mob.getLocation().getYaw());
+        to.setPitch(mob.getLocation().getPitch());
+        mob.teleport(to);
+        mob.setVelocity(new Vector(0.0, 0.0, 0.0));
+    }
+
+    /**
+     * 壁を越えたか。進む先の足元の下が、壁の高さより下まで空いていれば（飛び降りられれば）越えている。
+     * 壁の上面（固いブロック）がまだ続いているなら、まだ壁の上。
+     */
+    private static boolean pastWall(Block next, int wallTopY) {
+        Block below = next.getRelative(BlockFace.DOWN);
+        return !blocksWay(below) && !blocksWay(below.getRelative(BlockFace.DOWN))
+                && next.getY() >= wallTopY;
+    }
+
+    /** 足場を置く。置けたら true。 */
+    private boolean placeScaffold(Invader invader, Nexus nexus, Block at) {
         if (invader.placedBlocks().size() >= config.engineerMaxBuildHeight()) {
             return false;
         }
@@ -312,14 +426,45 @@ public final class InvaderAiService {
         if (!isWithinBreachRadius(nexus, at.getLocation())) {
             return false;
         }
-
-        at.setType(Material.SCAFFOLDING);
-        invader.placedBlocks().push(at.getLocation());
-        // 置いた足場に自力で乗る
-        mob.setVelocity(new Vector(0.0, 0.42, 0.0));
-        mob.getWorld().playSound(feet, Sound.BLOCK_SCAFFOLDING_PLACE, 0.7f, 1.0f);
+        if (at.getType() != Material.SCAFFOLDING) {
+            at.setType(Material.SCAFFOLDING);
+            invader.placedBlocks().push(at.getLocation());
+            at.getWorld().playSound(at.getLocation(), Sound.BLOCK_SCAFFOLDING_PLACE, 0.7f, 1.0f);
+        }
         invader.stuckTicks(0);
         return true;
+    }
+
+    /** 壁の高さ。column の高さから上へ、道をふさぐブロックが続く数。 */
+    private int wallHeight(Block column) {
+        int limit = config.engineerMaxBuildHeight() + 2;
+        int height = 0;
+        while (height < limit && blocksWay(column.getRelative(0, height, 0))) {
+            height++;
+        }
+        // 足元の高さが空いていて頭の高さだけふさがっている（張り出し）も 1 段として数え、その上を数える
+        if (height == 0 && blocksWay(column.getRelative(BlockFace.UP))) {
+            height = 1;
+            while (height < limit && blocksWay(column.getRelative(0, height, 0))) {
+                height++;
+            }
+        }
+        return height;
+    }
+
+    /** 歩いて通れないブロックか（足場は通れる扱いにしない。工兵が積んだ足場も壁の一部になる）。 */
+    private static boolean blocksWay(Block block) {
+        return block.getType().isSolid();
+    }
+
+    /** from から to の向きを、東西南北のどれかの 1 ブロックで返す（{dx, dz}）。 */
+    private static int[] towards(Location from, Location to) {
+        double dx = to.getX() - from.getX();
+        double dz = to.getZ() - from.getZ();
+        if (Math.abs(dx) >= Math.abs(dz)) {
+            return new int[]{dx >= 0 ? 1 : -1, 0};
+        }
+        return new int[]{0, dz >= 0 ? 1 : -1};
     }
 
     /** 爆導体の起爆。壁とタレットを吹き飛ばす役割。 */

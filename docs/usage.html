@@ -300,7 +300,7 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
       <p><strong>応急補修キット</strong>（ハニカムの見た目）を強化ブロックに右クリックすると、Shard なしで即座に全回復します。</p>
       <h3>ネクサス内の Shard（共有）</h3>
       <p>Shard を手に持ってネクサスを右クリックするとその束を、ネクサスの画面の「Shard をネクサスに預ける」で手持ちを全部、ネクサスに預けられます。預けた分はサイドバーに「ネクサス内の Shard」と出て、強化・修理・アップグレード・再建で <strong>手持ちが足りない分に自動で使われます</strong>。引き出せるのは管理者だけです（画面の「ネクサス内の Shard」から 1・10・64・全部）。</p>
-      <div class="note"><strong>侵略者が得意なこと</strong>：壁蟲は壁を登り、工兵は足場を積んで高所を越え、掘削者は地面を掘って入ってきます。高い壁だけ・一枚壁だけでは止まりません。厚み・屋根・罠の組み合わせが大事です。</div>
+      <div class="note"><strong>侵略者が得意なこと</strong>：壁蟲は壁を登り、工兵は壁の前で足場を積んで登り、壁の上から内側へ足場を渡して飛び降りてきます（渡せるのは 6 ブロックまでなので、厚い壁や屋根が効きます）。掘削者は地面を掘って入ってきます。高い壁だけ・一枚壁だけでは止まりません。厚み・屋根・罠の組み合わせが大事です。</div>
     </section>
 
     <section id="turrets">
@@ -446,6 +446,8 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
           <tr><td><code>/invasion admin spawn &lt;種類&gt; [数]</code></td><td>侵略者を湧かせる（稼働中のネクサスが必要）</td></tr>
           <tr><td><code>/invasion admin boss &lt;名前&gt;</code></td><td>ボスを出す（warlord / siege_titan / blight_queen / emberheart / void_herald）</td></tr>
           <tr><td><code>/invasion admin airdrop</code></td><td>補給物資をすぐ落とす</td></tr>
+          <tr><td><code>/invasion admin pause [freeze|walk|free]</code></td><td>ゲームを一時停止する。時間・侵略者・補給物資などのイベント・タレットと罠が止まり、参加者はダメージを受けない。参加者は freeze＝動けない、walk＝歩けるが壊す・置く・攻撃・使うができない（省略したとき）、free＝自由（OP は対象外）</td></tr>
+          <tr><td><code>/invasion admin resume</code></td><td>3・2・1 と数えてから再開する</td></tr>
           <tr><td><code>/invasion ver</code></td><td>プラグインのバージョンを表示する。develop など main 以外で作った jar は「0.4.0-dev (コミット・作った日時)」と出る。OP がサーバーに入ったときも画面に出る</td></tr>
           <tr><td><code>/invasion item</code></td><td>このプラグインのアイテムを何度でも取り出せる画面（クリックで 1 個、Shift+クリックで 1 スタック）</td></tr>
           <tr><td><code>/invasion admin item on</code> / <code>off</code></td><td><code>/invasion item</code> を誰でも使えるようにする（テストプレイ用）／OP だけに戻す</td></tr>

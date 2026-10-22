@@ -61,7 +61,7 @@ public final class WorldEventService {
         final Location location;
         final BlockData original;
         final long placedAtMillis;
-        final long expireAtMillis;
+        long expireAtMillis;
         BlockDisplay glow;
         TextDisplay label;
 
@@ -365,6 +365,21 @@ public final class WorldEventService {
             }
         }
         return out;
+    }
+
+    /**
+     * 一時停止していた時間ぶん、次の補給物資・徘徊ホードの時刻と、置かれている補給物資の消える時刻を遅らせる。
+     * ずらさないと、再開した瞬間に止めていた間の分がまとめて来たり、補給物資が消えたりする。
+     */
+    public void shiftTimers(long millis) {
+        if (millis <= 0) {
+            return;
+        }
+        nextHorde.replaceAll((id, at) -> at + millis);
+        nextAirDrop.replaceAll((id, at) -> at + millis);
+        for (AirDrop drop : airDrops) {
+            drop.expireAtMillis += millis;
+        }
     }
 
     /** いま置かれている補給物資の中心。方向の案内に使う。 */

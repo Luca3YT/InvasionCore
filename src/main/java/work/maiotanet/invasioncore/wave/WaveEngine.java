@@ -32,8 +32,10 @@ import work.maiotanet.invasioncore.world.BreachLog;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -85,6 +87,9 @@ public final class WaveEngine implements NexusCombatSink {
 
     /** ネクサスが殴られたと最後に警告した時刻（ミリ秒）。毎秒殴られるので間隔を空けて出す。 */
     private final Map<UUID, Long> attackWarnedAt = new HashMap<>();
+
+    /** 読み込みを頼んで、まだ終わっていないチャンク。毎秒同じ読み込みを頼み直さないため。 */
+    private final Set<Long> chunksLoading = new HashSet<>();
 
     /** ピースフルの警告を繰り返す間隔（tick）。毎秒出すとチャットが埋まる。 */
     private static final long PEACEFUL_WARN_INTERVAL = 1200L;
@@ -246,6 +251,11 @@ public final class WaveEngine implements NexusCombatSink {
                 long delta = worldDay - nexus.lastProcessedWorldDay();
                 nexus.lastProcessedWorldDay(worldDay);
                 onDawn(nexus, (int) Math.min(delta, 30));
+            } else if (worldDay < nexus.lastProcessedWorldDay()) {
+                // /time set などでワールドの時間が巻き戻った。基準を今の日に合わせ直さないと、
+                // 巻き戻した日数ぶん夜明けが来ず Day が止まり、血の月の日に止まると毎晩血の月になる
+                nexus.lastProcessedWorldDay(worldDay);
+                duskHandled.remove(nexus.id());
             }
 
             applyChunkTicket(nexus, true);
@@ -316,14 +326,20 @@ public final class WaveEngine implements NexusCombatSink {
                 int z = cz + dz;
                 if (world.isChunkLoaded(x, z)) {
                     world.addPluginChunkTicket(x, z, plugin);
-                } else {
-                    // 範囲が広いので、まだ読まれていない所はまとめて同期で読まず、読み終わってから保持する
-                    world.getChunkAtAsync(x, z).thenAccept(chunk -> {
-                        if (nexus.isActive()) {
-                            world.addPluginChunkTicket(x, z, plugin);
-                        }
-                    });
+                    continue;
                 }
+                long key = ((long) x << 32) ^ (z & 0xffffffffL);
+                if (!chunksLoading.add(key)) {
+                    // 読み込み中。読み終わるまで頼み直さない
+                    continue;
+                }
+                // 範囲が広いので、まだ読まれていない所はまとめて同期で読まず、読み終わってから保持する
+                world.getChunkAtAsync(x, z).whenComplete((chunk, error) -> {
+                    chunksLoading.remove(key);
+                    if (error == null && nexus.isActive()) {
+                        world.addPluginChunkTicket(x, z, plugin);
+                    }
+                });
             }
         }
     }
