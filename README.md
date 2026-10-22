@@ -42,7 +42,7 @@ IntelliJ IDEA 同梱の Maven の順。PATH は変更しない）。見つから
 `build.local.cmd`（git 管理外）を作り、`set "JAVA_HOME=..."` と `set "MVN=..."` を書く。
 詳しくは [docs/handoff.md](docs/handoff.md) を参照。
 
-成果物: `target/InvasionCore-0.3.1.jar`
+成果物: `target/InvasionCore-0.4.0.jar`
 
 ## サーバーの起動
 
