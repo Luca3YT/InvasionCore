@@ -14,8 +14,10 @@ import work.maiotanet.invasioncore.defense.TrapService;
 import work.maiotanet.invasioncore.defense.TurretService;
 import work.maiotanet.invasioncore.economy.ContributionTracker;
 import work.maiotanet.invasioncore.economy.RewardService;
+import work.maiotanet.invasioncore.economy.ShardLootService;
 import work.maiotanet.invasioncore.economy.ShardPickupSound;
 import work.maiotanet.invasioncore.economy.ShardService;
+import work.maiotanet.invasioncore.economy.ShopService;
 import work.maiotanet.invasioncore.gadget.RecallService;
 import work.maiotanet.invasioncore.grave.GraveService;
 import work.maiotanet.invasioncore.heat.HeatService;
@@ -99,6 +101,7 @@ public final class InvasionCore extends JavaPlugin {
         GameStageService stages = new GameStageService(config);
         ShardService shards = new ShardService();
         ShardPickupSound shardSound = new ShardPickupSound();
+        ShardLootService shardLoot = new ShardLootService(this, config, shards, shardSound);
         ContributionTracker contributions = new ContributionTracker();
         ShardFeed shardFeed = new ShardFeed();
         shards.feed(shardFeed);
@@ -114,7 +117,7 @@ public final class InvasionCore extends JavaPlugin {
         this.turrets = new TurretService(this, config, nexuses, registry, fortify, perks);
         this.traps = new TrapService(this, registry, perks);
         this.worldEvents = new WorldEventService(
-                this, config, nexuses, spawner, stages, heat, rewards);
+                this, config, nexuses, spawner, stages, heat, rewards, shardLoot);
         PerkEffectService perkEffects = new PerkEffectService(nexuses, perks);
 
         this.waves = new WaveEngine(this, config, nexuses, registry, spawner, ai, stages,
@@ -122,7 +125,8 @@ public final class InvasionCore extends JavaPlugin {
         ai.combatSink(waves);
 
         RecallService recall = new RecallService(config, nexuses, shards);
-        NexusGui gui = new NexusGui(config, nexuses, stages, shards, perks, waves, recall);
+        NexusGui gui = new NexusGui(config, nexuses, stages, shards, perks, waves, recall,
+                new ShopService(this, config));
         SidebarUpdater sidebar = new SidebarUpdater(
                 config, nexuses, stages, registry, shards, heat, hud);
 
@@ -139,7 +143,7 @@ public final class InvasionCore extends JavaPlugin {
 
         PreGameService pregame = new PreGameService(config, nexuses, recall);
         getServer().getPluginManager().registerEvents(recall, this);
-        this.guide = new NexusGuideService(config, nexuses, pregame);
+        this.guide = new NexusGuideService(config, nexuses, pregame, worldEvents);
         this.invaderHealth = new InvaderHealthService(config, registry, nexuses, stages);
         getServer().getPluginManager().registerEvents(invaderHealth, this);
         getServer().getPluginManager().registerEvents(new PreGameListener(pregame), this);
@@ -165,6 +169,7 @@ public final class InvasionCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(
                 new PlayerListener(config, nexuses, heat, perks, hud, shardSound, shards), this);
         getServer().getPluginManager().registerEvents(new GraveListener(graves), this);
+        getServer().getPluginManager().registerEvents(shardLoot, this);
 
         SetupChecklist setupChecklist = new SetupChecklist(config, nexuses, stages);
         InvasionCommands commands = new InvasionCommands(
@@ -248,6 +253,9 @@ public final class InvasionCore extends JavaPlugin {
         }
         if (web != null) {
             web.stop();
+        }
+        if (turrets != null) {
+            turrets.shutdown();
         }
         if (gadgets != null) {
             // 保存より前に消す。残すと鋼鉄級の耐久記録ごと恒久的な壁になる。

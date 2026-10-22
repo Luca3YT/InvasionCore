@@ -2,6 +2,10 @@ package work.maiotanet.invasioncore.config;
 
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.Plugin;
+import work.maiotanet.invasioncore.item.InvasionItems;
+
+import java.util.List;
+import java.util.Map;
 
 /**
  * config.yml の読み出し窓口。
@@ -20,6 +24,11 @@ public final class InvasionConfig {
     public void reload() {
         plugin.reloadConfig();
         this.cfg = plugin.getConfig();
+        // アイテムの作り方は static なので、設定を読み直すたびにここで入れ直す
+        InvasionItems.modelData(
+                cfg.getString("custom-model-data.shard", "shard"),
+                cfg.getString("custom-model-data.recall", "recall"),
+                cfg.getString("custom-model-data.hammer", "hammer"));
     }
 
     // ---- ネクサス ----
@@ -84,7 +93,7 @@ public final class InvasionConfig {
      * 種別ごとの相対関係を保ったまま、全体の速さだけを調整するためのノブ。
      */
     public double mobSpeedMultiplier() {
-        return cfg.getDouble("mob.speed-multiplier", 0.85);
+        return cfg.getDouble("mob.speed-multiplier", 1.0);
     }
 
     /**
@@ -256,6 +265,24 @@ public final class InvasionConfig {
         return Math.max(0, cfg.getInt("economy.vanilla-mob-shard", 1));
     }
 
+    /**
+     * 構造物のチェスト（村・廃坑・スポナー部屋・要塞・エンドシティなど）に入れる Shard の数の範囲。
+     * ディメンションごとに変え、危ない場所ほど多くする。
+     *
+     * @param dimension "overworld" / "nether" / "end"
+     * @return {最小, 最大}
+     */
+    public int[] lootShardRange(String dimension) {
+        int[] fallback = switch (dimension) {
+            case "nether" -> new int[]{10, 30};
+            case "end" -> new int[]{20, 60};
+            default -> new int[]{5, 20};
+        };
+        int min = Math.max(0, cfg.getInt("economy.loot-chest-shards." + dimension + ".min", fallback[0]));
+        int max = Math.max(min, cfg.getInt("economy.loot-chest-shards." + dimension + ".max", fallback[1]));
+        return new int[]{min, max};
+    }
+
     /** モンスタースポナーから出た敵にも Shard を落とさせるか。トラップタワーでの稼ぎを防ぐため既定は false。 */
     public boolean vanillaMobShardFromSpawner() {
         return cfg.getBoolean("economy.vanilla-mob-shard-from-spawner", false);
@@ -280,6 +307,28 @@ public final class InvasionConfig {
 
     public int airDropIntervalSeconds() {
         return cfg.getInt("world-events.air-drop.interval-seconds", 1200);
+    }
+
+    // ---- SHOP ----
+    /** SHOP の品ぞろえ（item・amount・price の並び）。読み方は ShopService。 */
+    public List<Map<?, ?>> shopItems() {
+        return cfg.getMapList("shop.items");
+    }
+
+    // ---- 1 日生き延びた報酬 ----
+    /** 夜明けごとに、生きている参加者全員へ配る Shard。 */
+    public int dailyShards() {
+        return Math.max(0, cfg.getInt("daily-reward.shards", 10));
+    }
+
+    /** 何日ごとにパークポイントを配るか。0 なら配らない。 */
+    public int dailyPerkEveryDays() {
+        return Math.max(0, cfg.getInt("daily-reward.perk-point-every-days", 2));
+    }
+
+    /** そのときに配るパークポイント。 */
+    public int dailyPerkPoints() {
+        return Math.max(0, cfg.getInt("daily-reward.perk-points", 1));
     }
 
     // ---- 帰還の羅針盤 ----

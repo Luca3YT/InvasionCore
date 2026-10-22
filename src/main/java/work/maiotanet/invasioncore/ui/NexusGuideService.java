@@ -1,6 +1,7 @@
 package work.maiotanet.invasioncore.ui;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
@@ -19,6 +20,7 @@ import work.maiotanet.invasioncore.nexus.Nexus;
 import work.maiotanet.invasioncore.nexus.NexusManager;
 import work.maiotanet.invasioncore.pregame.PreGameService;
 import work.maiotanet.invasioncore.util.Text;
+import work.maiotanet.invasioncore.world.WorldEventService;
 
 import java.util.UUID;
 
@@ -41,22 +43,28 @@ public final class NexusGuideService {
     /** 境目に描く弧の、プレイヤーの左右それぞれの長さ（ブロック）。 */
     private static final int ARC_HALF_LENGTH = 14;
 
+    /** 補給物資のこの距離（ブロック）まで来たら、矢印での案内をやめる。 */
+    private static final double AIR_DROP_ARRIVED = 3.0;
+
     private static final Color GUIDE_COLOR = Color.fromRGB(0xC77DFF);
     private static final Particle.DustOptions BOUNDARY_DUST = new Particle.DustOptions(GUIDE_COLOR, 1.3f);
 
     private final InvasionConfig config;
     private final NexusManager nexuses;
     private final PreGameService pregame;
+    private final WorldEventService worldEvents;
 
     /** 光らせるための表示用エンティティ。保存しない（チャンクが読み込まれ直したら作り直す）。 */
     private BlockDisplay glow;
     private UUID glowNexus;
     private int ticks;
 
-    public NexusGuideService(InvasionConfig config, NexusManager nexuses, PreGameService pregame) {
+    public NexusGuideService(InvasionConfig config, NexusManager nexuses, PreGameService pregame,
+                             WorldEventService worldEvents) {
         this.config = config;
         this.nexuses = nexuses;
         this.pregame = pregame;
+        this.worldEvents = worldEvents;
     }
 
     /** 5 tick ごと。矢印は向きを変えたらすぐ追従してほしいので、1秒ごとより細かく回す。 */
@@ -95,27 +103,58 @@ public final class NexusGuideService {
             return;
         }
         Location loc = player.getLocation();
+        Location drop = nearestAirDrop(loc);
+        if (drop != null) {
+            // 補給物資があるうちは、拠点の中にいてもそちらへ案内する（取りに行かないと 15 分で消える）
+            player.sendActionBar(arrow("補給物資 ", loc, drop, Text.WARN));
+            return;
+        }
         if (!center.getWorld().equals(loc.getWorld())) {
             // 別のディメンションでは方向に意味が無いので、どこにあるかだけ伝える
             player.sendActionBar(Text.of("ネクサスは" + worldLabel(center.getWorld())
                     + "（" + center.getBlockX() + ", " + center.getBlockZ() + "）", Text.INFO));
             return;
         }
-        double dx = center.getX() - loc.getX();
-        double dz = center.getZ() - loc.getZ();
-        double distance = Math.sqrt(dx * dx + dz * dz);
-        if (distance <= config.nexusDefenseRadius()) {
+        if (horizontalDistance(loc, center) <= config.nexusDefenseRadius()) {
             return;
         }
+        player.sendActionBar(arrow("ネクサス ", loc, center, Text.INFO));
+    }
+
+    /** 同じワールドで一番近い補給物資。すぐそばまで来ていれば案内しない。 */
+    private Location nearestAirDrop(Location loc) {
+        Location best = null;
+        double bestDist = Double.MAX_VALUE;
+        for (Location drop : worldEvents.activeAirDrops()) {
+            if (!drop.getWorld().equals(loc.getWorld())) {
+                continue;
+            }
+            double d = horizontalDistance(loc, drop);
+            if (d < bestDist) {
+                bestDist = d;
+                best = drop;
+            }
+        }
+        return best != null && bestDist > AIR_DROP_ARRIVED ? best : null;
+    }
+
+    private static double horizontalDistance(Location a, Location b) {
+        double dx = b.getX() - a.getX();
+        double dz = b.getZ() - a.getZ();
+        return Math.sqrt(dx * dx + dz * dz);
+    }
+
+    /** 「名前 ↗ 120m」の形。矢印はプレイヤーの向きから見た方向。 */
+    private static Component arrow(String label, Location from, Location to, TextColor color) {
+        double dx = to.getX() - from.getX();
+        double dz = to.getZ() - from.getZ();
         // Minecraft の yaw は南が 0 で、右回りに増える（西が 90）
         double targetYaw = Math.toDegrees(Math.atan2(-dx, dz));
-        double relative = targetYaw - loc.getYaw();
+        double relative = targetYaw - from.getYaw();
         int index = (int) Math.floorMod(Math.round(relative / 45.0), 8L);
-
-        Component bar = Text.of("ネクサス ", Text.INFO)
+        return Text.of(label, color)
                 .append(Text.of(ARROWS[index], Text.WARN).decorate(TextDecoration.BOLD))
-                .append(Text.of(" " + (int) Math.round(distance) + "m", Text.MUTED));
-        player.sendActionBar(bar);
+                .append(Text.of(" " + (int) Math.round(horizontalDistance(from, to)) + "m", Text.MUTED));
     }
 
     private static String worldLabel(World world) {

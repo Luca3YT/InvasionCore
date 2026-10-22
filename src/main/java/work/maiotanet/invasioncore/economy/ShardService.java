@@ -45,6 +45,11 @@ public final class ShardService {
         notify(player, picked, count(player) + picked, "拾った");
     }
 
+    /** チェストや補給物資から取り出したとき。取り出した後に呼ばれるので、今の所持数をそのまま使う。 */
+    public void noteFound(Player player, int found) {
+        notify(player, found, count(player), "見つけた");
+    }
+
     public int count(Player player) {
         int total = 0;
         for (ItemStack stack : player.getInventory().getContents()) {

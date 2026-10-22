@@ -231,7 +231,8 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
         <thead><tr><th>イベント</th><th>内容</th></tr></thead>
         <tbody>
           <tr><td>徘徊ホード</td><td>10〜25 分おきに、少数の侵略者が拠点に向かってくる</td></tr>
-          <tr><td>空中投下</td><td>20 分おきに、拠点から 40〜80 ブロック離れた場所へ補給物資の樽が落ちる（15 分で消える）。座標はチャットに出る</td></tr>
+          <tr><td>空中投下</td><td>20 分おきに、拠点から 40〜80 ブロック離れた場所へ補給物資の樽が空から落ちてくる（15 分で消える）。座標はチャットに出て、光の柱・発光・残り時間の名札が目印。置かれている間は画面下に方向と距離が出る</td></tr>
+          <tr><td>1 日の報酬</td><td>夜明けごとに、生きている参加者全員へ Shard 10 個。2 日ごとにパークポイントも 1 点</td></tr>
           <tr><td>ヒートと叫喚体</td><td>拠点での採掘・建築・撃破・射撃が「熱」として溜まり、溜まりすぎると<strong>叫喚体</strong>が現れて仲間を呼ぶ。サイドバーの「ヒート」が赤くなったら手を止める</td></tr>
           <tr><td>墓</td><td>どこで死んでも、所持品が死亡地点の墓（本人の頭）にまとめられる。右クリックか左クリックで回収。最初の 10 分は本人だけ（他の人がクリックすると本人に「許可する / 断る」が届く）、その後はだれでも。回収されるまで消えない</td></tr>
           <tr><td>攻撃の警告</td><td>ネクサスが殴られると、全員に画面中央の文字・チャット（残り HP）・警告音で知らせる（10 秒に 1 回まで）</td></tr>
@@ -275,7 +276,7 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
 
     <section id="fortify">
       <h2>拠点を固める</h2>
-      <p>通貨は <strong class="shard">Shard</strong>（アメジストの欠片の見た目）です。侵略者を倒すと落とし、防衛成功でも配られます。普通の敵（ゾンビ・スケルトンなど）をプレイヤーが倒しても 1 個落とします（スポナーから出た敵は対象外。<code>economy.vanilla-mob-shard</code>）。インベントリに入っている実物を使います。</p>
+      <p>通貨は <strong class="shard">Shard</strong>（アメジストの欠片の見た目）です。侵略者を倒すと落とし、防衛成功でも配られます。普通の敵（ゾンビ・スケルトンなど）をプレイヤーが倒しても 1 個落とします（スポナーから出た敵は対象外。<code>economy.vanilla-mob-shard</code>）。構造物のチェストにも入っています（通常世界 5〜20・ネザー 10〜30・エンド 20〜60）。地面に落ちた Shard は光ります。インベントリに入っている実物を使います。ネクサスの画面の「SHOP」で、道具・弾薬・素材を Shard で買えます（品と値段は <code>shop.items</code>）。</p>
       <h3>強化ハンマー</h3>
       <p>強化ハンマー（鉄の斧の見た目）でブロックを右クリックすると、そのブロックの状態に応じて次のどれかが起きます。防衛範囲の中でだけ使えます。</p>
       <div class="table-wrap"><table>
@@ -471,7 +472,7 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
       </table></div>
     </section>
 
-    <footer>InvasionCore 0.3.1 / Paper 26.2 build 92。数値は既定の config.yml の値です。サーバーの設定を変えている場合は異なります。</footer>
+    <footer>InvasionCore 0.4.0 / Paper 26.2 build 92。数値は既定の config.yml の値です。サーバーの設定を変えている場合は異なります。</footer>
   </main>
 </div>
 

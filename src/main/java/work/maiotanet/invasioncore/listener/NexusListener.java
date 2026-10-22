@@ -189,6 +189,7 @@ public final class NexusListener implements Listener {
             case UPGRADE -> gui.handleUpgrade(player, nexus, event.getSlot());
             case PERK -> gui.handlePerk(player, nexus, event.getSlot());
             case SHARD -> gui.handleShard(player, nexus, event.getSlot());
+            case SHOP -> gui.handleShop(player, nexus, event.getSlot());
         }
     }
 }

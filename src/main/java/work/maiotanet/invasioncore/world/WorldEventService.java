@@ -1,20 +1,32 @@
 package work.maiotanet.invasioncore.world;
 
+import net.kyori.adventure.text.Component;
+import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.Container;
 import org.bukkit.block.data.BlockData;
+import org.bukkit.entity.BlockDisplay;
+import org.bukkit.entity.Display;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.TextDisplay;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.scheduler.BukkitRunnable;
+import org.bukkit.util.Transformation;
+import org.joml.AxisAngle4f;
+import org.joml.Vector3f;
 import work.maiotanet.invasioncore.config.InvasionConfig;
 import work.maiotanet.invasioncore.economy.RewardService;
+import work.maiotanet.invasioncore.economy.ShardLootService;
 import work.maiotanet.invasioncore.heat.HeatService;
+import work.maiotanet.invasioncore.item.InvasionItems;
 import work.maiotanet.invasioncore.mob.InvaderSpawner;
 import work.maiotanet.invasioncore.mob.InvaderType;
 import work.maiotanet.invasioncore.mob.MutationTier;
@@ -41,9 +53,24 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 public final class WorldEventService {
 
-    /** 一時的に設置した容器（空中投下）の記録。 */
-    private record TempContainer(Location location, BlockData original, long placedAtMillis,
-                                 long expireAtMillis) {
+    /**
+     * 着地した補給物資。樽そのものは光らせられないので、同じ見た目の表示用ブロックを重ねて光らせ、
+     * 上に名札を出す。どちらも保存しない表示用で、チャンクが読み込まれ直したら作り直す。
+     */
+    private static final class AirDrop {
+        final Location location;
+        final BlockData original;
+        final long placedAtMillis;
+        final long expireAtMillis;
+        BlockDisplay glow;
+        TextDisplay label;
+
+        AirDrop(Location location, BlockData original, long placedAtMillis, long expireAtMillis) {
+            this.location = location;
+            this.original = original;
+            this.placedAtMillis = placedAtMillis;
+            this.expireAtMillis = expireAtMillis;
+        }
     }
 
     /**
@@ -52,6 +79,18 @@ public final class WorldEventService {
      */
     private static final long PLACEMENT_GRACE_MILLIS = 3000L;
 
+    /** 補給物資が置かれてから消えるまで（ミリ秒）。 */
+    private static final long AIR_DROP_LIFETIME_MILLIS = 15 * 60 * 1000L;
+
+    /** 落ちてくる演出の高さ（ブロック）と時間（tick）。 */
+    private static final int FALL_HEIGHT = 40;
+    private static final int FALL_TICKS = 60;
+
+    /** 遠くからも見える光の柱の高さ（ブロック）。 */
+    private static final int BEAM_HEIGHT = 48;
+
+    private static final Color AIR_DROP_COLOR = Color.fromRGB(0xFFD166);
+
     private final Plugin plugin;
     private final InvasionConfig config;
     private final NexusManager nexuses;
@@ -59,14 +98,15 @@ public final class WorldEventService {
     private final GameStageService stages;
     private final HeatService heat;
     private final RewardService rewards;
+    private final ShardLootService shardLoot;
 
     private final Map<UUID, Long> nextHorde = new HashMap<>();
     private final Map<UUID, Long> nextAirDrop = new HashMap<>();
-    private final List<TempContainer> temporary = new ArrayList<>();
+    private final List<AirDrop> airDrops = new ArrayList<>();
 
     public WorldEventService(Plugin plugin, InvasionConfig config, NexusManager nexuses,
                              InvaderSpawner spawner, GameStageService stages,
-                             HeatService heat, RewardService rewards) {
+                             HeatService heat, RewardService rewards, ShardLootService shardLoot) {
         this.plugin = plugin;
         this.config = config;
         this.nexuses = nexuses;
@@ -74,6 +114,7 @@ public final class WorldEventService {
         this.stages = stages;
         this.heat = heat;
         this.rewards = rewards;
+        this.shardLoot = shardLoot;
     }
 
     // ---------- 1秒ごと ----------
@@ -95,7 +136,7 @@ public final class WorldEventService {
             checkWanderingHorde(nexus, now);
             checkAirDrop(nexus, now);
         }
-        expireContainers(now);
+        tickAirDrops(now);
     }
 
     // ---------- 叫喚体 ----------
@@ -175,28 +216,28 @@ public final class WorldEventService {
     // ---------- 空中投下 ----------
 
     /**
-     * 空中投下を即座に行う。管理コマンドから呼ぶ。
+     * 空中投下を始める。自動の投下と、管理コマンドの手動投下の両方から呼ぶ。
+     * どちらでも全員に座標を知らせ、上空から樽が落ちてくる演出のあとに着地させる。
      *
-     * @return 投下地点。失敗したら null
+     * @return 投下地点。見つからなければ null
      */
     public Location forceAirDrop(Nexus nexus) {
         Location spot = findDropSite(nexus);
         if (spot == null) {
             return null;
         }
-        int stage = stages.computeCurrent(nexus);
-        List<ItemStack> overflow = placeContainer(spot, Material.BARREL, rewards.airDropLoot(stage),
-                15 * 60 * 1000L);
-        if (overflow == null) {
-            return null;
-        }
-        World world = spot.getWorld();
-        for (ItemStack stack : overflow) {
-            world.dropItemNaturally(spot.clone().add(0.5, 1.0, 0.5), stack);
-        }
-        world.playSound(spot, Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 2.0f, 0.8f);
         nextAirDrop.put(nexus.id(), System.currentTimeMillis()
                 + config.airDropIntervalSeconds() * 1000L);
+        int stage = stages.computeCurrent(nexus);
+        List<ItemStack> loot = rewards.airDropLoot(stage);
+
+        for (Player p : stages.participants(nexus)) {
+            p.sendMessage(Text.info("補給物資が投下された！（"
+                    + spot.getBlockX() + ", " + spot.getBlockY() + ", " + spot.getBlockZ() + "）"
+                    + " 光の柱が目印。15 分で消える。"));
+            p.playSound(p.getLocation(), Sound.BLOCK_BELL_USE, 1.0f, 1.2f);
+        }
+        playFall(spot, loot);
         return spot;
     }
 
@@ -213,20 +254,89 @@ public final class WorldEventService {
             return;
         }
         nextAirDrop.put(nexus.id(), now + config.airDropIntervalSeconds() * 1000L);
+        if (stages.participants(nexus).isEmpty()) {
+            return;
+        }
+        forceAirDrop(nexus);
+    }
 
-        List<Player> participants = stages.participants(nexus);
-        if (participants.isEmpty()) {
+    /**
+     * 上空から樽が煙を引いて落ちてくる演出。着地したら本物の樽を置いて中身を詰める。
+     * 落ちてくる樽は表示用のブロックなので、途中で何かに当たったり拾われたりすることはない。
+     */
+    private void playFall(Location spot, List<ItemStack> loot) {
+        World world = spot.getWorld();
+        Location start = spot.clone().add(0, FALL_HEIGHT, 0);
+        BlockDisplay falling = world.spawn(start, BlockDisplay.class, d -> {
+            d.setBlock(Material.BARREL.createBlockData());
+            d.setPersistent(false);
+            d.setGlowing(true);
+            d.setGlowColorOverride(AIR_DROP_COLOR);
+            d.setViewRange(4.0f);
+        });
+        world.playSound(start, Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 3.0f, 0.6f);
+
+        new BukkitRunnable() {
+            private int tick;
+
+            @Override
+            public void run() {
+                tick++;
+                if (!falling.isValid()) {
+                    // チャンクが読み込まれていないなど。演出を飛ばして着地させる
+                    cancel();
+                    land(spot, loot);
+                    return;
+                }
+                // 最初はゆっくり、だんだん速く落ちる
+                double t = Math.min(1.0, (double) tick / FALL_TICKS);
+                Location at = spot.clone().add(0, FALL_HEIGHT * (1.0 - t * t), 0);
+                falling.teleport(at);
+                world.spawnParticle(Particle.CAMPFIRE_SIGNAL_SMOKE, at.clone().add(0.5, 1.2, 0.5),
+                        2, 0.15, 0.1, 0.15, 0.01, null, true);
+                if (tick >= FALL_TICKS) {
+                    cancel();
+                    falling.remove();
+                    land(spot, loot);
+                }
+            }
+        }.runTaskTimer(plugin, 1L, 1L);
+    }
+
+    /** 着地。樽を置いて中身を詰め、土煙と音を出す。 */
+    private void land(Location spot, List<ItemStack> loot) {
+        Block block = spot.getBlock();
+        if (!block.getType().isAir() && !block.isReplaceable()) {
+            // 落ちている間に何か置かれた。その上の空いている所に置く
+            block = spot.getWorld().getHighestBlockAt(spot).getRelative(BlockFace.UP);
+        }
+        Location at = block.getLocation();
+        World world = at.getWorld();
+        List<ItemStack> overflow = placeAirDrop(at, loot);
+        if (overflow == null) {
+            // 置けなかったら中身はその場に落とす。消えるよりはよい
+            for (ItemStack stack : loot) {
+                world.dropItemNaturally(at.clone().add(0.5, 1.0, 0.5), stack);
+            }
             return;
         }
-        Location spot = forceAirDrop(nexus);
-        if (spot == null) {
-            return;
+        for (ItemStack stack : overflow) {
+            world.dropItemNaturally(at.clone().add(0.5, 1.0, 0.5), stack);
         }
-        for (Player p : participants) {
-            p.sendMessage(Text.info("補給物資が投下された（"
-                    + spot.getBlockX() + ", " + spot.getBlockY() + ", " + spot.getBlockZ() + "）"));
-            p.playSound(p.getLocation(), Sound.BLOCK_BELL_USE, 1.0f, 1.2f);
+        Location center = at.clone().add(0.5, 0.5, 0.5);
+        world.spawnParticle(Particle.EXPLOSION, center, 3, 0.6, 0.2, 0.6, 0.0);
+        world.spawnParticle(Particle.CLOUD, center, 30, 1.2, 0.2, 1.2, 0.05);
+        world.playSound(center, Sound.ENTITY_GENERIC_EXPLODE, 1.2f, 1.4f);
+        world.playSound(center, Sound.BLOCK_BARREL_CLOSE, 1.5f, 0.8f);
+    }
+
+    /** いま置かれている補給物資の中心。方向の案内に使う。 */
+    public List<Location> activeAirDrops() {
+        List<Location> out = new ArrayList<>(airDrops.size());
+        for (AirDrop drop : airDrops) {
+            out.add(drop.location.clone().add(0.5, 0.5, 0.5));
         }
+        return out;
     }
 
     private Location findDropSite(Nexus nexus) {
@@ -250,10 +360,10 @@ public final class WorldEventService {
         return null;
     }
 
-    // ---------- 一時容器 ----------
+    // ---------- 補給物資の樽 ----------
 
     /**
-     * 一時的な容器を設置して中身を詰める。
+     * 樽を置いて中身を詰める。
      *
      * <p>{@code getState()} はスナップショットなので、書き戻しに失敗すると
      * 「空の樽だけが残る」状態になりうる。
@@ -261,11 +371,10 @@ public final class WorldEventService {
      *
      * @return 格納に成功したら、容量不足で入り切らなかったアイテム（空のこともある）。失敗したら null
      */
-    private List<ItemStack> placeContainer(Location loc, Material material, List<ItemStack> contents,
-                                           long lifetimeMillis) {
+    private List<ItemStack> placeAirDrop(Location loc, List<ItemStack> contents) {
         Block block = loc.getBlock();
         BlockData original = block.getBlockData().clone();
-        block.setType(material, false);
+        block.setType(Material.BARREL, false);
 
         // getState() はスナップショットを返し、インベントリへの追加が実体へ反映されない。
         // getState(false) で実体のタイルステートを取り、直接書き込む。
@@ -275,6 +384,7 @@ public final class WorldEventService {
             return null;
         }
         int expected = 0;
+        int shardCount = 0;
         List<ItemStack> overflow = new ArrayList<>();
         for (ItemStack stack : contents) {
             if (stack != null && !stack.getType().isAir()) {
@@ -282,16 +392,21 @@ public final class WorldEventService {
                 // 元のドロップを使えるよう、複製を渡す。
                 overflow.addAll(container.getInventory().addItem(stack.clone()).values());
                 expected++;
+                if (InvasionItems.is(stack, InvasionItems.SHARD)) {
+                    shardCount += stack.getAmount();
+                }
             }
         }
 
         if (expected > 0 && !hasContents(block)) {
-            plugin.getLogger().warning("一時容器に中身を格納できませんでした: " + loc);
+            plugin.getLogger().warning("補給物資に中身を格納できませんでした: " + loc);
             block.setBlockData(original, false);
             return null;
         }
+        // 取り出した Shard を「見つけた」として数えられるよう、入れた数を樽に記録する
+        shardLoot.markLoot(block, shardCount);
         long now = System.currentTimeMillis();
-        temporary.add(new TempContainer(loc.clone(), original, now, now + lifetimeMillis));
+        airDrops.add(new AirDrop(loc.clone(), original, now, now + AIR_DROP_LIFETIME_MILLIS));
         return overflow;
     }
 
@@ -301,54 +416,111 @@ public final class WorldEventService {
                 && !container.getInventory().isEmpty();
     }
 
-    /** 期限切れの容器を片付ける。中身が残っていればその場にぶちまける。 */
-    private void expireContainers(long now) {
-        Iterator<TempContainer> it = temporary.iterator();
+    /**
+     * 1 秒ごと。空になった・期限が来た補給物資を片付け、残っているものには光の柱・発光・名札を出す。
+     * 期限が来たときに中身が残っていれば、その場にぶちまける。
+     */
+    private void tickAirDrops(long now) {
+        Iterator<AirDrop> it = airDrops.iterator();
         while (it.hasNext()) {
-            TempContainer tc = it.next();
-            World world = tc.location().getWorld();
+            AirDrop drop = it.next();
+            World world = drop.location.getWorld();
             if (world == null) {
+                removeMarkers(drop);
                 it.remove();
                 continue;
             }
-            Block block = tc.location().getBlock();
+            if (!world.isChunkLoaded(drop.location.getBlockX() >> 4, drop.location.getBlockZ() >> 4)
+                    && now != Long.MAX_VALUE) {
+                // 誰も近くにいない。表示はチャンクごと消えているので記録だけ捨て、次に来たときに作り直す。
+                // 期限切れの片付けも、読み込まれるまで待つ（読み込むと重い）
+                drop.glow = null;
+                drop.label = null;
+                continue;
+            }
+            Block block = drop.location.getBlock();
             BlockState state = block.getState(false);
 
             if (!(state instanceof Container container)) {
                 // 既に別のブロックに変わっている＝プレイヤーが壊した
+                removeMarkers(drop);
                 it.remove();
                 continue;
             }
 
             if (container.getInventory().isEmpty()) {
-                if (now - tc.placedAtMillis() < PLACEMENT_GRACE_MILLIS) {
+                if (now - drop.placedAtMillis < PLACEMENT_GRACE_MILLIS) {
                     // 設置直後はまだ中身が読めていない可能性があるので触らない
                     continue;
                 }
                 // 中身が空になったら即座に元の地形へ戻す
-                block.setBlockData(tc.original(), false);
+                removeMarkers(drop);
+                block.setBlockData(drop.original, false);
                 it.remove();
                 continue;
             }
-            if (now < tc.expireAtMillis()) {
-                // 目印のパーティクル
-                if ((now / 1000L) % 3 == 0) {
-                    world.spawnParticle(Particle.END_ROD,
-                            tc.location().clone().add(0.5, 1.2, 0.5), 3, 0.15, 0.4, 0.15, 0.01);
-                }
+            if (now < drop.expireAtMillis) {
+                showMarkers(drop, now);
                 continue;
             }
             // 期限切れ：中身をドロップして元のブロックに戻す
             for (ItemStack stack : container.getInventory().getContents()) {
                 if (stack != null && !stack.getType().isAir()) {
-                    world.dropItemNaturally(tc.location().clone().add(0.5, 1.0, 0.5), stack);
+                    world.dropItemNaturally(drop.location.clone().add(0.5, 1.0, 0.5), stack);
                 }
             }
             container.getInventory().clear();
             container.update();
-            block.setBlockData(tc.original(), false);
+            removeMarkers(drop);
+            block.setBlockData(drop.original, false);
             it.remove();
         }
+    }
+
+    /** 光の柱・発光・名札。光の柱は遠くからでも見えるよう、パーティクルの表示距離の制限を外す。 */
+    private void showMarkers(AirDrop drop, long now) {
+        World world = drop.location.getWorld();
+        Location base = drop.location.clone().add(0.5, 1.0, 0.5);
+        for (int y = 0; y < BEAM_HEIGHT; y += 2) {
+            world.spawnParticle(Particle.END_ROD, base.clone().add(0, y, 0), 1, 0.05, 0.4, 0.05, 0.0, null, true);
+        }
+        if (drop.glow == null || !drop.glow.isValid()) {
+            drop.glow = world.spawn(drop.location, BlockDisplay.class, d -> {
+                d.setBlock(Material.BARREL.createBlockData());
+                d.setPersistent(false);
+                d.setGlowing(true);
+                d.setGlowColorOverride(AIR_DROP_COLOR);
+                // 本体とぴったり重なるとちらつくので、わずかに大きくして外側へずらす
+                d.setTransformation(new Transformation(
+                        new Vector3f(-0.01f, -0.01f, -0.01f), new AxisAngle4f(),
+                        new Vector3f(1.02f, 1.02f, 1.02f), new AxisAngle4f()));
+                d.setViewRange(4.0f);
+            });
+        }
+        long remain = Math.max(0, drop.expireAtMillis - now);
+        long seconds = (remain + 999) / 1000;
+        Component text = Text.of("補給物資", Text.WARN)
+                .append(Component.newline())
+                .append(Text.of("あと " + (seconds / 60) + ":" + String.format("%02d", seconds % 60), Text.MUTED));
+        if (drop.label == null || !drop.label.isValid()) {
+            drop.label = world.spawn(drop.location.clone().add(0.5, 1.4, 0.5), TextDisplay.class, d -> {
+                d.setPersistent(false);
+                d.setBillboard(Display.Billboard.CENTER);
+                d.setViewRange(1.0f);
+            });
+        }
+        drop.label.text(text);
+    }
+
+    private static void removeMarkers(AirDrop drop) {
+        if (drop.glow != null && drop.glow.isValid()) {
+            drop.glow.remove();
+        }
+        if (drop.label != null && drop.label.isValid()) {
+            drop.label.remove();
+        }
+        drop.glow = null;
+        drop.label = null;
     }
 
     private long randomDelay(int minSeconds, int maxSeconds) {
@@ -357,9 +529,12 @@ public final class WorldEventService {
         return ThreadLocalRandom.current().nextInt(min, max) * 1000L;
     }
 
-    /** サーバー停止時に一時容器を全て片付ける。 */
+    /** サーバー停止時に補給物資を全て片付ける（中身はその場に落とす）。 */
     public void shutdown() {
-        expireContainers(Long.MAX_VALUE);
-        temporary.clear();
+        tickAirDrops(Long.MAX_VALUE);
+        for (AirDrop drop : airDrops) {
+            removeMarkers(drop);
+        }
+        airDrops.clear();
     }
 }

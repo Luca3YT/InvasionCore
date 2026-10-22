@@ -19,7 +19,9 @@ public final class InvasionHolder implements InventoryHolder {
         /** プレイヤーのパーク。 */
         PERK,
         /** ネクサス内の Shard の引き出し（管理者のみ）。 */
-        SHARD
+        SHARD,
+        /** Shard で道具や素材を買う SHOP。 */
+        SHOP
     }
 
     private final Kind kind;

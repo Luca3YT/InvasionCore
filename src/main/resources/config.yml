@@ -39,8 +39,9 @@ nexus:
 
 mob:
   # 全侵略Mobの移動速度に掛かる係数。種別ごとの相対関係は保たれる。
-  # まだ速いと感じるなら 0.7 前後まで下げてよい。1.0 が素の設定値
-  speed-multiplier: 0.85
+  # 1.0 でバニラと同じ速さ（侵略者 = ゾンビの 0.9 倍、疾走者 = 1.15 倍 など種別の倍率がかかる）。
+  # 速すぎる・遅すぎると感じたら 0.9〜1.1 の範囲で調整する
+  speed-multiplier: 1.0
   # 飛行型の速度（ブロック/tick）。経路探索を使わないためここで決まる。
   # 参考: プレイヤーの歩行が約0.215、疾走が約0.28
   flyer-speed: 0.20
@@ -127,6 +128,18 @@ economy:
   vanilla-mob-shard: 1
   # モンスタースポナーから出た敵にも落とさせるか。true にするとトラップタワーで無限に稼げてしまう
   vanilla-mob-shard-from-spawner: false
+  # 構造物に最初からあるチェストや樽（村・廃坑・スポナー部屋・神殿・要塞・エンドシティなど）に入れる Shard の数。
+  # 初めて開けたときに、中身と一緒にこの範囲で作られる。危ないディメンションほど多い
+  loot-chest-shards:
+    overworld:
+      min: 5
+      max: 20
+    nether:
+      min: 10
+      max: 30
+    end:
+      min: 20
+      max: 60
 
 world-events:
   wandering-horde:
@@ -136,6 +149,43 @@ world-events:
   air-drop:
     enabled: true
     interval-seconds: 1200
+
+daily-reward:
+  # 夜明けごとに（1 日生き延びるたびに）、生きている参加者全員へ配る Shard
+  shards: 10
+  # 何日ごとにパークポイントも配るか（2 なら Day 2・4・6… を生き延びた夜明け）。0 で配らない
+  perk-point-every-days: 2
+  perk-points: 1
+
+shop:
+  # ネクサスの画面の「SHOP」で売る品。上から順に並ぶ（最大 45 品）。
+  # item は独自アイテムなら /invasion give と同じ名前、それ以外は Minecraft のアイテム名（IRON_INGOT など）。
+  # amount は 1 回で買える個数、price は値段（Shard）。手持ちから払い、足りない分はネクサス内の Shard から払う
+  items:
+    # 消耗ガジェット
+    - {item: kit, amount: 1, price: 8}
+    - {item: flash, amount: 2, price: 6}
+    - {item: medkit, amount: 1, price: 8}
+    - {item: barrier, amount: 1, price: 20}
+    - {item: recall, amount: 1, price: 10}
+    # タレットと罠
+    - {item: turret_arrow, amount: 1, price: 30}
+    - {item: turret_flame, amount: 1, price: 40}
+    - {item: turret_frost, amount: 1, price: 40}
+    - {item: turret_heal, amount: 1, price: 50}
+    - {item: spike, amount: 2, price: 8}
+    - {item: mine, amount: 1, price: 12}
+    # 弾薬
+    - {item: ARROW, amount: 32, price: 4}
+    - {item: BLAZE_POWDER, amount: 16, price: 6}
+    - {item: SNOWBALL, amount: 16, price: 2}
+    - {item: REDSTONE, amount: 32, price: 4}
+    # 素材・食べ物
+    - {item: IRON_INGOT, amount: 8, price: 6}
+    - {item: COBBLESTONE, amount: 64, price: 2}
+    - {item: OAK_LOG, amount: 16, price: 3}
+    - {item: BREAD, amount: 8, price: 3}
+    - {item: COOKED_BEEF, amount: 8, price: 5}
 
 recall:
   # 帰還の羅針盤。右クリックしてからネクサスのそばへ戻るまでの詠唱時間（秒）。動くかダメージを受けると中断する
@@ -189,6 +239,14 @@ web:
   # オーバーレイの表示パターン（b: ポートレート / c: トースト / e: ビッグナンバー / f: バナー）。
   # 管理画面からも切り替えられる
   overlay-style: "b"
+
+custom-model-data:
+  # 独自アイテムに付ける CustomModelData（文字列）。リソースパックがこの値を見て見た目を差し替える。
+  # 変えたら resourcepack/ のパックも作り直すこと（scripts\build-resourcepack.cmd が config.yml の値を読む）。
+  # 空（""）にするとその品には付けない。値を変える前に作った品は古い値のまま
+  shard: "shard"
+  recall: "recall"
+  hammer: "hammer"
 
 performance:
   # 侵略MobのAIを何tickに分散させるか。大きいほど軽いが反応が鈍る
