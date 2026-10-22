@@ -45,6 +45,35 @@
                     <release>${java.version}</release>
                 </configuration>
             </plugin>
+            <!--
+              どのブランチ・コミットから作った jar かを build.properties に埋める（/invasion ver で表示）。
+              main 以外で作ると版に -dev が付く。Git の無い所で作っても失敗させない。
+            -->
+            <plugin>
+                <groupId>io.github.git-commit-id</groupId>
+                <artifactId>git-commit-id-maven-plugin</artifactId>
+                <version>9.0.1</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>revision</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <failOnNoGitDirectory>false</failOnNoGitDirectory>
+                    <failOnUnableToExtractRepoInfo>false</failOnUnableToExtractRepoInfo>
+                    <dateFormat>MM/dd HH:mm</dateFormat>
+                    <dateFormatTimeZone>Asia/Tokyo</dateFormatTimeZone>
+                    <abbrevLength>7</abbrevLength>
+                    <includeOnlyProperties>
+                        <includeOnlyProperty>^git.branch$</includeOnlyProperty>
+                        <includeOnlyProperty>^git.commit.id.abbrev$</includeOnlyProperty>
+                        <includeOnlyProperty>^git.dirty$</includeOnlyProperty>
+                        <includeOnlyProperty>^git.build.time$</includeOnlyProperty>
+                    </includeOnlyProperties>
+                </configuration>
+            </plugin>
         </plugins>
         <resources>
             <!-- paper-plugin.yml の ${project.version} を埋めるため置き換えを有効にする -->

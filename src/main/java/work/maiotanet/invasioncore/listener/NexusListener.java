@@ -23,6 +23,7 @@ import work.maiotanet.invasioncore.item.InvasionItems;
 import work.maiotanet.invasioncore.nexus.Nexus;
 import work.maiotanet.invasioncore.nexus.NexusManager;
 import work.maiotanet.invasioncore.ui.InvasionHolder;
+import work.maiotanet.invasioncore.ui.ItemBox;
 import work.maiotanet.invasioncore.ui.NexusGui;
 import work.maiotanet.invasioncore.util.Sounds;
 import work.maiotanet.invasioncore.util.Text;
@@ -40,9 +41,11 @@ public final class NexusListener implements Listener {
     private final NexusGui gui;
     private final WaveEngine waves;
     private final ShardService shards;
+    private final ItemBox itemBox;
 
     public NexusListener(InvasionConfig config, NexusManager nexuses, NexusGui gui, WaveEngine waves,
-                         ShardService shards) {
+                         ShardService shards, ItemBox itemBox) {
+        this.itemBox = itemBox;
         this.config = config;
         this.nexuses = nexuses;
         this.gui = gui;
@@ -178,6 +181,10 @@ public final class NexusListener implements Listener {
         if (event.getClickedInventory() != event.getView().getTopInventory()) {
             return;
         }
+        if (holder.kind() == InvasionHolder.Kind.ITEMS) {
+            itemBox.handle(player, event.getSlot(), event.isShiftClick());
+            return;
+        }
         Nexus nexus = holder.nexusId() == null ? null : nexuses.byId(holder.nexusId());
         if (nexus == null && holder.kind() != InvasionHolder.Kind.PERK) {
             player.closeInventory();
@@ -190,6 +197,9 @@ public final class NexusListener implements Listener {
             case PERK -> gui.handlePerk(player, nexus, event.getSlot());
             case SHARD -> gui.handleShard(player, nexus, event.getSlot());
             case SHOP -> gui.handleShop(player, nexus, event.getSlot());
+            case ITEMS -> {
+                // 上で処理済み
+            }
         }
     }
 }

@@ -329,6 +329,8 @@ Shard・帰還の羅針盤・強化ハンマーには CustomModelData（`config.
 | `/invasion stop` | 侵攻の停止（所有者・管理者） |
 | `/invasion setup` | ゲーム開始前の確認（要 `invasioncore.admin`）。難易度・ゲームルール・ネクサスの状態などを ✔ / ⚠ / ✘ で表示し、直すコマンドをクリックで入力欄に入れられる |
 | `/invasion give <item> [数]` | アイテム配布（要 `invasioncore.admin`）<br>`nexus` `hammer` `shard` `kit` `turret_*` `spike` `mine` `flash` `medkit` `barrier` `recall` |
+| `/invasion ver` | プラグインのバージョン。main 以外のブランチで作った jar は `0.4.0-dev (コミット・作った日時)` のように出る。OP がサーバーに入ったときも画面に出る |
+| `/invasion item` | このプラグインのアイテムを何度でも取り出せる画面（クリックで 1 個、Shift+クリックで 1 スタック）。普段は OP だけ。`/invasion admin item on` で誰でも使える・`off` で OP だけに戻す（テストプレイ用） |
 | `/invasion tp nexus` | ネクサスのそばへテレポート（要 `invasioncore.admin`）。別のディメンションからでも使える |
 | `/invasion admin <sub>` | 下記の管理サブコマンド |
 

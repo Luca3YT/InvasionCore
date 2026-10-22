@@ -12,6 +12,7 @@ import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import work.maiotanet.invasioncore.BuildInfo;
 import work.maiotanet.invasioncore.InvasionCore;
 import work.maiotanet.invasioncore.economy.ShardService;
 import work.maiotanet.invasioncore.item.InvasionItems;
@@ -25,7 +26,9 @@ import work.maiotanet.invasioncore.nexus.NexusManager;
 import work.maiotanet.invasioncore.perk.PerkService;
 import work.maiotanet.invasioncore.setup.SetupChecklist;
 import work.maiotanet.invasioncore.stage.GameStageService;
+import work.maiotanet.invasioncore.ui.ItemBox;
 import work.maiotanet.invasioncore.ui.NexusGui;
+import work.maiotanet.invasioncore.util.Sounds;
 import work.maiotanet.invasioncore.util.Text;
 import work.maiotanet.invasioncore.wave.WaveEngine;
 import work.maiotanet.invasioncore.wave.WaveModifier;
@@ -49,14 +52,14 @@ public final class InvasionCommands implements BasicCommand {
     private static final String ADMIN_PERMISSION = "invasioncore.admin";
 
     private static final List<String> ROOT = List.of(
-            "status", "join", "leave", "stop", "perks", "top", "setup", "give", "tp", "admin", "help");
+            "status", "join", "leave", "stop", "perks", "top", "setup", "give", "tp", "item", "ver", "admin", "help");
     private static final List<String> ITEMS = List.of(
             "nexus", "hammer", "shard", "kit",
             "turret_arrow", "turret_flame", "turret_frost", "turret_heal",
             "spike", "mine", "flash", "medkit", "barrier", "recall");
     private static final List<String> ADMIN = List.of(
             "forcewave", "setlevel", "setday", "restore", "despawn", "reload", "info",
-            "list", "create", "activate", "spawn", "boss", "points", "airdrop", "end", "web");
+            "list", "create", "activate", "spawn", "boss", "points", "airdrop", "end", "web", "item");
 
     private final InvasionCore plugin;
     private final NexusManager nexuses;
@@ -72,6 +75,8 @@ public final class InvasionCommands implements BasicCommand {
     private final SetupChecklist setup;
     /** Web 機能が無効なら null。 */
     private WebServer web;
+    private BuildInfo build;
+    private ItemBox itemBox;
 
     public InvasionCommands(InvasionCore plugin, NexusManager nexuses, GameStageService stages,
                             ShardService shards, PerkService perks, NexusGui gui,
@@ -95,6 +100,11 @@ public final class InvasionCommands implements BasicCommand {
         this.web = web;
     }
 
+    public void extras(BuildInfo build, ItemBox itemBox) {
+        this.build = build;
+        this.itemBox = itemBox;
+    }
+
     @Override
     public void execute(CommandSourceStack source, String[] args) {
         CommandSender sender = source.getSender();
@@ -112,6 +122,8 @@ public final class InvasionCommands implements BasicCommand {
             case "setup" -> setup(sender);
             case "give" -> give(sender, args);
             case "tp" -> teleport(sender, args);
+            case "item" -> openItemBox(sender);
+            case "ver", "version" -> sender.sendMessage(Text.info("InvasionCore " + build.fullVersion()));
             case "admin" -> admin(sender, args);
             default -> sendHelp(sender);
         }
@@ -125,6 +137,9 @@ public final class InvasionCommands implements BasicCommand {
         String head = args[0].toLowerCase(Locale.ROOT);
         if (head.equals("give") && args.length == 2) {
             return filter(ITEMS, args[1]);
+        }
+        if (head.equals("admin") && args.length == 3 && args[1].equalsIgnoreCase("item")) {
+            return filter(List.of("on", "off"), args[2]);
         }
         if (head.equals("tp") && args.length == 2) {
             return filter(List.of("nexus"), args[1]);
@@ -238,6 +253,20 @@ public final class InvasionCommands implements BasicCommand {
         }
         player.teleport(spot);
         player.sendMessage(Text.good("ネクサスのそばへ移動した。"));
+    }
+
+    /** このプラグインのアイテムを何度でも取り出せる画面。普段は運営だけ。 */
+    private void openItemBox(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(Text.error("プレイヤー専用のコマンドだ。"));
+            return;
+        }
+        if (!itemBox.canUse(player)) {
+            player.sendMessage(Text.error("今は運営だけが使える。"));
+            return;
+        }
+        Sounds.click(player);
+        itemBox.open(player);
     }
 
     private void stop(CommandSender sender) {
@@ -367,6 +396,19 @@ public final class InvasionCommands implements BasicCommand {
             case "create" -> createNexus(sender, args);
             case "end" -> endGame(sender);
             case "web" -> showWebUrls(sender);
+            case "item" -> {
+                // /invasion item を運営以外にも開放する・閉じる（テストプレイ用）
+                if (args.length < 3 || !(args[2].equalsIgnoreCase("on") || args[2].equalsIgnoreCase("off"))) {
+                    sender.sendMessage(Text.warn("使い方: /invasion admin item <on|off>（いまは "
+                            + (itemBox.isOpenToAll() ? "誰でも使える" : "運営だけ") + "）"));
+                    return;
+                }
+                boolean open = args[2].equalsIgnoreCase("on");
+                itemBox.openToAll(open);
+                sender.sendMessage(Text.good(open
+                        ? "/invasion item を誰でも使えるようにした。"
+                        : "/invasion item を運営だけにした。"));
+            }
             case "activate" -> {
                 if (requireNexus(sender, nexus)) {
                     // 管理コマンドなので Shard コストは取らず、崩壊状態からも復旧させる
@@ -702,10 +744,15 @@ public final class InvasionCommands implements BasicCommand {
         sender.sendMessage(Text.prefixed(Text.of("/invasion perks — パーク画面", Text.MUTED)));
         sender.sendMessage(Text.prefixed(Text.of("/invasion top — ランキング", Text.MUTED)));
         sender.sendMessage(Text.prefixed(Text.of("/invasion stop — 侵攻の停止（所有者）", Text.MUTED)));
+        sender.sendMessage(Text.prefixed(Text.of("/invasion ver — プラグインのバージョン", Text.MUTED)));
+        if (sender.hasPermission(ADMIN_PERMISSION) || (sender instanceof Player p && itemBox.canUse(p))) {
+            sender.sendMessage(Text.prefixed(Text.of("/invasion item — アイテムを取り出す画面", Text.MUTED)));
+        }
         if (sender.hasPermission(ADMIN_PERMISSION)) {
             sender.sendMessage(Text.prefixed(Text.of("/invasion setup — ゲーム開始前の確認", Text.MUTED)));
             sender.sendMessage(Text.prefixed(Text.of("/invasion give <item> [数] — アイテム配布", Text.MUTED)));
             sender.sendMessage(Text.prefixed(Text.of("/invasion tp nexus — ネクサスのそばへ移動", Text.MUTED)));
+            sender.sendMessage(Text.prefixed(Text.of("/invasion admin item on|off — /invasion item を誰でも使えるようにする・運営だけに戻す", Text.MUTED)));
             sender.sendMessage(Text.prefixed(Text.of("/invasion admin <sub> — 管理コマンド", Text.MUTED)));
         }
     }

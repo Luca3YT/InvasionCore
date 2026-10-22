@@ -31,6 +31,7 @@ import work.maiotanet.invasioncore.listener.InvaderListener;
 import work.maiotanet.invasioncore.listener.NexusListener;
 import work.maiotanet.invasioncore.listener.PlayerListener;
 import work.maiotanet.invasioncore.listener.PreGameListener;
+import work.maiotanet.invasioncore.listener.VersionNoticeListener;
 import work.maiotanet.invasioncore.mob.BossAbilities;
 import work.maiotanet.invasioncore.mob.InvaderAiService;
 import work.maiotanet.invasioncore.mob.InvaderRegistry;
@@ -42,6 +43,7 @@ import work.maiotanet.invasioncore.pregame.PreGameService;
 import work.maiotanet.invasioncore.setup.SetupChecklist;
 import work.maiotanet.invasioncore.stage.GameStageService;
 import work.maiotanet.invasioncore.ui.HudService;
+import work.maiotanet.invasioncore.ui.ItemBox;
 import work.maiotanet.invasioncore.ui.InvaderHealthService;
 import work.maiotanet.invasioncore.ui.NexusGuideService;
 import work.maiotanet.invasioncore.ui.NexusGui;
@@ -146,6 +148,9 @@ public final class InvasionCore extends JavaPlugin {
         // ---- 登録 ----
         new RecipeRegistrar(this).registerAll();
 
+        BuildInfo build = BuildInfo.load(getPluginMeta().getVersion());
+        ItemBox itemBox = new ItemBox(this);
+        getServer().getPluginManager().registerEvents(new VersionNoticeListener(build), this);
         PreGameService pregame = new PreGameService(config, nexuses, recall);
         getServer().getPluginManager().registerEvents(recall, this);
         this.guide = new NexusGuideService(config, nexuses, pregame, worldEvents);
@@ -153,7 +158,7 @@ public final class InvasionCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(invaderHealth, this);
         getServer().getPluginManager().registerEvents(new PreGameListener(pregame), this);
         getServer().getPluginManager().registerEvents(
-                new NexusListener(config, nexuses, gui, waves, shards), this);
+                new NexusListener(config, nexuses, gui, waves, shards, itemBox), this);
         getServer().getPluginManager().registerEvents(
                 new DefenseListener(config, nexuses, fortify, turrets, traps, shards, perks, contributions, pregame),
                 this);
@@ -200,6 +205,7 @@ public final class InvasionCore extends JavaPlugin {
             }
         }
         commands.web(web);
+        commands.extras(build, itemBox);
         setupChecklist.web(config.webEnabled(), web);
         LinkCommand rule = new LinkCommand(List.of(
                 new LinkCommand.Link("ルール説明はこちら: ", config::rulesUrl)));
@@ -235,7 +241,7 @@ public final class InvasionCore extends JavaPlugin {
         // 自動保存と記録の掃除は5分ごと。
         getServer().getScheduler().runTaskTimer(this, this::autoSave, 6000L, 6000L);
 
-        getLogger().info("InvasionCore を有効化しました（Paper 26.2 / Java 25）。");
+        getLogger().info("InvasionCore " + build.fullVersion() + " を有効化しました（Paper 26.2 / Java 25）。");
     }
 
     @Override
