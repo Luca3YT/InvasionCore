@@ -12,6 +12,7 @@
 | こんな人 | 資料 |
 |---|---|
 | **配信に参加する人** | [参加者ガイド（Web）](https://luca3yt.github.io/InvasionCore/) / [同じ内容の Markdown 版](docs/participants.md) — 参加のしかた・役割・血の月の戦い方・マナー |
+| 何が変わったか知りたい人 | [パッチノート（更新情報）](https://github.com/Luca3YT/InvasionCore/releases) — 更新ごとの変更点と直したバグ |
 | バグ報告・意見を送りたい人 | [報告フォーム](https://github.com/Luca3YT/InvasionCore/issues/new/choose) — GitHub アカウントが必要 |
 | 細かいルールやレシピを知りたい人 | [遊び方ガイド（Web）](https://luca3yt.github.io/InvasionCore/usage.html) — 敵・ボス・強化・パーク・クラフトレシピ |
 | 開発する人 | このページの続き、[CLAUDE.md](CLAUDE.md)、[引き継ぎメモ](docs/handoff.md) |
