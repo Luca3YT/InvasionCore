@@ -7,11 +7,14 @@ import org.bukkit.Material;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.components.CustomModelDataComponent;
 import org.bukkit.persistence.PersistentDataType;
 import work.maiotanet.invasioncore.util.Keys;
 import work.maiotanet.invasioncore.util.Text;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * プラグイン独自アイテムの定義と判定。
@@ -37,10 +40,49 @@ public final class InvasionItems {
     public static final String BARRIER = "emergency_barrier";
     public static final String RECALL = "recall_compass";
 
+    /**
+     * 独自アイテムに付ける CustomModelData の文字列（アイテムの ID → 値）。
+     * リソースパックはこの値を見て、独自アイテムだけ見た目を差し替える。空なら付けない。
+     * config.yml の custom-model-data から読み、reload でも入れ直す。
+     */
+    private static volatile Map<String, String> modelData = Map.of();
+
     private InvasionItems() {
     }
 
+    /** config.yml の custom-model-data（shard・recall・hammer）を反映する。これより後に作るアイテムから付く。 */
+    public static void modelData(String shard, String recall, String hammer) {
+        Map<String, String> map = new HashMap<>();
+        map.put(SHARD, shard == null ? "" : shard.trim());
+        map.put(RECALL, recall == null ? "" : recall.trim());
+        map.put(HAMMER, hammer == null ? "" : hammer.trim());
+        modelData = Map.copyOf(map);
+    }
+
     // ---------- 生成 ----------
+
+    /**
+     * /invasion give や SHOP の設定で使う短い名前から作る。知らない名前なら null。
+     */
+    public static ItemStack create(String name, int amount) {
+        return switch (name.toLowerCase(java.util.Locale.ROOT)) {
+            case "nexus" -> nexusBlock();
+            case "hammer" -> hammer();
+            case "shard" -> shard(amount);
+            case "kit", "repair_kit" -> repairKit(amount);
+            case "turret_arrow" -> turret(TURRET_ARROW, amount);
+            case "turret_flame" -> turret(TURRET_FLAME, amount);
+            case "turret_frost" -> turret(TURRET_FROST, amount);
+            case "turret_heal" -> turret(TURRET_HEAL, amount);
+            case "spike" -> trap(TRAP_SPIKE, amount);
+            case "mine" -> trap(TRAP_MINE, amount);
+            case "flash" -> flashCharge(amount);
+            case "medkit" -> medkit(amount);
+            case "barrier" -> barrier(amount);
+            case "recall" -> recall(amount);
+            default -> null;
+        };
+    }
 
     public static ItemStack nexusBlock() {
         return build(Material.LODESTONE, 1, NEXUS_BLOCK,
@@ -147,6 +189,12 @@ public final class InvasionItems {
             meta.lore(lore);
             meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
             meta.getPersistentDataContainer().set(Keys.ITEM_ID, PersistentDataType.STRING, id);
+            String model = modelData.getOrDefault(id, "");
+            if (!model.isEmpty()) {
+                CustomModelDataComponent cmd = meta.getCustomModelDataComponent();
+                cmd.setStrings(List.of(model));
+                meta.setCustomModelDataComponent(cmd);
+            }
             stack.setItemMeta(meta);
         }
         return stack;

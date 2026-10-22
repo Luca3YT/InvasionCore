@@ -75,6 +75,16 @@ public enum TurretType {
         return maxAmmo;
     }
 
+    /** 残弾の表示に使う弾薬の名前。 */
+    public String ammoName() {
+        return switch (this) {
+            case ARROW -> "矢";
+            case FLAME -> "ブレイズパウダー";
+            case FROST -> "雪玉";
+            case HEAL -> "レッドストーン";
+        };
+    }
+
     public static TurretType byItemId(String itemId) {
         for (TurretType t : values()) {
             if (t.itemId.equals(itemId)) {

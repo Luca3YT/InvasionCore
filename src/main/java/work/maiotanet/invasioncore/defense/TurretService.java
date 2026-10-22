@@ -1,5 +1,8 @@
 package work.maiotanet.invasioncore.defense;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
@@ -9,7 +12,9 @@ import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Display;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.TextDisplay;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -21,6 +26,7 @@ import work.maiotanet.invasioncore.nexus.Nexus;
 import work.maiotanet.invasioncore.nexus.NexusManager;
 import work.maiotanet.invasioncore.nexus.NexusUpgrade;
 import work.maiotanet.invasioncore.perk.PerkService;
+import work.maiotanet.invasioncore.util.Text;
 
 import java.io.File;
 import java.io.IOException;
@@ -78,6 +84,12 @@ public final class TurretService {
 
     private final Map<String, Turret> turrets = new HashMap<>();
 
+    /**
+     * タレットの上に出している残弾の表示。保存しない表示用で、チャンクが読み込まれ直したら作り直す。
+     * 弾切れに気づかないまま血の月を迎えると、そのタレットは置物になるため、常に見えるようにする。
+     */
+    private final Map<String, TextDisplay> labels = new HashMap<>();
+
     public TurretService(Plugin plugin, InvasionConfig config, NexusManager nexuses,
                          InvaderRegistry registry, FortifyService fortify, PerkService perks) {
         this.plugin = plugin;
@@ -103,6 +115,7 @@ public final class TurretService {
     }
 
     public Turret remove(Block block) {
+        removeLabel(key(block));
         return turrets.remove(key(block));
     }
 
@@ -149,9 +162,11 @@ public final class TurretService {
             }
             if (block.getType() != turret.type.block()) {
                 // 壊された／置き換えられた
+                removeLabel(entry.getKey());
                 it.remove();
                 continue;
             }
+            updateLabel(entry.getKey(), block, turret);
             long now = block.getWorld().getFullTime();
             if (now < turret.readyAtTick) {
                 continue;
@@ -309,6 +324,44 @@ public final class TurretService {
             }
         }
         return best;
+    }
+
+    // ---------- 残弾の表示 ----------
+
+    private void updateLabel(String key, Block block, Turret turret) {
+        int max = turret.type.maxAmmo();
+        TextColor color = turret.ammo <= 0 ? NamedTextColor.RED
+                : turret.ammo * 4 < max ? Text.WARN : Text.GOOD;
+        Component text = Text.of(turret.type.displayName(), Text.MUTED)
+                .append(Component.newline())
+                .append(turret.ammo <= 0
+                        ? Text.of("弾切れ（" + turret.type.ammoName() + "）", color)
+                        : Text.of(turret.type.ammoName() + " " + turret.ammo + " / " + max, color));
+        TextDisplay label = labels.get(key);
+        if (label == null || !label.isValid()) {
+            label = block.getWorld().spawn(block.getLocation().add(0.5, 1.35, 0.5), TextDisplay.class, d -> {
+                d.setPersistent(false);
+                d.setBillboard(Display.Billboard.CENTER);
+                // 拠点の中を歩いているときに見えれば十分。遠くまで出すとタレットが多い拠点で文字だらけになる
+                d.setViewRange(0.25f);
+            });
+            labels.put(key, label);
+        }
+        label.text(text);
+    }
+
+    private void removeLabel(String key) {
+        TextDisplay label = labels.remove(key);
+        if (label != null && label.isValid()) {
+            label.remove();
+        }
+    }
+
+    /** サーバー停止時に表示を消す（保存しないエンティティなので、残っても次回は消えているが念のため）。 */
+    public void shutdown() {
+        for (String key : new ArrayList<>(labels.keySet())) {
+            removeLabel(key);
+        }
     }
 
     // ---------- 永続化 ----------

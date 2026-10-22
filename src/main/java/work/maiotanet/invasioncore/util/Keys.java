@@ -32,6 +32,11 @@ public final class Keys {
     public static NamespacedKey ITEM_ID;
     /** 修理キットなどの残り使用回数 (Integer) */
     public static NamespacedKey ITEM_USES;
+    /**
+     * 構造物のチェストや補給物資に入れた Shard のうち、まだ取り出されていない数 (Integer)。
+     * 取り出したときに「拾った」として数えるのは、この数までにする（自分で入れた Shard を出し入れしても数えない）。
+     */
+    public static NamespacedKey LOOT_SHARDS;
 
     private Keys() {
     }
@@ -48,6 +53,7 @@ public final class Keys {
         PROJECTILE_POWER = key("projectile_power");
         ITEM_ID = key("item_id");
         ITEM_USES = key("item_uses");
+        LOOT_SHARDS = key("loot_shards");
     }
 
     public static NamespacedKey key(String name) {

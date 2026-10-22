@@ -7,6 +7,7 @@ import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Location;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
@@ -330,29 +331,14 @@ public final class InvasionCommands implements BasicCommand {
             }
         }
         switch (args[1].toLowerCase(Locale.ROOT)) {
-            case "nexus" -> player.getInventory().addItem(InvasionItems.nexusBlock());
-            case "hammer" -> player.getInventory().addItem(InvasionItems.hammer());
             case "shard" -> shards.give(player, amount);
-            case "kit" -> player.getInventory().addItem(InvasionItems.repairKit(amount));
-            case "turret_arrow" -> player.getInventory().addItem(
-                    InvasionItems.turret(InvasionItems.TURRET_ARROW, amount));
-            case "turret_flame" -> player.getInventory().addItem(
-                    InvasionItems.turret(InvasionItems.TURRET_FLAME, amount));
-            case "turret_frost" -> player.getInventory().addItem(
-                    InvasionItems.turret(InvasionItems.TURRET_FROST, amount));
-            case "turret_heal" -> player.getInventory().addItem(
-                    InvasionItems.turret(InvasionItems.TURRET_HEAL, amount));
-            case "spike" -> player.getInventory().addItem(
-                    InvasionItems.trap(InvasionItems.TRAP_SPIKE, amount));
-            case "mine" -> player.getInventory().addItem(
-                    InvasionItems.trap(InvasionItems.TRAP_MINE, amount));
-            case "flash" -> player.getInventory().addItem(InvasionItems.flashCharge(amount));
-            case "medkit" -> player.getInventory().addItem(InvasionItems.medkit(amount));
-            case "barrier" -> player.getInventory().addItem(InvasionItems.barrier(amount));
-            case "recall" -> player.getInventory().addItem(InvasionItems.recall(amount));
             default -> {
-                sender.sendMessage(Text.error("不明なアイテム: " + args[1]));
-                return;
+                ItemStack item = InvasionItems.create(args[1], amount);
+                if (item == null) {
+                    sender.sendMessage(Text.error("不明なアイテム: " + args[1]));
+                    return;
+                }
+                player.getInventory().addItem(item);
             }
         }
         sender.sendMessage(Text.good("配布した。"));

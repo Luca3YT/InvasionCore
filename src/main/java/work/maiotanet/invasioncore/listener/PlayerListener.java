@@ -8,6 +8,7 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.EntityShootBowEvent;
+import org.bukkit.event.entity.ItemSpawnEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import work.maiotanet.invasioncore.config.InvasionConfig;
@@ -69,6 +70,17 @@ public final class PlayerListener implements Listener {
         int picked = event.getItem().getItemStack().getAmount() - event.getRemaining();
         shardSound.queue(player, picked);
         shards.notePickup(player, picked);
+    }
+
+    /**
+     * 地面に落ちた Shard を光らせ、壁越しや草むらの中でも見つけやすくする。
+     * 侵略者が倒れた場所は乱戦の最中なので、光っていないと拾い損ねやすい。
+     */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onShardSpawn(ItemSpawnEvent event) {
+        if (InvasionItems.is(event.getEntity().getItemStack(), InvasionItems.SHARD)) {
+            event.getEntity().setGlowing(true);
+        }
     }
 
     @EventHandler

@@ -319,8 +319,10 @@ public final class WaveEngine implements NexusCombatSink {
         if (nexus.phase() == Nexus.Phase.BLOOD_MOON) {
             resolveVictory(nexus);
         }
+        int survived = nexus.day();
         nexus.day(nexus.day() + daysPassed);
         warnStage.put(nexus.id(), 0);
+        giveDailyReward(nexus, survived);
 
         int until = nexus.daysUntilBloodMoon(config.bloodMoonInterval());
         if (until == 0) {
@@ -334,6 +336,31 @@ public final class WaveEngine implements NexusCombatSink {
             }
         } else {
             broadcast(nexus, Text.info("Day " + nexus.day() + " — 血の月まで残り " + until + " 日"));
+        }
+    }
+
+    /**
+     * 1 日生き延びた報酬。夜明けに、生きている参加者全員へ Shard を配り、数日ごとにパークポイントも配る。
+     * 血の月以外の日にも稼ぐ手段を用意し、「血の月までやることが無い」日を作らないため。
+     * サーバーが止まっていて数日まとめて進んだときも、配るのは 1 回分だけ。
+     */
+    private void giveDailyReward(Nexus nexus, int survivedDay) {
+        int amount = config.dailyShards();
+        int every = config.dailyPerkEveryDays();
+        boolean perkDay = every > 0 && config.dailyPerkPoints() > 0 && survivedDay % every == 0;
+        if (amount <= 0 && !perkDay) {
+            return;
+        }
+        String note = "Day " + survivedDay + " を生き延びた！ +" + amount + " Shard"
+                + (perkDay ? "・+" + config.dailyPerkPoints() + " パークポイント" : "");
+        for (Player p : stages.participants(nexus)) {
+            if (amount > 0) {
+                shards.give(p, amount, "1 日生き延びた");
+            }
+            if (perkDay) {
+                perks.addPoints(p.getUniqueId(), config.dailyPerkPoints());
+            }
+            p.sendMessage(Text.good(note));
         }
     }
 

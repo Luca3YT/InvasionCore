@@ -148,8 +148,11 @@ public final class InvaderSpawner {
                 healthMult * tier.healthMultiplier() * stageHealth, true);
         setAttribute(mob, Attribute.ATTACK_DAMAGE,
                 damageMult * tier.damageMultiplier() * stageDamage, true);
+        // 速さはその Mob 本来の値（ゾンビ 0.23 など）に掛ける。属性の共通初期値（0.7）に掛けていた頃は
+        // 侵略者がバニラの 2 倍以上の速さで走り、逃げることも迎え撃つこともできなかった。
+        // HP と攻撃力は共通初期値（20・2）を基準にしたまま釣り合いを取ってあるので変えない。
         setAttribute(mob, Attribute.MOVEMENT_SPEED,
-                speedMult * tier.speedMultiplier() * config.mobSpeedMultiplier(), true);
+                speedMult * tier.speedMultiplier() * config.mobSpeedMultiplier(), false);
 
         AttributeInstance armor = mob.getAttribute(Attribute.ARMOR);
         if (armor != null) {

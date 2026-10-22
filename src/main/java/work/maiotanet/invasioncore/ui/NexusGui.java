@@ -1,6 +1,7 @@
 package work.maiotanet.invasioncore.ui;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -11,6 +12,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import work.maiotanet.invasioncore.config.InvasionConfig;
 import work.maiotanet.invasioncore.economy.ShardService;
+import work.maiotanet.invasioncore.economy.ShopService;
 import work.maiotanet.invasioncore.gadget.RecallService;
 import work.maiotanet.invasioncore.nexus.Nexus;
 import work.maiotanet.invasioncore.nexus.NexusManager;
@@ -41,6 +43,11 @@ public final class NexusGui {
     private static final int SLOT_DEPOSIT = 20;
     private static final int SLOT_POOL = 24;
     private static final int SLOT_RECALL = 18;
+    private static final int SLOT_SHOP = 26;
+
+    /** SHOP の画面の品の欄（上 5 段）と、戻るボタンの位置。 */
+    private static final int SHOP_ITEM_SLOTS = 45;
+    private static final int SHOP_BACK_SLOT = 49;
 
     /**
      * 侵攻の起動・再建ができる権限。参加者が勝手に押すと、配信者の準備が終わる前にゲームが始まってしまう。
@@ -69,10 +76,13 @@ public final class NexusGui {
     private final PerkService perks;
     private final WaveEngine waves;
     private final RecallService recall;
+    private final ShopService shop;
 
     public NexusGui(InvasionConfig config, NexusManager nexuses, GameStageService stages,
-                    ShardService shards, PerkService perks, WaveEngine waves, RecallService recall) {
+                    ShardService shards, PerkService perks, WaveEngine waves, RecallService recall,
+                    ShopService shop) {
         this.recall = recall;
+        this.shop = shop;
         this.config = config;
         this.nexuses = nexuses;
         this.stages = stages;
@@ -163,6 +173,13 @@ public final class NexusGui {
                         "どこからでもネクサスのそばへ戻れる。使うとなくなる。",
                         "手持ちの Shard で払う（ネクサス内の Shard は使わない）。",
                         "所持 Shard: " + shards.count(player))));
+
+        inv.setItem(SLOT_SHOP, icon(Material.EMERALD,
+                Text.of("SHOP", Text.GOOD),
+                List.of("Shard で道具・弾薬・素材を買う。",
+                        "手持ちが足りない分はネクサス内の Shard から払う。",
+                        "所持 Shard: " + shards.count(player),
+                        "ネクサス内の Shard: " + nexus.sharedShards())));
 
         inv.setItem(SLOT_PERK, icon(Material.EXPERIENCE_BOTTLE,
                 Text.of("パーク", Text.GOOD),
@@ -272,6 +289,11 @@ public final class NexusGui {
             case SLOT_PERK -> {
                 Sounds.click(player);
                 openPerks(player, nexus);
+                return true;
+            }
+            case SLOT_SHOP -> {
+                Sounds.click(player);
+                openShop(player, nexus);
                 return true;
             }
             case SLOT_RECALL -> {
@@ -433,6 +455,65 @@ public final class NexusGui {
             openShard(player, nexus);
             return true;
         }
+        return true;
+    }
+
+    // ---------- SHOP ----------
+
+    public void openShop(Player player, Nexus nexus) {
+        InvasionHolder holder = new InvasionHolder(InvasionHolder.Kind.SHOP, nexus.id());
+        Inventory inv = Bukkit.createInventory(holder, 54, Text.of("SHOP", Text.GOOD));
+        holder.inventory(inv);
+
+        List<ShopService.Entry> entries = shop.entries();
+        int available = shards.available(player, nexus);
+        for (int i = 0; i < entries.size() && i < SHOP_ITEM_SLOTS; i++) {
+            ShopService.Entry entry = entries.get(i);
+            ItemStack shown = entry.item().clone();
+            ItemMeta meta = shown.getItemMeta();
+            if (meta != null) {
+                List<Component> lore = meta.lore() == null ? new ArrayList<>() : new ArrayList<>(meta.lore());
+                lore.add(Component.empty());
+                lore.add(Text.of("値段: " + entry.price() + " Shard（" + shown.getAmount() + " 個）",
+                        available >= entry.price() ? Text.GOOD : NamedTextColor.RED));
+                lore.add(Text.of("クリックで買う", Text.MUTED));
+                meta.lore(lore);
+                shown.setItemMeta(meta);
+            }
+            inv.setItem(i, shown);
+        }
+        inv.setItem(SHOP_BACK_SLOT, icon(Material.ARROW, Text.of("戻る", Text.MUTED),
+                List.of("所持 Shard: " + shards.count(player),
+                        "ネクサス内の Shard: " + nexus.sharedShards())));
+        fill(inv);
+        player.openInventory(inv);
+    }
+
+    public boolean handleShop(Player player, Nexus nexus, int slot) {
+        if (slot == SHOP_BACK_SLOT) {
+            Sounds.click(player);
+            openMain(player, nexus);
+            return true;
+        }
+        List<ShopService.Entry> entries = shop.entries();
+        if (slot < 0 || slot >= entries.size() || slot >= SHOP_ITEM_SLOTS) {
+            return true;
+        }
+        ShopService.Entry entry = entries.get(slot);
+        ItemStack item = entry.item().clone();
+        if (!shards.takeWithPool(player, nexus, entry.price(), "SHOP で買った")) {
+            Text.actionBarError(player, "Shard が足りない（" + entry.price() + " 必要、使えるのは "
+                    + shards.available(player, nexus) + "）");
+            Sounds.fail(player);
+            return true;
+        }
+        for (ItemStack left : player.getInventory().addItem(item).values()) {
+            player.getWorld().dropItemNaturally(player.getLocation(), left);
+        }
+        nexuses.save();
+        Text.actionBarGood(player, "買った。（-" + entry.price() + " Shard）");
+        Sounds.success(player);
+        openShop(player, nexus);
         return true;
     }
 
