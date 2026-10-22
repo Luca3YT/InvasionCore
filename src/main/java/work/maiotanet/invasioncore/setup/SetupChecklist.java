@@ -264,9 +264,6 @@ public final class SetupChecklist {
                 warns++;
             }
             lines.add(line(check));
-            if (check.hint() != null) {
-                lines.add(Text.of("      " + check.hint(), Text.MUTED));
-            }
         }
 
         if (fails > 0) {
@@ -289,28 +286,27 @@ public final class SetupChecklist {
         return lines;
     }
 
+    /**
+     * 1項目の行。理由（hint）はチャットに行を足さず、カーソルを合わせたときにだけ出す。
+     * 項目が多いとチャットが埋まり、肝心の ✘ / ⚠ の行が流れてしまうため。
+     */
     private Component line(Check check) {
         Component line = Text.of("  [" + check.status().mark + "] " + check.message(), check.status().color);
-        if (check.fixCommand() == null) {
-            return line;
+        if (check.hint() != null) {
+            line = line.hoverEvent(HoverEvent.showText(Text.of(check.hint(), Text.MUTED)));
         }
-        return line
-                .append(Text.of("  " + check.fixCommand(), Text.INFO).decorate(TextDecoration.UNDERLINED))
-                .clickEvent(ClickEvent.suggestCommand(check.fixCommand()))
-                .hoverEvent(HoverEvent.showText(hoverFor(check.fixCommand())));
+        if (check.fixCommand() != null) {
+            line = line
+                    .append(Text.of("  " + check.fixCommand(), Text.INFO).decorate(TextDecoration.UNDERLINED))
+                    .clickEvent(ClickEvent.suggestCommand(check.fixCommand()));
+        }
+        return line;
     }
 
     private Component button(String label, String command) {
         return Text.of("[" + label + "]", Text.INFO)
                 .decorate(TextDecoration.UNDERLINED)
-                .clickEvent(ClickEvent.suggestCommand(command))
-                .hoverEvent(HoverEvent.showText(hoverFor(command)));
-    }
-
-    private Component hoverFor(String command) {
-        return Text.of("クリックすると入力欄に入ります。Enter で実行", Text.MUTED)
-                .append(Component.newline())
-                .append(Text.of(command, Text.INFO));
+                .clickEvent(ClickEvent.suggestCommand(command));
     }
 
     // ---------- 部品 ----------
