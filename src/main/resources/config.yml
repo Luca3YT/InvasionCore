@@ -169,7 +169,10 @@ daily-reward:
 shop:
   # ネクサスの画面の「SHOP」で売る品。上から順に並ぶ（最大 45 品）。
   # item は独自アイテムなら /invasion give と同じ名前、それ以外は Minecraft のアイテム名（IRON_INGOT など）。
-  # amount は 1 回で買える個数、price は値段（Shard）。手持ちから払い、足りない分はネクサス内の Shard から払う
+  # price は amount 個あたりの値段（Shard）。品を押すと売買の画面で 1 個単位（最大 64 個）で数を選べ、
+  # 合計は「個数 ÷ amount × price」を切り上げた値になる。手持ちから払い、足りない分はネクサス内の Shard から払う
+  # 売るときは買う値段に sell-ratio を掛けて切り捨てた値で、Shard は手持ちに入る（SHOP に並んでいる品だけ売れる）
+  sell-ratio: 0.5
   items:
     # 消耗ガジェット
     - {item: kit, amount: 1, price: 8}

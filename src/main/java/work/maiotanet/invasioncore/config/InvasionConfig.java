@@ -386,6 +386,11 @@ public final class InvasionConfig {
         return cfg.getMapList("shop.items");
     }
 
+    /** SHOP で売るときの値段（買う値段に対する割合）。 */
+    public double shopSellRatio() {
+        return Math.max(0.0, Math.min(1.0, cfg.getDouble("shop.sell-ratio", 0.5)));
+    }
+
     // ---- 1 日生き延びた報酬 ----
     /** 夜明けごとに、生きている参加者全員へ配る Shard。 */
     public int dailyShards() {

@@ -11,6 +11,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -86,6 +87,11 @@ public final class RecallService implements Listener {
         long now = System.currentTimeMillis();
         casting.put(player.getUniqueId(),
                 new Cast(player.getLocation().clone(), now + config.recallCastSeconds() * 1000L));
+        // item_model.yml の recall_charging があれば、手に持っている羅針盤を詠唱中の見た目にする
+        ItemStack held = player.getInventory().getItemInMainHand();
+        if (InvasionItems.setRecallCharging(held, true)) {
+            player.getInventory().setItemInMainHand(held);
+        }
         player.playSound(player.getLocation(), Sound.BLOCK_PORTAL_TRIGGER, 0.4f, 1.6f);
         showProgress(player, config.recallCastSeconds() * 1000L);
     }
@@ -101,11 +107,59 @@ public final class RecallService implements Listener {
     @EventHandler
     public void onDeath(PlayerDeathEvent event) {
         casting.remove(event.getEntity().getUniqueId());
+        // 落とす持ち物にも詠唱中の見た目が残らないよう、落とす前に戻す
+        for (ItemStack drop : event.getDrops()) {
+            InvasionItems.setRecallCharging(drop, false);
+        }
+        restoreLook(event.getEntity());
     }
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         casting.remove(event.getPlayer().getUniqueId());
+        restoreLook(event.getPlayer());
+    }
+
+    /** 詠唱中に羅針盤を投げ捨てたら、捨てた羅針盤は普段の見た目に戻す（拾った人の手で詠唱中のままにならないように）。 */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onDrop(PlayerDropItemEvent event) {
+        ItemStack stack = event.getItemDrop().getItemStack();
+        if (InvasionItems.setRecallCharging(stack, false)) {
+            event.getItemDrop().setItemStack(stack);
+        }
+    }
+
+    /** 詠唱中の見た目のまま残った羅針盤（詠唱中にサーバーが落ちたときなど）を、入り直したときに戻す。 */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onJoinRestore(PlayerJoinEvent event) {
+        restoreLook(event.getPlayer());
+    }
+
+    /** サーバー停止時。詠唱中の人の羅針盤を普段の見た目に戻してから終える。 */
+    public void shutdown() {
+        for (UUID id : casting.keySet()) {
+            Player player = Bukkit.getPlayer(id);
+            if (player != null) {
+                restoreLook(player);
+            }
+        }
+        casting.clear();
+    }
+
+    /** 持ち物の中の、詠唱中の見た目になっている羅針盤を全部戻す。詠唱中に持ち替えていても見つけられるよう全体を見る。 */
+    private static void restoreLook(Player player) {
+        PlayerInventory inv = player.getInventory();
+        ItemStack[] contents = inv.getContents();
+        for (int i = 0; i < contents.length; i++) {
+            ItemStack stack = contents[i];
+            if (InvasionItems.setRecallCharging(stack, false)) {
+                inv.setItem(i, stack);
+            }
+        }
+        ItemStack cursor = player.getItemOnCursor();
+        if (InvasionItems.setRecallCharging(cursor, false)) {
+            player.setItemOnCursor(cursor);
+        }
     }
 
     /** 2 tick ごと。動いたら中断し、時間が来たら戻す。 */
@@ -124,6 +178,7 @@ public final class RecallService implements Listener {
             if (!loc.getWorld().equals(cast.start().getWorld())
                     || loc.distanceSquared(cast.start()) > MOVE_TOLERANCE * MOVE_TOLERANCE) {
                 it.remove();
+                restoreLook(player);
                 Text.actionBarWarn(player, "動いたので、帰還を中断した。");
                 Sounds.fail(player);
                 continue;
@@ -150,6 +205,15 @@ public final class RecallService implements Listener {
     }
 
     private void finish(Player player) {
+        try {
+            teleportHome(player);
+        } finally {
+            // 重ねて持っていた残りの羅針盤や、帰還できなかったときの羅針盤を普段の見た目に戻す
+            restoreLook(player);
+        }
+    }
+
+    private void teleportHome(Player player) {
         Location spot = nexuses.standingSpot(nexuses.primary());
         if (spot == null) {
             Text.actionBarWarn(player, "ネクサスが無くなったので、帰還できなかった。");
@@ -173,27 +237,36 @@ public final class RecallService implements Listener {
 
     private void cancel(Player player, String message) {
         casting.remove(player.getUniqueId());
+        restoreLook(player);
         Text.actionBarWarn(player, message);
         Sounds.fail(player);
     }
 
+    /** 羅針盤を 1 個減らす。詠唱中の見た目にした（詠唱に使った）束から先に減らす。 */
     private static boolean consumeOne(Player player) {
         PlayerInventory inv = player.getInventory();
         ItemStack[] contents = inv.getContents();
+        int slot = -1;
         for (int i = 0; i < contents.length; i++) {
-            ItemStack stack = contents[i];
-            if (!InvasionItems.is(stack, InvasionItems.RECALL)) {
-                continue;
+            if (InvasionItems.isRecallCharging(contents[i])) {
+                slot = i;
+                break;
             }
-            if (stack.getAmount() <= 1) {
-                inv.setItem(i, null);
-            } else {
-                stack.setAmount(stack.getAmount() - 1);
-                inv.setItem(i, stack);
+            if (slot < 0 && InvasionItems.is(contents[i], InvasionItems.RECALL)) {
+                slot = i;
             }
-            return true;
         }
-        return false;
+        if (slot < 0) {
+            return false;
+        }
+        ItemStack stack = contents[slot];
+        if (stack.getAmount() <= 1) {
+            inv.setItem(slot, null);
+        } else {
+            stack.setAmount(stack.getAmount() - 1);
+            inv.setItem(slot, stack);
+        }
+        return true;
     }
 
     // ---------- 配る ----------

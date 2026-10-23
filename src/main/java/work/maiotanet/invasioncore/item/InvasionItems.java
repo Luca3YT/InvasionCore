@@ -49,6 +49,15 @@ public final class InvasionItems {
      */
     private static volatile Map<String, Object> modelData = Map.of();
 
+    /**
+     * 帰還の羅針盤の詠唱中だけ付ける CustomModelData（item_model.yml の recall_charging）。
+     * アイテムの名前ではないので modelData とは分けて持つ。null なら詠唱中も見た目を変えない。
+     */
+    private static volatile Object recallChargingModel;
+
+    /** item_model.yml で詠唱中の見た目を書く項目名。 */
+    public static final String RECALL_CHARGING_KEY = "recall_charging";
+
     private InvasionItems() {
     }
 
@@ -66,6 +75,9 @@ public final class InvasionItems {
                 putModelData(map, id, e.getValue());
             }
         }
+        Map<String, Object> charging = new HashMap<>();
+        putModelData(charging, RECALL_CHARGING_KEY, byName.get(RECALL_CHARGING_KEY));
+        recallChargingModel = charging.get(RECALL_CHARGING_KEY);
         modelData = Map.copyOf(map);
     }
 
@@ -215,17 +227,67 @@ public final class InvasionItems {
             meta.getPersistentDataContainer().set(Keys.ITEM_ID, PersistentDataType.STRING, id);
             Object model = modelData.get(id);
             if (model != null) {
-                CustomModelDataComponent cmd = meta.getCustomModelDataComponent();
-                if (model instanceof Float number) {
-                    cmd.setFloats(List.of(number));
-                } else {
-                    cmd.setStrings(List.of(model.toString()));
-                }
-                meta.setCustomModelDataComponent(cmd);
+                applyModel(meta, model);
             }
             stack.setItemMeta(meta);
         }
         return stack;
+    }
+
+    /** CustomModelData を model（Float なら数値、それ以外は文字列）にする。null なら外す。 */
+    private static void applyModel(ItemMeta meta, Object model) {
+        if (model == null) {
+            meta.setCustomModelDataComponent(null);
+            return;
+        }
+        CustomModelDataComponent cmd = meta.getCustomModelDataComponent();
+        if (model instanceof Float number) {
+            cmd.setFloats(List.of(number));
+            cmd.setStrings(List.of());
+        } else {
+            cmd.setFloats(List.of());
+            cmd.setStrings(List.of(model.toString()));
+        }
+        meta.setCustomModelDataComponent(cmd);
+    }
+
+    // ---------- 帰還の羅針盤の詠唱中の見た目 ----------
+
+    /** item_model.yml の recall_charging に値があるか。無ければ詠唱中も見た目を変えない。 */
+    public static boolean hasRecallChargingModel() {
+        return recallChargingModel != null;
+    }
+
+    /**
+     * 羅針盤の見た目を詠唱中（charging = true）か普段のものにする。
+     * 詠唱中にした羅針盤には目印を付け、サーバーが落ちて戻し損ねても、あとで見つけて戻せるようにする。
+     *
+     * @return 書き換えたら true（羅針盤でない・戻す必要が無いときは false）
+     */
+    public static boolean setRecallCharging(ItemStack stack, boolean charging) {
+        if (!is(stack, RECALL) || (charging && recallChargingModel == null)
+                || (!charging && !isRecallCharging(stack))) {
+            return false;
+        }
+        ItemMeta meta = stack.getItemMeta();
+        if (charging) {
+            applyModel(meta, recallChargingModel);
+            meta.getPersistentDataContainer().set(Keys.RECALL_CHARGING, PersistentDataType.BYTE, (byte) 1);
+        } else {
+            // 普段の値は今の item_model.yml のもの。新しく手に入れた羅針盤と同じになり、重ねて持てる
+            applyModel(meta, modelData.get(RECALL));
+            meta.getPersistentDataContainer().remove(Keys.RECALL_CHARGING);
+        }
+        stack.setItemMeta(meta);
+        return true;
+    }
+
+    /** 詠唱中の見た目になっている羅針盤か。 */
+    public static boolean isRecallCharging(ItemStack stack) {
+        if (stack == null || stack.getType().isAir() || !stack.hasItemMeta()) {
+            return false;
+        }
+        return stack.getItemMeta().getPersistentDataContainer().has(Keys.RECALL_CHARGING, PersistentDataType.BYTE);
     }
 
     // ---------- 判定 ----------

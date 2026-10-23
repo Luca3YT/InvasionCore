@@ -216,6 +216,8 @@ public final class NexusListener implements Listener {
             case PERK -> gui.handlePerk(player, nexus, event.getSlot());
             case SHARD -> gui.handleShard(player, nexus, event.getSlot());
             case SHOP -> gui.handleShop(player, nexus, event.getSlot());
+            case SHOP_TRADE -> gui.handleShopTrade(player, nexus, holder, event.getSlot());
+            case SHOP_CONFIRM -> gui.handleShopConfirm(player, nexus, holder, event.getSlot());
             case ITEMS -> {
                 // 上で処理済み
             }

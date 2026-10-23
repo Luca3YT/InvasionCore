@@ -41,6 +41,11 @@ public final class Keys {
     public static NamespacedKey INVADER_SPLIT_CHILD;
     /** 死んだあと観戦モードで待っている間、復活する時刻 (Long, ミリ秒)。再起動を跨いでも戻せるよう本人に記録する。 */
     public static NamespacedKey DEATH_SPECTATE_UNTIL;
+    /**
+     * 帰還の羅針盤を詠唱中の見た目にしている目印 (Byte)。
+     * 詠唱中にサーバーが落ちても、入り直したときにこの目印で見つけて普段の見た目に戻す。
+     */
+    public static NamespacedKey RECALL_CHARGING;
 
     private Keys() {
     }
@@ -60,6 +65,7 @@ public final class Keys {
         LOOT_SHARDS = key("loot_shards");
         INVADER_SPLIT_CHILD = key("invader_split_child");
         DEATH_SPECTATE_UNTIL = key("death_spectate_until");
+        RECALL_CHARGING = key("recall_charging");
     }
 
     public static NamespacedKey key(String name) {

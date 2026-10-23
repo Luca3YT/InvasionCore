@@ -1,5 +1,7 @@
 import javax.imageio.ImageIO;
+import java.awt.color.ColorSpace;
 import java.awt.image.BufferedImage;
+import java.awt.image.Raster;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -378,9 +380,32 @@ public final class RecipeImages {
             throw new IOException("texture not found in the client jar: " + path);
         }
         try (InputStream in = jar.getInputStream(entry)) {
-            BufferedImage img = ImageIO.read(in);
+            BufferedImage img = grayToArgb(ImageIO.read(in));
             cache.put(path, img);
             return img;
         }
+    }
+
+    /**
+     * グレースケールの PNG（鉄インゴットなど）を、明るさを変えずに ARGB にする。
+     * Java は灰色の画像を getRGB で読むとき、明るさを別の色空間として変換し直すので、白っぽく褪せてしまう。
+     * そのため画素の値をそのまま使う。
+     */
+    private static BufferedImage grayToArgb(BufferedImage img) {
+        if (img.getColorModel().getColorSpace().getType() != ColorSpace.TYPE_GRAY) {
+            return img;
+        }
+        Raster raster = img.getRaster();
+        int bands = raster.getNumBands();
+        int max = (1 << img.getColorModel().getComponentSize(0)) - 1;
+        BufferedImage out = new BufferedImage(img.getWidth(), img.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < img.getHeight(); y++) {
+            for (int x = 0; x < img.getWidth(); x++) {
+                int v = raster.getSample(x, y, 0) * 255 / max;
+                int a = bands > 1 ? raster.getSample(x, y, 1) * 255 / max : 255;
+                out.setRGB(x, y, (a << 24) | (v << 16) | (v << 8) | v);
+            }
+        }
+        return out;
     }
 }

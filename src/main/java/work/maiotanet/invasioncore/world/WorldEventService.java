@@ -233,11 +233,10 @@ public final class WorldEventService {
         double multiplier = distanceMultiplier(distance);
         List<ItemStack> loot = scale(rewards.airDropLoot(stage), multiplier);
 
-        String bonus = String.format("%.1f", multiplier);
         for (Player p : stages.participants(nexus)) {
             p.sendMessage(Text.info("補給物資が投下された！（"
                     + spot.getBlockX() + ", " + spot.getBlockY() + ", " + spot.getBlockZ() + "）"
-                    + " ネクサスから " + (int) Math.round(distance) + "m・中身 " + bonus + " 倍。"
+                    + " ネクサスから " + (int) Math.round(distance) + "m。"
                     + "光の柱が目印。15 分で消える。"));
             p.playSound(p.getLocation(), Sound.BLOCK_BELL_USE, 1.0f, 1.2f);
         }

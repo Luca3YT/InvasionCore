@@ -277,7 +277,7 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
 
     <section id="fortify">
       <h2>拠点を固める</h2>
-      <p>通貨は <strong class="shard">Shard</strong>（アメジストの欠片の見た目）です。侵略者を倒すと落とし、防衛成功でも配られます。普通の敵（ゾンビ・スケルトンなど）をプレイヤーが倒しても 1 個落とします（スポナーから出た敵は対象外。<code>economy.vanilla-mob-shard</code>）。構造物のチェストにも入っています（通常世界 5〜20・ネザー 10〜30・エンド 20〜60）。地面に落ちた Shard は光ります。インベントリに入っている実物を使います。ネクサスの画面の「SHOP」で、道具・弾薬・素材を Shard で買えます（品と値段は <code>shop.items</code>）。</p>
+      <p>通貨は <strong class="shard">Shard</strong>（アメジストの欠片の見た目）です。侵略者を倒すと落とし、防衛成功でも配られます。普通の敵（ゾンビ・スケルトンなど）をプレイヤーが倒しても 1 個落とします（スポナーから出た敵は対象外。<code>economy.vanilla-mob-shard</code>）。構造物のチェストにも入っています（通常世界 5〜20・ネザー 10〜30・エンド 20〜60）。地面に落ちた Shard は光ります。インベントリに入っている実物を使います。ネクサスの画面の「SHOP」で、道具・弾薬・素材を Shard で買えます（品と値段は <code>shop.items</code>）。品を押すと個数を選ぶ画面と確認の画面が出て、並んでいる品は買う値段の半分で売ることもできます（<code>shop.sell-ratio</code>）。</p>
       <h3>強化ハンマー</h3>
       <p>強化ハンマー（鉄の斧の見た目）でブロックを右クリックすると、そのブロックの状態に応じて次のどれかが起きます。防衛範囲の中でだけ使えます。</p>
       <div class="table-wrap"><table>
@@ -446,7 +446,7 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
           <tr><td><code>/invasion admin spawn &lt;種類&gt; [数]</code></td><td>侵略者を湧かせる（稼働中のネクサスが必要）</td></tr>
           <tr><td><code>/invasion admin boss &lt;名前&gt;</code></td><td>ボスを出す（warlord / siege_titan / blight_queen / emberheart / void_herald）</td></tr>
           <tr><td><code>/invasion admin airdrop</code></td><td>補給物資をすぐ落とす</td></tr>
-          <tr><td><code>/invasion admin pause [freeze|walk|free]</code></td><td>ゲームを一時停止する。時間・侵略者・補給物資などのイベント・タレットと罠が止まり、参加者はダメージを受けない。参加者は freeze＝動けない、walk＝歩けるが壊す・置く・攻撃・使うができない（省略したとき）、free＝自由（OP は対象外）</td></tr>
+          <tr><td><code>/invasion admin pause [freeze|walk|free]</code></td><td>ゲームを一時停止する。時間・侵略者・補給物資などのイベント・タレットと罠が止まり、参加者はダメージを受けない。参加者は freeze＝動けない、walk＝歩けるが壊す・置く・攻撃・使うができない（省略したとき）、free＝自由（OP は対象外）。止めたままサーバーが止まっても、次の起動は止めたままで始まる</td></tr>
           <tr><td><code>/invasion admin resume</code></td><td>3・2・1 と数えてから再開する</td></tr>
           <tr><td><code>/invasion ver</code></td><td>プラグインのバージョンを表示する。develop など main 以外で作った jar は「0.4.0-dev (コミット・作った日時)」と出る。OP がサーバーに入ったときも画面に出る</td></tr>
           <tr><td><code>/invasion item</code></td><td>このプラグインのアイテムを何度でも取り出せる画面（クリックで 1 個、Shift+クリックで 1 スタック）</td></tr>

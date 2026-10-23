@@ -7,6 +7,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.GameRule;
 import org.bukkit.Sound;
 import org.bukkit.World;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
@@ -17,10 +19,13 @@ import work.maiotanet.invasioncore.mob.InvaderRegistry;
 import work.maiotanet.invasioncore.util.Text;
 import work.maiotanet.invasioncore.world.WorldEventService;
 
+import java.io.File;
+import java.io.IOException;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.logging.Level;
 
 /**
  * ゲームの一時停止（/invasion admin pause・resume）。
@@ -31,6 +36,10 @@ import java.util.Map;
  *
  * <p>止めている間の時間はワールドの昼夜を止めて実現するので、サーバーを止めるときは必ず元に戻す。
  * 侵略者やタレットの処理そのものは、呼び出し側（InvasionCore の定期処理）が {@link #isPaused()} を見て飛ばす。</p>
+ *
+ * <p>止めている間にサーバーが止まっても、次に起動したときは止めたままで始める（pause.yml）。
+ * ウィンドウを閉じた・落ちたなどで後始末ができず、昼夜が止まったワールドだけが残ると、
+ * 止める前の昼夜の進み方が分からなくなり、resume でも戻せなくなるため。</p>
  */
 public final class PauseService {
 
@@ -84,11 +93,13 @@ public final class PauseService {
     private final BossBar bar = BossBar.bossBar(Text.of("一時停止中", Text.WARN), 1.0f,
             BossBar.Color.YELLOW, BossBar.Overlay.PROGRESS);
     private BukkitTask countdown;
+    private final File file;
 
     public PauseService(Plugin plugin, InvaderRegistry registry, WorldEventService worldEvents) {
         this.plugin = plugin;
         this.registry = registry;
         this.worldEvents = worldEvents;
+        this.file = new File(plugin.getDataFolder(), "pause.yml");
     }
 
     /** 止めている間（再開のカウントダウン中も含む）。 */
@@ -115,6 +126,7 @@ public final class PauseService {
                 countdown = null;
             }
             this.mode = mode;
+            save();
             announce("一時停止", "参加者は" + mode.description());
             return true;
         }
@@ -129,6 +141,8 @@ public final class PauseService {
             world.setGameRule(GameRule.DO_DAYLIGHT_CYCLE, false);
         }
         freezeInvaders();
+        // 止めた直後に書いておく。後始末なしで落ちても、次の起動で止める前の昼夜に戻せるように
+        save();
         for (Player p : Bukkit.getOnlinePlayers()) {
             p.showBossBar(bar);
         }
@@ -167,6 +181,7 @@ public final class PauseService {
         paused = false;
         long pausedFor = System.currentTimeMillis() - pausedAtMillis;
         restoreDaylight();
+        save();
         unfreezeInvaders();
         // 止めていた間に補給物資やホードの時刻が過ぎて、再開した瞬間にまとめて来ないようにずらす
         worldEvents.shiftTimers(pausedFor);
@@ -231,7 +246,70 @@ public final class PauseService {
         }
     }
 
-    /** サーバー停止時。止めたままだと昼夜が止まったワールドが残るので、黙って元に戻す。 */
+    // ---------- 再起動を跨ぐ ----------
+
+    /**
+     * 起動時。前回止めたまま終わっていたら、止めたままで始める。
+     * 昼夜の進み方は pause.yml に残した「止める前」のものを使う（いまのワールドは止まったままかもしれないため）。
+     */
+    public void load() {
+        if (!file.exists()) {
+            return;
+        }
+        YamlConfiguration yaml = YamlConfiguration.loadConfiguration(file);
+        if (!yaml.getBoolean("paused")) {
+            return;
+        }
+        Mode saved = Mode.parse(yaml.getString("mode", Mode.WALK.id()));
+        mode = saved != null ? saved : Mode.WALK;
+        paused = true;
+        // 止めていた時間は今から数える（補給物資などの時刻は再起動で決め直されている）
+        pausedAtMillis = System.currentTimeMillis();
+        ConfigurationSection before = yaml.getConfigurationSection("daylight-before");
+        for (World world : Bukkit.getWorlds()) {
+            if (world.getEnvironment() != World.Environment.NORMAL) {
+                continue;
+            }
+            boolean was = before != null && before.isBoolean(world.getName())
+                    ? before.getBoolean(world.getName())
+                    : !Boolean.FALSE.equals(world.getGameRuleValue(GameRule.DO_DAYLIGHT_CYCLE));
+            daylightBefore.put(world.getName(), was);
+            world.setGameRule(GameRule.DO_DAYLIGHT_CYCLE, false);
+        }
+        save();
+        plugin.getLogger().info("前回は一時停止したまま終わったので、止めたままで起動しました（参加者は"
+                + mode.description() + "）。再開は /invasion admin resume");
+    }
+
+    /** 止めていれば止め方と止める前の昼夜を書き、止めていなければファイルを消す。 */
+    private void save() {
+        if (!paused) {
+            if (file.exists() && !file.delete()) {
+                plugin.getLogger().warning("pause.yml を消せませんでした: " + file);
+            }
+            return;
+        }
+        YamlConfiguration yaml = new YamlConfiguration();
+        yaml.set("paused", true);
+        yaml.set("mode", mode.id());
+        for (Map.Entry<String, Boolean> e : daylightBefore.entrySet()) {
+            yaml.set("daylight-before." + e.getKey(), e.getValue());
+        }
+        try {
+            File parent = file.getParentFile();
+            if (parent != null && !parent.exists() && !parent.mkdirs()) {
+                plugin.getLogger().warning("データフォルダを作成できませんでした: " + parent);
+            }
+            yaml.save(file);
+        } catch (IOException ex) {
+            plugin.getLogger().log(Level.SEVERE, "pause.yml の保存に失敗しました", ex);
+        }
+    }
+
+    /**
+     * サーバー停止時。止めたままだと昼夜が止まったワールドが残るので、黙って元に戻す。
+     * pause.yml は消さないので、次に起動したときはまた止めたままで始まる。
+     */
     public void shutdown() {
         if (countdown != null) {
             countdown.cancel();

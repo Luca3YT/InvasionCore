@@ -85,6 +85,7 @@ public final class InvasionCore extends JavaPlugin {
     private WebServer web;
     private GraveService graves;
     private PauseService pause;
+    private RecallService recall;
     private PlacedBlockTracker placedBlocks;
     private NexusGuideService guide;
     private InvaderHealthService invaderHealth;
@@ -133,7 +134,7 @@ public final class InvasionCore extends JavaPlugin {
                 rewards, contributions, shards, perks, hudBridge(), breachLog);
         ai.combatSink(waves);
 
-        RecallService recall = new RecallService(config, nexuses, shards);
+        this.recall = new RecallService(config, nexuses, shards);
         NexusGui gui = new NexusGui(config, nexuses, stages, shards, perks, waves, recall,
                 new ShopService(this, config));
         SidebarUpdater sidebar = new SidebarUpdater(
@@ -155,6 +156,7 @@ public final class InvasionCore extends JavaPlugin {
         ItemBox itemBox = new ItemBox(this);
         getServer().getPluginManager().registerEvents(new VersionNoticeListener(build), this);
         this.pause = new PauseService(this, registry, worldEvents);
+        pause.load();
         getServer().getPluginManager().registerEvents(new PauseListener(pause, registry), this);
         sidebar.pause(pause);
         PreGameService pregame = new PreGameService(config, nexuses, recall);
@@ -275,6 +277,10 @@ public final class InvasionCore extends JavaPlugin {
     @Override
     public void onDisable() {
         getServer().getScheduler().cancelTasks(this);
+        if (recall != null) {
+            // 詠唱中のまま終わると、羅針盤が詠唱中の見た目で残る（入り直せば戻るが、先に戻しておく）
+            recall.shutdown();
+        }
         if (pause != null) {
             // 止めたまま終わると、昼夜の止まったワールドと動かない侵略者が残る
             pause.shutdown();

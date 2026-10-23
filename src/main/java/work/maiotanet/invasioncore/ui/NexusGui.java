@@ -474,9 +474,9 @@ public final class NexusGui {
             if (meta != null) {
                 List<Component> lore = meta.lore() == null ? new ArrayList<>() : new ArrayList<>(meta.lore());
                 lore.add(Component.empty());
-                lore.add(Text.of("値段: " + entry.price() + " Shard（" + shown.getAmount() + " 個）",
-                        available >= entry.price() ? Text.GOOD : NamedTextColor.RED));
-                lore.add(Text.of("クリックで買う", Text.MUTED));
+                lore.add(Text.of("値段: " + priceLabel(entry),
+                        available >= entry.buyPrice(1) ? Text.GOOD : NamedTextColor.RED));
+                lore.add(Text.of("クリックで売買の画面へ（売ることもできる）", Text.MUTED));
                 meta.lore(lore);
                 shown.setItemMeta(meta);
             }
@@ -499,22 +499,217 @@ public final class NexusGui {
         if (slot < 0 || slot >= entries.size() || slot >= SHOP_ITEM_SLOTS) {
             return true;
         }
-        ShopService.Entry entry = entries.get(slot);
-        ItemStack item = entry.item().clone();
-        if (!shards.takeWithPool(player, nexus, entry.price(), "SHOP で買った")) {
-            Text.actionBarError(player, "Shard が足りない（" + entry.price() + " 必要、使えるのは "
-                    + shards.available(player, nexus) + "）");
-            Sounds.fail(player);
+        Sounds.click(player);
+        openShopTrade(player, nexus, slot, 1);
+        return true;
+    }
+
+    /** 「8 個で 6 Shard」「1 個 8 Shard」。 */
+    private static String priceLabel(ShopService.Entry entry) {
+        return entry.lot() > 1
+                ? entry.lot() + " 個で " + entry.price() + " Shard"
+                : "1 個 " + entry.price() + " Shard";
+    }
+
+    /** 売買の画面の個数のボタン（欄 → 増やす数）。 */
+    private static final int[] TRADE_STEP_SLOTS = {9, 10, 11, 15, 16, 17};
+    private static final int[] TRADE_STEPS = {-64, -10, -1, 1, 10, 64};
+    private static final int TRADE_ITEM_SLOT = 4;
+    private static final int TRADE_COUNT_SLOT = 13;
+    private static final int TRADE_BACK_SLOT = 18;
+    private static final int TRADE_BUY_SLOT = 21;
+    private static final int TRADE_SELL_SLOT = 23;
+    /** 一度に売り買いできる個数の上限。 */
+    private static final int TRADE_MAX = 64;
+
+    private static final int CONFIRM_ITEM_SLOT = 4;
+    private static final int CONFIRM_YES_SLOT = 11;
+    private static final int CONFIRM_NO_SLOT = 15;
+
+    /** SHOP の品。設定を読み直して並びが変わっていたら null。 */
+    private ShopService.Entry shopEntry(int index) {
+        List<ShopService.Entry> entries = shop.entries();
+        return index >= 0 && index < entries.size() ? entries.get(index) : null;
+    }
+
+    /** 1 品の売買の画面。上に品、真ん中で個数を選び、下で買う・売るを選ぶ。 */
+    public void openShopTrade(Player player, Nexus nexus, int index, int count) {
+        ShopService.Entry entry = shopEntry(index);
+        if (entry == null) {
+            openShop(player, nexus);
+            return;
+        }
+        count = Math.max(1, Math.min(TRADE_MAX, count));
+        InvasionHolder holder = new InvasionHolder(InvasionHolder.Kind.SHOP_TRADE, nexus.id()).shop(index, count, false);
+        Inventory inv = Bukkit.createInventory(holder, 27, Text.of("SHOP — 個数を選ぶ", Text.GOOD));
+        holder.inventory(inv);
+
+        int owned = ShopService.owned(player, entry);
+        inv.setItem(TRADE_ITEM_SLOT, shownItem(entry, count, List.of(
+                Text.of("値段: " + priceLabel(entry), Text.INFO),
+                Text.of("持っている数: " + owned + " 個", Text.MUTED))));
+        for (int i = 0; i < TRADE_STEP_SLOTS.length; i++) {
+            int step = TRADE_STEPS[i];
+            inv.setItem(TRADE_STEP_SLOTS[i], icon(step < 0 ? Material.RED_STAINED_GLASS_PANE : Material.LIME_STAINED_GLASS_PANE,
+                    Text.of((step < 0 ? "−" : "＋") + Math.abs(step), step < 0 ? NamedTextColor.RED : Text.GOOD),
+                    List.of("個数を " + Math.abs(step) + (step < 0 ? " 減らす" : " 増やす") + "（1〜" + TRADE_MAX + " 個）")));
+        }
+        inv.setItem(TRADE_COUNT_SLOT, icon(Material.NAME_TAG, Text.of("個数: " + count + " 個", Text.WARN),
+                List.of("左右のボタンで変える")));
+
+        int buyTotal = entry.buyPrice(count);
+        int available = shards.available(player, nexus);
+        boolean canBuy = available >= buyTotal;
+        inv.setItem(TRADE_BUY_SLOT, icon(Material.EMERALD, Text.of(count + " 個買う", canBuy ? Text.GOOD : NamedTextColor.RED),
+                List.of("合計: " + buyTotal + " Shard",
+                        "使える Shard: " + available + "（手持ち " + shards.count(player) + "＋ネクサス内 " + nexus.sharedShards() + "）",
+                        canBuy ? "手持ちから払い、足りない分はネクサス内から払う" : "Shard が足りない")));
+
+        int sellTotal = entry.sellPrice(count, shop.sellRatio());
+        String sellNote;
+        if (owned < count) {
+            sellNote = "持っている数が足りない（" + owned + " 個）";
+        } else if (sellTotal <= 0) {
+            sellNote = "この数では値段が付かない（もっとまとめて売る）";
+        } else {
+            sellNote = "受け取った Shard は手持ちに入る";
+        }
+        boolean canSell = owned >= count && sellTotal > 0;
+        inv.setItem(TRADE_SELL_SLOT, icon(Material.GOLD_INGOT, Text.of(count + " 個売る", canSell ? Text.WARN : NamedTextColor.RED),
+                List.of("受け取り: " + sellTotal + " Shard", "持っている数: " + owned + " 個", sellNote)));
+        inv.setItem(TRADE_BACK_SLOT, icon(Material.ARROW, Text.of("戻る", Text.MUTED), List.of("SHOP の一覧へ")));
+        fill(inv);
+        player.openInventory(inv);
+    }
+
+    public boolean handleShopTrade(Player player, Nexus nexus, InvasionHolder holder, int slot) {
+        int index = holder.shopIndex();
+        int count = holder.shopCount();
+        for (int i = 0; i < TRADE_STEP_SLOTS.length; i++) {
+            if (TRADE_STEP_SLOTS[i] == slot) {
+                Sounds.click(player);
+                openShopTrade(player, nexus, index, count + TRADE_STEPS[i]);
+                return true;
+            }
+        }
+        if (slot == TRADE_BACK_SLOT) {
+            Sounds.click(player);
+            openShop(player, nexus);
             return true;
         }
-        for (ItemStack left : player.getInventory().addItem(item).values()) {
-            player.getWorld().dropItemNaturally(player.getLocation(), left);
+        ShopService.Entry entry = shopEntry(index);
+        if (entry == null) {
+            openShop(player, nexus);
+            return true;
         }
-        nexuses.save();
-        Text.actionBarGood(player, "買った。（-" + entry.price() + " Shard）");
-        Sounds.success(player);
-        openShop(player, nexus);
+        if (slot == TRADE_BUY_SLOT) {
+            int total = entry.buyPrice(count);
+            if (shards.available(player, nexus) < total) {
+                Text.actionBarError(player, "Shard が足りない（" + total + " 必要、使えるのは "
+                        + shards.available(player, nexus) + "）");
+                Sounds.fail(player);
+                return true;
+            }
+            Sounds.click(player);
+            openShopConfirm(player, nexus, index, count, false);
+        } else if (slot == TRADE_SELL_SLOT) {
+            int owned = ShopService.owned(player, entry);
+            if (owned < count) {
+                Text.actionBarError(player, "持っている数が足りない（" + count + " 個必要、持っているのは " + owned + " 個）");
+                Sounds.fail(player);
+                return true;
+            }
+            if (entry.sellPrice(count, shop.sellRatio()) <= 0) {
+                Text.actionBarWarn(player, "この数では値段が付かない。もっとまとめて売ってね。");
+                Sounds.fail(player);
+                return true;
+            }
+            Sounds.click(player);
+            openShopConfirm(player, nexus, index, count, true);
+        }
         return true;
+    }
+
+    /** 買う・売るの確認の画面。間違えて押したときに引き返せるよう、もう一度だけ聞く。 */
+    private void openShopConfirm(Player player, Nexus nexus, int index, int count, boolean sell) {
+        ShopService.Entry entry = shopEntry(index);
+        if (entry == null) {
+            openShop(player, nexus);
+            return;
+        }
+        InvasionHolder holder = new InvasionHolder(InvasionHolder.Kind.SHOP_CONFIRM, nexus.id()).shop(index, count, sell);
+        Inventory inv = Bukkit.createInventory(holder, 27, Text.of(sell ? "SHOP — 売っていい？" : "SHOP — 買っていい？", Text.GOOD));
+        holder.inventory(inv);
+        String deal = sell
+                ? count + " 個売って " + entry.sellPrice(count, shop.sellRatio()) + " Shard 受け取る"
+                : count + " 個を " + entry.buyPrice(count) + " Shard で買う";
+        inv.setItem(CONFIRM_ITEM_SLOT, shownItem(entry, count, List.of(Text.of(deal, Text.WARN))));
+        inv.setItem(CONFIRM_YES_SLOT, icon(Material.LIME_CONCRETE, Text.of(sell ? "売る" : "買う", Text.GOOD), List.of(deal)));
+        inv.setItem(CONFIRM_NO_SLOT, icon(Material.RED_CONCRETE, Text.of("やめる", NamedTextColor.RED),
+                List.of("個数を選ぶ画面に戻る")));
+        fill(inv);
+        player.openInventory(inv);
+    }
+
+    public boolean handleShopConfirm(Player player, Nexus nexus, InvasionHolder holder, int slot) {
+        int index = holder.shopIndex();
+        int count = holder.shopCount();
+        if (slot == CONFIRM_NO_SLOT) {
+            Sounds.click(player);
+            openShopTrade(player, nexus, index, count);
+            return true;
+        }
+        if (slot != CONFIRM_YES_SLOT) {
+            return true;
+        }
+        ShopService.Entry entry = shopEntry(index);
+        if (entry == null) {
+            openShop(player, nexus);
+            return true;
+        }
+        // 確認の画面を開いている間に持ち物や Shard が変わっているかもしれないので、もう一度確かめる
+        if (holder.shopSell()) {
+            int total = entry.sellPrice(count, shop.sellRatio());
+            if (total <= 0 || !ShopService.removeOwned(player, entry, count)) {
+                Text.actionBarError(player, "持っている数が足りない。");
+                Sounds.fail(player);
+                openShopTrade(player, nexus, index, count);
+                return true;
+            }
+            shards.give(player, total, "SHOP で売った");
+            Text.actionBarGood(player, count + " 個売った。（+" + total + " Shard）");
+        } else {
+            int total = entry.buyPrice(count);
+            if (!shards.takeWithPool(player, nexus, total, "SHOP で買った")) {
+                Text.actionBarError(player, "Shard が足りない（" + total + " 必要、使えるのは "
+                        + shards.available(player, nexus) + "）");
+                Sounds.fail(player);
+                openShopTrade(player, nexus, index, count);
+                return true;
+            }
+            ShopService.give(player, entry, count);
+            nexuses.save();
+            Text.actionBarGood(player, count + " 個買った。（-" + total + " Shard）");
+        }
+        Sounds.success(player);
+        // 続けて同じ品を売り買いしやすいよう、個数を選ぶ画面に戻す
+        openShopTrade(player, nexus, index, count);
+        return true;
+    }
+
+    /** 画面に出す品。個数ぶん重ねて見せ（最大 64）、説明を足す。 */
+    private static ItemStack shownItem(ShopService.Entry entry, int count, List<Component> extra) {
+        ItemStack shown = entry.item().clone();
+        shown.setAmount(Math.max(1, Math.min(count, shown.getMaxStackSize())));
+        ItemMeta meta = shown.getItemMeta();
+        if (meta != null) {
+            List<Component> lore = meta.lore() == null ? new ArrayList<>() : new ArrayList<>(meta.lore());
+            lore.add(Component.empty());
+            lore.addAll(extra);
+            meta.lore(lore);
+            shown.setItemMeta(meta);
+        }
+        return shown;
     }
 
     private void collectRewards(Player player, Nexus nexus) {
