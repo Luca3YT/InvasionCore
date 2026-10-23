@@ -42,7 +42,7 @@ IntelliJ IDEA 同梱の Maven の順。PATH は変更しない）。見つから
 `build.local.cmd`（git 管理外）を作り、`set "JAVA_HOME=..."` と `set "MVN=..."` を書く。
 詳しくは [docs/handoff.md](docs/handoff.md) を参照。
 
-成果物: `target/InvasionCore-0.4.0.jar`
+成果物: `target/InvasionCore-0.5.0.jar`
 
 ## サーバーの起動
 
@@ -110,8 +110,11 @@ IntelliJ IDEA 同梱の Maven の順。PATH は変更しない）。見つから
 - **真下が空中だと起動できない**（`/invasion setup` でも ✘）。侵略者は 3 ブロック以内まで近づかないと殴れないので、
   宙に浮かせると序盤の敵が誰も届かず、待つだけで勝ててしまうため。
   起動後に真下を掘って浮かせると、全員に警告が出て、つなぎ直すまで毎秒 `nexus.floating-damage-per-second`（5）HP 減る。
-- 侵略者の爆発（爆導体の自爆・投擲手の爆弾）がネクサスから `nexus.explosion-radius`（4）ブロック以内で起きると、
-  `nexus.explosion-damage`（15 × 変異の倍率）HP 減る。高い柱の上に置いても爆弾は届く。
+- 侵略者の爆発（爆導体の自爆）がネクサスから `nexus.explosion-radius`（4）ブロック以内で起きると、
+  `nexus.explosion-damage`（15 × 変異の倍率）HP 減る。
+- 防衛範囲は `nexus.defense-radius`（25）、侵略者が壁を壊せる範囲は `nexus.breach-radius`（24）。
+  侵略者は防衛範囲の外、ネクサスから `wave.spawn-radius-min`〜`max`（60〜100）ブロックの所に湧いて歩いてくる。
+  侵攻中は、湧き位置までのチャンクを読み込んだままにする（湧いた敵が止まらないように）。
 
 ### GameStage（難易度指標）
 ```
@@ -129,9 +132,9 @@ GameStage = (ネクサスLv × 8 + 生存日数 × 1.5 + 参加者平均Lv × 1.
 | 射手 (Ranged) | 遠距離 | 12 |
 | 壁蟲 (Crawler) | **壁を登る**。高い壁を無効化 | 14 |
 | 掘削者 (Burrower) | 地面を掘って侵入 | 18 |
-| 工兵 (Engineer) | 足場を建てて高所突破 | 22 |
-| 爆導体 (Bomber) | 壁とタレットを自爆で破壊 | 26 |
-| 投擲手 (Lobber) | **質量爆弾を放物線で撃ち込む砲撃型** | 28 |
+| 工兵 (Engineer) | 跳び越えられない壁の前でだけ足場を積んで登り、壁の上から内側へ足場を渡して飛び降りてくる | 22 |
+| 爆導体 (Bomber) | 壁とタレットを自爆で削る。**プレイヤーが置いた・強化したブロックだけ** 壊し、元からある地形は壊さない | 26 |
+| 投擲手 (Lobber) | 質量爆弾を撃ち込む砲撃型。地形を削りすぎたため **ウェーブには出さない**（出現枠は爆導体へ） | — |
 | 重装体 (Brute) | **超高耐久・ノックバック無効**。一撃が重い | 30 |
 | 飛翔体 (Flyer) | 地上防御を無視 | 32 |
 | 潜伏体 (Stalker) | **接近するまで不可視**。後衛を刈りに来る | 34 |
@@ -164,7 +167,9 @@ GameStage が上がると下位種別の出現率が段階的に落ち、上位�
 - ネクサスを最優先で目指す（プレイヤーは近距離でのみ標的化）
 - 経路が塞がれたら**壁を殴って壊す**（壁で完封できない）
 - 掘削者は直線的に掘り進む
-- 工兵は足場を積んで登り、**侵攻終了時に自動撤去**される
+- 工兵は、ネクサスの方へ 2 ブロック以内に跳び越えられない壁（2 段以上）があるときだけ足場を積む（壁の無い所や窪地では積まない）。
+  壁の上に出たら内側へ足場を渡し（`breach.engineer-max-bridge-length` = 6 まで）、越えたら飛び降りる。
+  登り切れない・渡り切れないときは 10 秒あけてから積み直す。足場は工兵が倒されたときと**侵攻終了時に自動撤去**される
 - 破壊範囲は `breach-radius` 内に限定。範囲外の建築物は絶対に壊されない
 - 破壊されたブロックは全て記録され `/invasion admin restore` で巻き戻せる
 
@@ -175,7 +180,8 @@ GameStage が上がると下位種別の出現率が段階的に落ち、上位�
 ```
 未強化のバニラブロックも硬度から耐久が導出されるので、土で囲んでも一瞬で抜かれる。
 
-**タレット4系統**（弾薬制。タレットの上に残弾を常に表示し、少なくなると黄色・弾切れで赤）
+**タレット4系統**（弾薬制。タレットの上に残弾を常に表示し、少なくなると黄色・弾切れで赤）。
+置ける数は拠点全体で `turret-limit.base`（5）。ネクサスのアップグレード「砲台増設」1 段ごとに `per-level`（2）増え、`max`（30）まで。
 
 | 種類 | 効果 | 弾薬 |
 |---|---|---|
@@ -223,7 +229,10 @@ GameStage が上がると下位種別の出現率が段階的に落ち、上位�
 - **1 日生き延びた報酬**: 夜明けごとに、生きている参加者全員へ `daily-reward.shards`（10）Shard。
   `daily-reward.perk-point-every-days`（2）日ごとにパークポイントも 1 点。
 - **SHOP**: ネクサスの画面の「SHOP」で、消耗ガジェット・タレットと罠・弾薬・素材・食べ物を Shard で買える。
-  品と値段は `shop.items` に並べる。支払いは手持ちが先で、足りない分はネクサス内の Shard から払う。
+  品と値段は `shop.items` に並べる。品を押すと売買の画面になり、1 個単位（−64〜＋64 のボタン、最大 64 個）で数を選んで、
+  確認の画面で「買う」か「売る」を決める。値段は `amount` 個あたりで、合計は買うとき切り上げ・売るとき切り捨て。
+  支払いは手持ちが先で、足りない分はネクサス内の Shard から払う。売れるのは SHOP に並んでいる品だけで、
+  値段は買う値段 × `shop.sell-ratio`（0.5）、Shard は手持ちに入る。
 - **ネクサス内の Shard**: Shard をネクサスに預けて共有できる（Shard を持って右クリック、または画面のボタンで全部）。
   支払いは手持ちが先で、足りない分がネクサス内から払われる。引き出せるのは管理者だけ。サイドバーに残高を表示。
 - **貢献度按分**: 撃破だけでなく**修理・強化・タレット設置・被ダメージ**にも重みがある。40%は頭割り。
@@ -247,8 +256,17 @@ GameStage が上がると下位種別の出現率が段階的に落ち、上位�
 
 ### ワールドイベント
 - 徘徊ホード（準備フェーズ中ランダム。猶予期間はグラントの通常個体 3〜5 体だけ）
-- 空中投下（一定間隔・拠点から40〜80ブロック）。上空から樽が煙を引いて落ちてきて、着地すると光の柱・発光・名札（残り時間）が出る。
+- 空中投下（一定間隔・ネクサスから `min-distance`〜`max-distance`（40〜600）ブロック）。遠くに落ちるほど中身が多い
+  （一番近いと `near-multiplier`（0.3）倍、一番遠いと `far-multiplier`（3）倍。チャットには座標と距離が出る）。上空から樽が煙を引いて落ちてきて、着地すると光の柱・発光・名札（残り時間）が出る。
   置かれている間は、全員のアクションバーに補給物資の方向と距離を出す（ネクサスの矢印より優先）。管理コマンドで落としたときも座標を全員に知らせる
+
+### 血の月の Shard
+血の月の間は、タレットや罠が倒した侵略者の Shard を地面に落とさず、直接ネクサス内の Shard に入れる
+（大量に落ちて拾いきれないため）。プレイヤーが倒した侵略者は、今までどおり落とす。
+
+### 死んだとき
+死ぬと、死んだ場所で `death.spectate-seconds`（10）秒間の観戦モードになり、終わるとネクサスのそばで生き返る
+（すぐ生き返って突っ込むだけにならないように）。待っている間に抜けても、入り直したときに続きから戻る。
 
 ### 墓
 どこで死んでも、所持品は死んだ場所の **墓（本人の頭）** にまとめられる。右クリックでも左クリックでも回収できる。
@@ -277,9 +295,10 @@ GameStage が上がると下位種別の出現率が段階的に落ち、上位�
 
 ## カスタムテクスチャ（リソースパック）
 
-Shard・帰還の羅針盤・強化ハンマーには CustomModelData（文字列。`config.yml` の `custom-model-data`）が付いている。
-`resourcepack/textures/` に `shard.png` / `recall.png` / `hammer.png` を置いて `scripts\build-resourcepack.cmd` を実行すると、
-独自アイテムだけ見た目を差し替えるリソースパックが `target\InvasionCore-resourcepack.zip` にできる。詳しくは [resourcepack/README.md](resourcepack/README.md)。
+独自アイテム（14 品）には、`plugins/InvasionCore/item_model.yml` で決めた CustomModelData が付く（初めは全部空白で、何も付かない。数字を書くと数値、`""` で囲むと文字列）。
+`resourcepack/textures/` に項目名と同じ名前の PNG（`shard.png` など）を置いて `scripts\build-resourcepack.cmd` を実行すると、
+独自アイテムだけ見た目を差し替えるリソースパックが `target\InvasionCore-resourcepack.zip` にできる。
+帰還の羅針盤は `recall_charging` に値を書くと、詠唱中だけその値（チャージ中の見た目）に切り替わる。詳しくは [resourcepack/README.md](resourcepack/README.md)。
 
 ---
 
@@ -316,6 +335,8 @@ Shard・帰還の羅針盤・強化ハンマーには CustomModelData（文字�
 | `/invasion stop` | 侵攻の停止（所有者・管理者） |
 | `/invasion setup` | ゲーム開始前の確認（要 `invasioncore.admin`）。難易度・ゲームルール・ネクサスの状態などを ✔ / ⚠ / ✘ で表示し、直すコマンドをクリックで入力欄に入れられる |
 | `/invasion give <item> [数]` | アイテム配布（要 `invasioncore.admin`）<br>`nexus` `hammer` `shard` `kit` `turret_*` `spike` `mine` `flash` `medkit` `barrier` `recall` |
+| `/invasion ver` | プラグインのバージョン。main 以外のブランチで作った jar は `0.5.0-dev (コミット・作った日時)` のように出る。OP がサーバーに入ったときも画面に出る |
+| `/invasion item` | このプラグインのアイテムを何度でも取り出せる画面（クリックで 1 個、Shift+クリックで 1 スタック）。普段は OP だけ。`/invasion admin item on` で誰でも使える・`off` で OP だけに戻す（テストプレイ用） |
 | `/invasion tp nexus` | ネクサスのそばへテレポート（要 `invasioncore.admin`）。別のディメンションからでも使える |
 | `/invasion admin <sub>` | 下記の管理サブコマンド |
 
@@ -335,6 +356,8 @@ Shard・帰還の羅針盤・強化ハンマーには CustomModelData（文字�
 | `boss <name>` | 指定ボスを出現させる |
 | `points <n>` | 自分にパークポイントを付与（通常は血の月踏破でしか入らない） |
 | `airdrop` | 補給物資を即座に投下 |
+| `pause [freeze\|walk\|free]` | ゲームを一時停止する。時間（昼夜と Day）・侵略者・ワールドイベント・タレットと罠が止まり、参加者はダメージを受けない。参加者は freeze=動けない／walk=歩けるが壊す・置く・攻撃・使うができない（省略時）／free=自由。OP は対象外。画面中央・上のバー・サイドバーで知らせる。止めたままサーバーが止まっても（落ちた場合も）、次の起動は止めたままで始まる（`pause.yml`） |
+| `resume` | 3・2・1 と数えてから再開する。止めていた時間ぶん、補給物資やホードの時刻も遅らせる |
 | `forcewave` | 次のウェーブを即座に投入 |
 | `setlevel <n>` / `setday <n>` | ネクサスLv / 経過日数を設定 |
 | `restore` | 侵略者に壊されたブロックを復元 |
@@ -395,11 +418,15 @@ Shard・帰還の羅針盤・強化ハンマーには CustomModelData（文字�
 - `nexus.floating-damage-per-second` / `nexus.explosion-radius` / `nexus.explosion-damage` — 浮かせたネクサスへの対策
 - `mob.health-display-seconds` — ダメージを受けた侵略者の HP を出す秒数
 - `recall.*` — 帰還の羅針盤（詠唱時間・ネクサスでの値段）
+- `turret-limit.*` — 置けるタレットの数
+- `death.spectate-seconds` — 死んだあと観戦モードで待つ秒数
+- `world-events.air-drop.*` — 補給物資の距離と、距離による中身の倍率
 - `mob.speed-multiplier` — 侵略者の速さ。1.0 でバニラの Mob と同じ速さが基準（種別ごとの倍率がかかる）
 - `economy.loot-chest-shards.*` — 構造物のチェストに入れる Shard の数（ディメンションごと）
 - `daily-reward.*` — 1 日生き延びた報酬
-- `shop.items` — SHOP の品と値段
-- `custom-model-data.*` — 独自アイテムに付ける CustomModelData（リソースパック用）
+- `shop.items` — SHOP の品と値段（`amount` 個あたり）
+- `shop.sell-ratio` — SHOP で売るときの値段（買う値段に対する割合）
+- `item_model.yml`（config.yml とは別のファイル） — 独自アイテムに付ける CustomModelData（リソースパック用）
 - `grave.*` — 墓（本人だけが回収できる時間、許可の返事を待つ時間）
 - `guide.*` — ネクサスの発光・方向表示・境目のパーティクル
 - `rules.url` — `/rule` で表示するルール説明の URL

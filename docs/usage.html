@@ -195,7 +195,7 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
           <div class="cmd"><span>/invasion give nexus</span><button type="button">コピー</button></div>
           <p>テスト用に一式欲しいときは <code>hammer</code>・<code>shard</code>・<code>turret_arrow</code> なども配れます（<a href="#commands">一覧</a>）。</p></div></li>
         <li><div><strong>拠点の中心にネクサスを置く</strong>
-          <p>見た目はロードストーンです。周囲 <strong>48 ブロック</strong>が防衛範囲、<strong>40 ブロック</strong>以内が「侵略者が壁を壊してよい範囲」になります。範囲の外の建物は壊されません。</p>
+          <p>見た目はロードストーンです。周囲 <strong>25 ブロック</strong>が防衛範囲、<strong>24 ブロック</strong>以内が「侵略者が壁を壊してよい範囲」になります。範囲の外の建物は壊されません。</p>
           <p><strong>地面か固いブロックの上に置いてください。</strong>真下が空中だと起動できません（侵略者が届かず、待つだけで勝ててしまうため）。起動したあとに真下を掘って浮かせると、つなぎ直すまで HP が毎秒減ります。侵略者の爆発がネクサスのすぐそばで起きたときも HP が減ります。</p>
           <p>ネクサス同士は 96 ブロック以上離す必要があります。</p></div></li>
         <li><div><strong>開始前チェックをする</strong>
@@ -206,7 +206,7 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
           <p>ネクサスの画面が開きます。緑の染料のボタンを押すと Day 1 が始まり、待機中の制限が解除されます。日没後に起動した場合、その夜は襲撃が来ません。起動できるのは OP（<code>invasioncore.admin</code>）だけで、参加者が押しても動きません。</p></div></li>
         <li><div><strong>参加者を集める</strong>
           <p>サーバーに入った人は自動で参加者になります（どのディメンションにいても参加者として数えます）。起動するまでは「待機中」で、OP 以外はブロックの破壊・設置、アイテムを拾う・落とす、チェストや作業台を開ける、ボタン・レバー・感圧板などのレッドストーン部品を使う、Mob への攻撃ができません。体力と満腹度が常に回復するので死にません。画面下には参加人数とルールの案内が出ます。</p>
-          <p>ネクサスを置くまでは移動を制限しません。<strong>ネクサスを置いた瞬間に OP 以外の全員がネクサスのそばへテレポート</strong>し、起動するまではネクサスから 48 ブロック（防衛範囲）より先へ進めなくなります。後から入ってきた人も、ネクサスのそばへ移されます。</p>
+          <p>ネクサスを置くまでは移動を制限しません。<strong>ネクサスを置いた瞬間に OP 以外の全員がネクサスのそばへテレポート</strong>し、起動するまではネクサスから 25 ブロック（防衛範囲）より先へ進めなくなります。後から入ってきた人も、ネクサスのそばへ移されます。</p>
           <p>ルール説明の URL は <code>/rule</code> で表示できます（config.yml の <code>rules.url</code> で変更）。</p></div></li>
         <li><div><strong>壁と設備を整えて Day 7 を待つ</strong>
           <p>ここからは全員で準備です。<a href="#cycle">7日間の流れ</a>へ進んでください。</p></div></li>
@@ -231,7 +231,7 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
         <thead><tr><th>イベント</th><th>内容</th></tr></thead>
         <tbody>
           <tr><td>徘徊ホード</td><td>10〜25 分おきに、少数の侵略者が拠点に向かってくる</td></tr>
-          <tr><td>空中投下</td><td>20 分おきに、拠点から 40〜80 ブロック離れた場所へ補給物資の樽が空から落ちてくる（15 分で消える）。座標はチャットに出て、光の柱・発光・残り時間の名札が目印。置かれている間は画面下に方向と距離が出る</td></tr>
+          <tr><td>空中投下</td><td>20 分おきに、ネクサスから 40〜600 ブロック離れた場所へ（遠いほど中身が多く、一番近いと 0.3 倍・一番遠いと 3 倍）補給物資の樽が空から落ちてくる（15 分で消える）。座標はチャットに出て、光の柱・発光・残り時間の名札が目印。置かれている間は画面下に方向と距離が出る</td></tr>
           <tr><td>1 日の報酬</td><td>夜明けごとに、生きている参加者全員へ Shard 10 個。2 日ごとにパークポイントも 1 点</td></tr>
           <tr><td>ヒートと叫喚体</td><td>拠点での採掘・建築・撃破・射撃が「熱」として溜まり、溜まりすぎると<strong>叫喚体</strong>が現れて仲間を呼ぶ。サイドバーの「ヒート」が赤くなったら手を止める</td></tr>
           <tr><td>墓</td><td>どこで死んでも、所持品が死亡地点の墓（本人の頭）にまとめられる。右クリックか左クリックで回収。最初の 10 分は本人だけ（他の人がクリックすると本人に「許可する / 断る」が届く）、その後はだれでも。回収されるまで消えない</td></tr>
@@ -269,6 +269,7 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
           <tr><td>照準演算</td><td>タレット射程 +2 ブロック/Lv</td><td class="num">4</td><td class="shard">50</td></tr>
           <tr><td>残滓精製</td><td>Shard 獲得量 +12%/Lv</td><td class="num">5</td><td class="shard">45</td></tr>
           <tr><td>整備術式</td><td>修理・強化コスト -10%/Lv</td><td class="num">4</td><td class="shard">50</td></tr>
+          <tr><td>砲台増設</td><td>置けるタレットの数 +2/Lv（最初 5 基、最大 30 基）</td><td class="num">13</td><td class="shard">30</td></tr>
         </tbody>
       </table></div>
       <p>コストはレベルが上がるごとに約 1.6〜1.8 倍になります。</p>
@@ -276,7 +277,7 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
 
     <section id="fortify">
       <h2>拠点を固める</h2>
-      <p>通貨は <strong class="shard">Shard</strong>（アメジストの欠片の見た目）です。侵略者を倒すと落とし、防衛成功でも配られます。普通の敵（ゾンビ・スケルトンなど）をプレイヤーが倒しても 1 個落とします（スポナーから出た敵は対象外。<code>economy.vanilla-mob-shard</code>）。構造物のチェストにも入っています（通常世界 5〜20・ネザー 10〜30・エンド 20〜60）。地面に落ちた Shard は光ります。インベントリに入っている実物を使います。ネクサスの画面の「SHOP」で、道具・弾薬・素材を Shard で買えます（品と値段は <code>shop.items</code>）。</p>
+      <p>通貨は <strong class="shard">Shard</strong>（アメジストの欠片の見た目）です。侵略者を倒すと落とし、防衛成功でも配られます。普通の敵（ゾンビ・スケルトンなど）をプレイヤーが倒しても 1 個落とします（スポナーから出た敵は対象外。<code>economy.vanilla-mob-shard</code>）。構造物のチェストにも入っています（通常世界 5〜20・ネザー 10〜30・エンド 20〜60）。地面に落ちた Shard は光ります。インベントリに入っている実物を使います。ネクサスの画面の「SHOP」で、道具・弾薬・素材を Shard で買えます（品と値段は <code>shop.items</code>）。品を押すと個数を選ぶ画面と確認の画面が出て、並んでいる品は買う値段の半分で売ることもできます（<code>shop.sell-ratio</code>）。</p>
       <h3>強化ハンマー</h3>
       <p>強化ハンマー（鉄の斧の見た目）でブロックを右クリックすると、そのブロックの状態に応じて次のどれかが起きます。防衛範囲の中でだけ使えます。</p>
       <div class="table-wrap"><table>
@@ -299,7 +300,7 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
       <p><strong>応急補修キット</strong>（ハニカムの見た目）を強化ブロックに右クリックすると、Shard なしで即座に全回復します。</p>
       <h3>ネクサス内の Shard（共有）</h3>
       <p>Shard を手に持ってネクサスを右クリックするとその束を、ネクサスの画面の「Shard をネクサスに預ける」で手持ちを全部、ネクサスに預けられます。預けた分はサイドバーに「ネクサス内の Shard」と出て、強化・修理・アップグレード・再建で <strong>手持ちが足りない分に自動で使われます</strong>。引き出せるのは管理者だけです（画面の「ネクサス内の Shard」から 1・10・64・全部）。</p>
-      <div class="note"><strong>侵略者が得意なこと</strong>：壁蟲は壁を登り、工兵は足場を積んで高所を越え、掘削者は地面を掘って入ってきます。高い壁だけ・一枚壁だけでは止まりません。厚み・屋根・罠の組み合わせが大事です。</div>
+      <div class="note"><strong>侵略者が得意なこと</strong>：壁蟲は壁を登り、工兵は壁の前で足場を積んで登り、壁の上から内側へ足場を渡して飛び降りてきます（渡せるのは 6 ブロックまでなので、厚い壁や屋根が効きます）。掘削者は地面を掘って入ってきます。高い壁だけ・一枚壁だけでは止まりません。厚み・屋根・罠の組み合わせが大事です。</div>
     </section>
 
     <section id="turrets">
@@ -333,7 +334,7 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
 
     <section id="bloodmoon">
       <h2>血の月</h2>
-      <p>7日目の日没とともに始まります。侵略者は拠点から 26〜42 ブロック離れた場所に湧き、ネクサスへ向かってきます。</p>
+      <p>7日目の日没とともに始まります。侵略者は防衛範囲の外、ネクサスから 60〜100 ブロック離れた場所に湧き、ネクサスへ向かってきます。タレットや罠が倒した敵の Shard は地面に落ちず、直接ネクサス内の Shard に入ります（プレイヤーが倒した敵は落とします）。</p>
       <div class="table-wrap"><table>
         <tbody>
           <tr><th>ウェーブ数</th><td>5 波から。難易度（GameStage）15 ごとに 1 波増え、最大 12 波</td></tr>
@@ -350,14 +351,14 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
 
     <section id="enemies">
       <h2>敵とボス</h2>
-      <p>難易度が上がるにつれて、強い種類が解禁され、弱い種類と入れ替わっていきます。名前が光っている敵は凶暴化・汚染（自己再生）した上位個体です。</p>
+      <p>難易度が上がるにつれて、強い種類が解禁され、弱い種類と入れ替わっていきます。名前の色が違う敵は凶暴化（金）・汚染（緑、自己再生）した上位個体です。</p>
       <div class="table-wrap"><table>
         <thead><tr><th>敵</th><th>特徴・対処</th></tr></thead>
         <tbody>
           <tr><td>侵略者・疾走者</td><td>基本の歩兵と、足の速い歩兵</td></tr>
-          <tr><td>射手・投擲手</td><td>遠くから矢や爆弾を撃ってくる。投擲手は懐に入ると逃げる</td></tr>
+          <tr><td>射手</td><td>遠くから矢を撃ってくる</td></tr>
           <tr><td>壁蟲・工兵・掘削者</td><td>壁を登る・足場を積む・地面を掘る。壁だけでは止まらない</td></tr>
-          <tr><td>爆導体</td><td>壁際やネクサスの近くで自爆する。強化ティアが高い壁なら耐えられる</td></tr>
+          <tr><td>爆導体</td><td>壁際やネクサスの近くで自爆する。壊すのはプレイヤーが置いた・強化したブロックだけで、地形は壊さない。強化ティアが高い壁なら耐えられる</td></tr>
           <tr><td>重装体</td><td>とても硬く、ノックバックしない。罠・凍結タレットで足止め</td></tr>
           <tr><td>飛翔体</td><td>空から来るので地上の壁を無視する</td></tr>
           <tr><td>潜伏体</td><td>近づくまで透明。後ろのプレイヤーを狙う</td></tr>
@@ -445,6 +446,11 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
           <tr><td><code>/invasion admin spawn &lt;種類&gt; [数]</code></td><td>侵略者を湧かせる（稼働中のネクサスが必要）</td></tr>
           <tr><td><code>/invasion admin boss &lt;名前&gt;</code></td><td>ボスを出す（warlord / siege_titan / blight_queen / emberheart / void_herald）</td></tr>
           <tr><td><code>/invasion admin airdrop</code></td><td>補給物資をすぐ落とす</td></tr>
+          <tr><td><code>/invasion admin pause [freeze|walk|free]</code></td><td>ゲームを一時停止する。時間・侵略者・補給物資などのイベント・タレットと罠が止まり、参加者はダメージを受けない。参加者は freeze＝動けない、walk＝歩けるが壊す・置く・攻撃・使うができない（省略したとき）、free＝自由（OP は対象外）。止めたままサーバーが止まっても、次の起動は止めたままで始まる</td></tr>
+          <tr><td><code>/invasion admin resume</code></td><td>3・2・1 と数えてから再開する</td></tr>
+          <tr><td><code>/invasion ver</code></td><td>プラグインのバージョンを表示する。develop など main 以外で作った jar は「0.5.0-dev (コミット・作った日時)」と出る。OP がサーバーに入ったときも画面に出る</td></tr>
+          <tr><td><code>/invasion item</code></td><td>このプラグインのアイテムを何度でも取り出せる画面（クリックで 1 個、Shift+クリックで 1 スタック）</td></tr>
+          <tr><td><code>/invasion admin item on</code> / <code>off</code></td><td><code>/invasion item</code> を誰でも使えるようにする（テストプレイ用）／OP だけに戻す</td></tr>
           <tr><td><code>/invasion tp nexus</code></td><td>ネクサスのそばへテレポートする（OP のみ）。ネザーなど別のディメンションからでも使える</td></tr>
           <tr><td><code>/invasion admin web</code></td><td>管理画面（スマホからも開ける）と OBS オーバーレイの URL を表示する。管理画面の URL はパスワード入りなので配信に映さない</td></tr>
           <tr><td><code>/invasion admin end</code></td><td>ゲームを強制終了する。侵略者を消し、ネクサスを中の Shard・報酬ごと撤去する（確認なし・元に戻せない）</td></tr>
@@ -472,7 +478,7 @@ nav.toc .home { display: inline-block; margin-bottom: 14px; font-size: 13px; }
       </table></div>
     </section>
 
-    <footer>InvasionCore 0.4.0 / Paper 26.2 build 92。数値は既定の config.yml の値です。サーバーの設定を変えている場合は異なります。</footer>
+    <footer>InvasionCore 0.5.0 / Paper 26.2 build 92。数値は既定の config.yml の値です。サーバーの設定を変えている場合は異なります。</footer>
   </main>
 </div>
 

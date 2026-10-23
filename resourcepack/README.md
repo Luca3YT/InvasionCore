@@ -3,27 +3,72 @@
 独自アイテムの見た目を、自分で描いた絵に差し替えるためのフォルダです。
 ここに PNG を置いてスクリプトを実行すると、Minecraft に入れられるリソースパック（zip）ができます。
 
+## しくみ
+
+1. サーバーの `plugins/InvasionCore/item_model.yml` で、アイテムごとに CustomModelData の値を決める
+   （初めて起動したときは全部空白。空白のアイテムには何も付かない）。
+2. プラグインは、その値を **設定したあとに手に入れたアイテム** に付ける。
+3. リソースパックは、その値が付いたアイテムだけ、ここに置いた絵に差し替える。
+   バニラのアメジストの欠片などは元の見た目のまま。
+
+`item_model.yml` の書き方:
+
+```yaml
+recall: 1        # 数字 → 数値として付く（/give の custom_model_data={floats:[1]} と同じ）
+shard: 2
+hammer: "hammer" # "" で囲む → 文字列として付く（custom_model_data={strings:["hammer"]}）
+nexus:           # 空白 → 付けない
+```
+
+書き換えたら `/invasion admin reload` で読み直します。前から持っているアイテムは変わりません。
+
 ## 差し替えられるアイテム
 
-| 置くファイル | アイテム | 元の見た目 |
+PNG の名前は `item_model.yml` の項目名と同じにします。
+
+| item_model.yml の項目 / 置くファイル | アイテム | 元の見た目 |
 |---|---|---|
-| `textures/shard.png` | Shard（ネクサスの残滓） | アメジストの欠片 |
-| `textures/recall.png` | 帰還の羅針盤 | 回復コンパス |
-| `textures/hammer.png` | 強化ハンマー | 鉄の斧（手に持つと道具の持ち方になる） |
+| `nexus` / `textures/nexus.png` | ネクサス | ロードストーン |
+| `hammer` / `textures/hammer.png` | 強化ハンマー（手に持つと道具の持ち方） | 鉄の斧 |
+| `shard` / `textures/shard.png` | Shard（ネクサスの残滓） | アメジストの欠片 |
+| `kit` / `textures/kit.png` | 応急補修キット | ハニカム |
+| `turret_arrow` / `textures/turret_arrow.png` | 射撃タレット | ディスペンサー |
+| `turret_flame` / `textures/turret_flame.png` | 火炎タレット | 溶鉱炉 |
+| `turret_frost` / `textures/turret_frost.png` | 凍結タレット | 氷塊 |
+| `turret_heal` / `textures/turret_heal.png` | 修復タレット | ビーコン |
+| `spike` / `textures/spike.png` | スパイクトラップ | 鍾乳石 |
+| `mine` / `textures/mine.png` | 爆裂地雷 | 重量感圧板（重） |
+| `flash` / `textures/flash.png` | 閃光弾 | 雪玉 |
+| `medkit` / `textures/medkit.png` | 救急キット | ガストの涙 |
+| `barrier` / `textures/barrier.png` | 緊急バリア | 鉄のトラップドア |
+| `recall` / `textures/recall.png` | 帰還の羅針盤 | 回復コンパス |
+| `recall_charging` / `textures/recall_charging.png` | 帰還の羅針盤（詠唱中だけ） | 回復コンパス |
+
+### 帰還の羅針盤の詠唱中の見た目
+
+`recall_charging` に値を書くと、羅針盤を右クリックして詠唱している間だけ、手に持っている羅針盤の値がその値に変わります。
+詠唱が終わる・中断する・死ぬ・抜けると `recall` の値に戻ります（詠唱中にサーバーが落ちても、入り直したときに戻ります）。
+
+```yaml
+recall: 1
+recall_charging: 2
+```
+
+- `recall` と `recall_charging` は、どちらも数字か、どちらも `""` で囲んだ文字にそろえます。
+- `recall_charging` だけでは使えません（`recall` の絵と値も要ります）。
+- 羅針盤を何個か重ねて持っていると、詠唱中はその束が全部詠唱中の見た目になります。
+- 配布されているパックを使うときは、そのパックが詠唱中の絵に使っている値を書きます
+  （例: 1 で普段の絵、2 で詠唱中の絵になるパックなら `recall: 1` / `recall_charging: 2`）。
 
 - 絵は **正方形の PNG**（16×16 がバニラと同じ大きさ。32×32 などでもよい）。背景は透明にする。
-- 置かなかったアイテムは、元の見た目のままになります。
+- 絵は持ち物の欄と手に持ったときの見た目だけが変わります。タレットやネクサスなどのブロックは、置くと元のブロックの見た目です。
+- 絵を置いても、`item_model.yml` の値が空白のアイテムは差し替わりません（スクリプトが「空白」と知らせます）。
 - 動く絵にしたいときは、縦に並べたコマの PNG と、同じ名前の `.png.mcmeta`（例: `shard.png.mcmeta`）を置きます。
-  書き方はバニラのアニメーションと同じです。
 - `pack.png`（このフォルダの直下、正方形）を置くと、パックの一覧のアイコンになります。
-
-バニラのアメジストの欠片・回復コンパス・鉄の斧は、元の見た目のまま変わりません。
-プラグインが独自アイテムにだけ付けている **CustomModelData**（`config.yml` の `custom-model-data`）を見て、
-独自アイテムのときだけ絵を差し替えています。
 
 ## パックの作り方
 
-1. 上の名前で PNG を `textures/` に置く。
+1. 上の名前で PNG を `textures/` に置き、サーバーの `item_model.yml` に値を書く。
 2. リポジトリの直下で次を実行する（Minecraft 26.2 を一度起動したことがある PC で）。
 
    ```
@@ -32,8 +77,10 @@
 
 3. `target\InvasionCore-resourcepack.zip` ができる。
 
-スクリプトは、手元の Minecraft 26.2 のゲームファイル（`%APPDATA%\.minecraft\versions\26.2\26.2.jar`）から
-元の見た目の定義とパックのバージョンを読みます。別の場所にあるときは、jar のパスを引数で渡します。
+スクリプトは値を **手元のテストサーバーの `server\plugins\InvasionCore\item_model.yml`** から読みます
+（無ければ `src\main\resources\item_model.yml` の雛形。全部空白）。本番のサーバーと値を同じにしておいてください。
+元の見た目の定義とパックのバージョンは、手元の Minecraft 26.2 のゲームファイル
+（`%APPDATA%\.minecraft\versions\26.2\26.2.jar`）から読みます。別の場所にあるときは、jar のパスを引数で渡します。
 
 ## 配り方
 
@@ -45,6 +92,5 @@
 
 ## 注意
 
-- `config.yml` の `custom-model-data` の値を変えたら、パックも作り直してください（スクリプトは `src/main/resources/config.yml` の値を読みます。サーバーの config.yml だけ変えた場合は、こちらも同じ値にしてから作る）。
-- CustomModelData は、**この機能を入れた版より後に作られたアイテム** にだけ付いています。
-  それより前に手に入れた Shard などは元の見た目のままで、新しく手に入れた Shard とは同じ欄にまとまりません（使うときはどちらも Shard として数えます）。
+- 値を付けたあとのアイテムと、前から持っているアイテムは、インベントリで同じ欄にまとまりません（どちらも同じアイテムとして使えます）。
+- 自分で作ったパックや配布されているパックを使うときは、`item_model.yml` の値をそのパックが見ている値に合わせてください。
